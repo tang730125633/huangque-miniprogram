@@ -1,0 +1,73 @@
+<view class="container">
+
+  <!-- 点数条 -->
+  <view class="points-bar">
+    <text class="muted">当前点数</text>
+    <text class="gold points-num">{{points === null ? '—' : points}}</text>
+  </view>
+
+  <!-- 配音文案 -->
+  <view class="card">
+    <view class="label">配音文案 <text class="muted small">（{{text.length}}/1200）</text></view>
+    <textarea class="prompt" placeholder="输入要配音的文案，例如：家人们，这家新开的美容院真的绝了…"
+      placeholder-class="ph" value="{{text}}" bindinput="onText" maxlength="1200"
+      auto-height show-confirm-bar="{{false}}"></textarea>
+  </view>
+
+  <!-- 音色选择 -->
+  <view class="card">
+    <view class="label">选择音色</view>
+    <view class="voice-tabs">
+      <view class="vtab {{voiceTab==='public'?'on':''}}" data-t="public" bindtap="switchTab">公共音色</view>
+      <view class="vtab {{voiceTab==='personal'?'on':''}}" data-t="personal" bindtap="switchTab">个人音色</view>
+    </view>
+
+    <view wx:if="{{filtered.length}}" class="voice-grid">
+      <view wx:for="{{filtered}}" wx:key="voice_key" class="voice-card {{selectedVoice===item.voice_key?'on':''}}"
+        data-k="{{item.voice_key}}" bindtap="pickVoice">
+        <view class="voice-name">{{item.display_name || item.voice_key}}</view>
+        <view class="voice-sub">{{item.sub || (item.provider ? item.provider : (item.scope==='personal' ? '个人克隆' : '公共音色'))}}</view>
+        <view wx:if="{{item.preview_url}}" class="voice-play" catchtap="playPreview" data-u="{{item.preview_url}}"><image class="ic-pp-xs" src="../../assets/icons/play_pink.svg"></image></view>
+      </view>
+    </view>
+    <view wx:else class="empty muted">
+      <image class="empty-ic" src="../../assets/icons/em_wave.svg" mode="aspectFit"></image>
+      <view>{{voiceTab==='personal' ? '还没有个人克隆音色' : '暂无可用公共音色'}}</view>
+    </view>
+    <view wx:if="{{voiceTab==='personal'}}" class="clone-entry" bindtap="goClone">＋ 克隆我的专属声音</view>
+  </view>
+
+  <!-- 参数 -->
+  <view class="card">
+    <view class="label">参数</view>
+    <view class="param" wx:for="{{paramDefs}}" wx:key="key">
+      <text class="param-name">{{item.name}}</text>
+      <view class="stepper">
+        <view class="step-btn" data-k="{{item.key}}" data-d="-1" bindtap="stepParam">－</view>
+        <text class="step-val">{{params[item.key]}}</text>
+        <view class="step-btn" data-k="{{item.key}}" data-d="1" bindtap="stepParam">＋</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成按钮 -->
+  <view class="btn-primary {{busy?'disabled':''}}" bindtap="generate">
+    {{busy ? '生成中…' : '生成配音（' + cost + ' 点）'}}
+  </view>
+  <view class="note" style="color:{{noteColor}}">{{note || defaultNote}}</view>
+
+  <!-- 结果 -->
+  <view wx:if="{{resultUrl}}" class="card">
+    <view class="label">配音结果</view>
+    <view class="audio-player">
+      <view class="play-big" bindtap="togglePlay"><image class="ic-pp" src="{{playing ? '../../assets/icons/pause_pink.svg' : '../../assets/icons/play_pink.svg'}}"></image></view>
+      <view class="play-info">
+        <view class="muted small">{{playing ? '播放中…' : '点击试听'}}</view>
+      </view>
+    </view>
+    <view class="result-actions">
+      <view class="ghost-btn" bindtap="copyUrl">复制下载链接</view>
+    </view>
+  </view>
+
+</view>

@@ -1,0 +1,103 @@
+<view class="home">
+
+  <!-- 顶部沉浸式黑色留白（含胶囊安全区） -->
+  <view class="top-spacer">
+    <view class="brandbar">
+      <text class="brand">黄雀 AI</text>
+      <view class="pts" bindtap="onTapPoints">
+        <image class="pts-ic" src="../../assets/icons/coin.svg"></image>
+        <text>{{points === null ? '去登录' : points + ' 点'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="content">
+
+    <!-- 功能矩阵：左大 + 右上下双卡 -->
+    <view class="mosaic">
+      <view class="primary-card" bindtap="onTapPrimaryCreation">
+        <view class="pc-title">AI 视频创作</view>
+        <view class="pc-sub">文生视频、图生视频与数字人</view>
+        <view class="pc-icon-slot">
+          <image class="pc-icon" src="{{assets.creativeSymbol}}" mode="aspectFit"></image>
+        </view>
+      </view>
+
+      <view class="right-col">
+        <view class="mini-card mc-image" bindtap="onTapImageCreation">
+          <view class="mc-body">
+            <view class="mc-title">智能生图/改图</view>
+            <view class="tag tag-cyan">多模型创作</view>
+          </view>
+          <image class="mc-icon" src="{{assets.imageToolIcon}}" mode="aspectFit"></image>
+        </view>
+
+        <view class="mini-card mc-video" bindtap="onTapVideoAnalysis">
+          <view class="mc-body">
+            <view class="mc-title">视频灵感拆解</view>
+            <view class="tag tag-orange">提取结构与文案</view>
+          </view>
+          <image class="mc-icon" src="{{assets.videoAnalysisIcon}}" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+
+    <!-- 数字化 IP 入口 -->
+    <view class="dh-entry" bindtap="onTapDigitalHuman">
+      <image class="dh-avatar" src="{{assets.digitalHumanAvatar}}" mode="aspectFill"></image>
+      <text class="dh-title">数字化 IP</text>
+      <text class="dh-cta">立即制作 ›</text>
+    </view>
+
+    <!-- 顶部轮播 Banner（可扩展） -->
+    <view class="rt-swiper-wrap">
+      <swiper
+        class="rt-swiper"
+        circular="{{banners.length > 1}}"
+        indicator-dots="{{false}}"
+        autoplay="{{bannerAutoplay && banners.length > 1}}"
+        interval="5000"
+        duration="300"
+        bindchange="onBannerChange"
+      >
+        <swiper-item wx:for="{{banners}}" wx:key="id">
+          <view class="rt-banner" bindtap="onTapRoleTransfer" data-path="{{item.path}}">
+            <image class="rt-bg" src="{{item.image}}" mode="aspectFill" fade-in="{{false}}"></image>
+            <view class="rt-mask"></view>
+            <view class="rt-text">
+              <view class="rt-title">{{item.title}}</view>
+              <view class="rt-sub">{{item.sub}}</view>
+            </view>
+          </view>
+        </swiper-item>
+      </swiper>
+      <view class="rt-page">{{bannerCurrent + 1}}/{{banners.length}}</view>
+    </view>
+
+    <!-- 教程与创作案例 -->
+    <view class="tut-head">
+      <view class="tut-line"></view>
+      <text class="tut-title">教程与创作案例</text>
+      <view class="tut-line"></view>
+    </view>
+
+    <scroll-view class="tut-scroll" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+      <view class="tut-card" wx:for="{{tutorials}}" wx:key="id" bindtap="onTapTutorial" data-id="{{item.id}}">
+        <image class="tut-cover" src="{{item.image}}" mode="aspectFill"></image>
+        <view class="tut-name">{{item.title}}</view>
+      </view>
+    </scroll-view>
+
+    <!-- 静态声明动态图片，防止上传打包器将首页素材误判为未使用文件 -->
+    <view class="home-asset-manifest" aria-hidden="true">
+      <view class="asset-video-mix"></view>
+      <view class="asset-role-transfer"></view>
+      <view class="asset-tutorial-image"></view>
+      <view class="asset-tutorial-video"></view>
+      <view class="asset-tutorial-human"></view>
+    </view>
+
+    <view class="build-version">版本 v0.024（开发中）</view>
+    <view class="bottom-safe"></view>
+  </view>
+</view>

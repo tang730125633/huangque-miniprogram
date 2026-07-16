@@ -1,0 +1,65 @@
+<view class="page">
+
+  <!-- 沉浸式头图 -->
+  <view class="header" style="padding-top: {{statusBarHeight}}px;">
+    <image class="header-bg" src="/assets/inspiration/inspiration-header-bg.webp" mode="aspectFill"></image>
+    <view class="header-fade"></view>
+    <view class="header-inner">
+      <view class="h-title">一键跟创</view>
+      <view class="h-sub">发现灵感，生成你的营销内容</view>
+      <scroll-view class="cat-bar" scroll-x enable-flex show-scrollbar="{{false}}">
+        <view wx:for="{{categories}}" wx:key="*this" class="cat {{category===item?'on':''}}"
+          data-c="{{item}}" bindtap="switchCategory">
+          <text>{{item}}</text>
+          <view wx:if="{{category===item}}" class="cat-line"></view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{isEmpty}}" class="empty">该分类暂无案例</view>
+
+  <!-- 瀑布流（左右两列数据分流） -->
+  <view wx:else class="masonry">
+    <view class="masonry-col">
+      <view class="card" wx:for="{{leftList}}" wx:key="id">
+        <view class="card-media" style="height: {{item.height}}rpx;">
+          <image wx:if="{{!item.imageFailed}}" class="card-img" src="{{item.img}}" mode="aspectFill" lazy-load
+            data-img="{{item.img}}" data-col="left" data-idx="{{index}}"
+            bindtap="previewImage" binderror="onImageError"></image>
+          <view wx:else class="card-img card-fail"></view>
+          <view class="card-grad"></view>
+          <view class="card-follow" catchtap="follow" data-id="{{item.id}}">跟创</view>
+        </view>
+        <view class="card-title">{{item.title}}</view>
+        <view class="card-foot">
+          <text class="card-engine">{{item.engineLabel}}</text>
+          <view class="card-pop"><text class="heart">♡</text><text>{{item.count}}</text></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="masonry-col">
+      <view class="card" wx:for="{{rightList}}" wx:key="id">
+        <view class="card-media" style="height: {{item.height}}rpx;">
+          <image wx:if="{{!item.imageFailed}}" class="card-img" src="{{item.img}}" mode="aspectFill" lazy-load
+            data-img="{{item.img}}" data-col="right" data-idx="{{index}}"
+            bindtap="previewImage" binderror="onImageError"></image>
+          <view wx:else class="card-img card-fail"></view>
+          <view class="card-grad"></view>
+          <view class="card-follow" catchtap="follow" data-id="{{item.id}}">跟创</view>
+        </view>
+        <view class="card-title">{{item.title}}</view>
+        <view class="card-foot">
+          <text class="card-engine">{{item.engineLabel}}</text>
+          <view class="card-pop"><text class="heart">♡</text><text>{{item.count}}</text></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loadingMore}}" class="more">加载中…</view>
+  <view wx:elif="{{noMore && !isEmpty}}" class="more">没有更多了</view>
+  <view class="bottom-safe"></view>
+</view>

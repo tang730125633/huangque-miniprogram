@@ -1,0 +1,52 @@
+.admin-page { padding-bottom: 60rpx; }
+.admin-head {
+  margin-top: 10rpx; display: flex; align-items: center; justify-content: space-between;
+  background: radial-gradient(circle at 90% 10%, rgba(226,75,160,.22), transparent 42%), var(--surface);
+}
+.head-kicker { color: var(--primary); font-size: 20rpx; font-weight: 700; letter-spacing: 3rpx; }
+.head-title { margin: 8rpx 0; font-size: 40rpx; font-weight: 700; }
+.admin-mark {
+  width: 86rpx; height: 86rpx; border-radius: 24rpx; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 34rpx; font-weight: 700; background: var(--grad); box-shadow: 0 12rpx 34rpx rgba(226,75,160,.24);
+}
+.tabs { display: flex; padding: 7rpx; margin-bottom: 24rpx; border: 1rpx solid var(--line); border-radius: 18rpx; background: var(--surface); }
+.tab { flex: 1; padding: 20rpx 10rpx; text-align: center; border-radius: 13rpx; color: var(--text-muted); font-size: 26rpx; }
+.tab.active { color: #fff; background: var(--primary-soft); box-shadow: inset 0 0 0 1rpx rgba(226,75,160,.42); }
+.error-box { margin-bottom: 20rpx; padding: 20rpx; border-radius: 14rpx; color: var(--error); background: rgba(255,92,138,.1); }
+.search-row { display: flex; gap: 14rpx; }
+.search-input { flex: 1; height: 82rpx; padding: 0 24rpx; border: 1rpx solid var(--line); border-radius: 16rpx; background: var(--surface); color: var(--text); }
+.search-btn { width: 126rpx; height: 82rpx; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; color: #fff; background: var(--grad); font-weight: 600; }
+.placeholder { color: #686176; }
+.section-meta { margin: 20rpx 4rpx 14rpx; color: var(--text-muted); font-size: 22rpx; }
+.empty { padding: 70rpx 20rpx; text-align: center; color: var(--text-muted); }
+.user-list, .audit-list { overflow: hidden; border: 1rpx solid var(--line); border-radius: 20rpx; background: var(--surface); }
+.user-row { padding: 24rpx; display: flex; align-items: center; justify-content: space-between; }
+.user-row + .user-row, .audit-row + .audit-row { border-top: 1rpx solid var(--line); }
+.user-main { min-width: 0; flex: 1; }
+.user-name-line { display: flex; align-items: center; gap: 10rpx; margin-bottom: 7rpx; }
+.user-name { max-width: 390rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.mini-admin { padding: 3rpx 9rpx; border-radius: 999rpx; color: var(--primary-ink); background: var(--primary-soft); font-size: 18rpx; }
+.points-side { margin-left: 20rpx; color: var(--secondary); }
+.points-value { font-size: 32rpx; font-weight: 700; }
+.tiny { font-size: 19rpx; }
+.audit-row { padding: 24rpx; }
+.audit-top { display: flex; justify-content: space-between; align-items: center; }
+.audit-user { font-weight: 600; }
+.audit-delta { font-size: 30rpx; font-weight: 700; }
+.audit-delta.plus { color: var(--success); }
+.audit-delta.minus { color: var(--error); }
+.audit-reason { margin: 10rpx 0; color: #d9d3e2; font-size: 24rpx; }
+.modal-mask { position: fixed; z-index: 99; inset: 0; padding: 32rpx; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.72); }
+.adjust-modal { width: 100%; padding: 30rpx; border: 1rpx solid rgba(226,75,160,.35); border-radius: 26rpx; background: #17131f; box-shadow: 0 24rpx 80rpx rgba(0,0,0,.55); }
+.modal-title { font-size: 34rpx; font-weight: 700; }
+.target-card { margin: 22rpx 0; padding: 20rpx; border-radius: 16rpx; background: var(--surface-muted); }
+.target-name { margin-bottom: 6rpx; font-weight: 600; }
+.field-label { margin: 20rpx 0 10rpx; color: #d8d2e1; font-size: 24rpx; }
+.field-input, .field-textarea { box-sizing: border-box; width: 100%; padding: 20rpx; border: 1rpx solid var(--line); border-radius: 14rpx; background: #0f0c15; color: #fff; }
+.field-input { height: 78rpx; }
+.field-textarea { height: 150rpx; }
+.modal-actions { display: flex; gap: 14rpx; margin-top: 26rpx; }
+.btn { flex: 1; padding: 22rpx 10rpx; border-radius: 15rpx; text-align: center; font-weight: 600; }
+.btn.cancel { color: var(--text-muted); background: var(--surface-muted); }
+.btn.confirm { color: #fff; background: var(--grad); }
+.btn.disabled { opacity: .5; }

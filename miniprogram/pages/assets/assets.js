@@ -1,0 +1,121 @@
+const api = require('../../utils/api.js');
+
+const TABS = [
+  { key: 'image', name: '图片' },
+  { key: 'audio', name: '音频' },
+  { key: 'video', name: '视频' }
+];
+
+Page({
+  data: {
+    tabs: TABS,
+    tab: 'image',
+    images: [],
+    audios: [],
+    videos: [],
+    loading: false,
+    playingId: ''
+  },
+
+  onLoad() {
+    this._audio = wx.createInnerAudioContext();
+    this._audio.onEnded(() => this.setData({ playingId: '' }));
+    this._audio.onStop(() => this.setData({ playingId: '' }));
+    this._audio.onError(() => this.setData({ playingId: '' }));
+  },
+  onUnload() { if (this._audio) this._audio.destroy(); },
+
+  onShow() {
+    if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    this.load();
+  },
+
+  onPullDownRefresh() { this.load(() => wx.stopPullDownRefresh()); },
+
+  switchTab(e) {
+    if (this._audio) this._audio.stop();
+    this.setData({ tab: e.currentTarget.dataset.k, playingId: '' }, () => this.load());
+  },
+
+  load(done) {
+    const tab = this.data.tab;
+    let path = '/api/gen/history?limit=60';
+    if (tab === 'audio') path = '/api/gen/audio/assets?limit=60';
+    else if (tab === 'video') path = '/api/gen/video/assets?limit=60';
+
+    this.setData({ loading: true });
+    api.request(path, { method: 'GET' }).then((res) => {
+      const items = (res.data && res.data.items) || [];
+      if (tab === 'image') {
+        const urls = items.map((it) => api.absUrl(it.url)).filter(Boolean);
+        Promise.all(urls.map((url) => {
+          if (url.indexOf('/api/gen/file/') === -1) return Promise.resolve(url);
+          return api.downloadProtected(url).catch(() => '');
+        })).then((images) => {
+          // 用户可能在下载期间切走 tab，避免旧请求覆盖当前页面状态。
+          if (this.data.tab === 'image') this.setData({ images: images.filter(Boolean) });
+        });
+      } else if (tab === 'audio') {
+        this.setData({
+          audios: items.filter((it) => it.url).map((it) => ({
+            id: String(it.job_id || it.url), url: api.absUrl(it.url), text: it.text || '配音作品'
+          }))
+        });
+      } else {
+        // 后端返回 video_url（可能是 COS 直链或受保护的 /api/gen/file/ 相对路径）
+        // 和 image_file（封面文件名，受保护，需带 token 下载后才能显示）
+        const videos = items.filter((it) => it.video_url).map((it) => ({
+          url: api.absUrl(it.video_url),
+          cover: api.absUrl(it.image_url || it.cover_url || it.cover || ''),
+          coverFile: it.image_file || '',
+          text: it.text || '视频作品'
+        }));
+        this.setData({ videos }, () => this._loadCovers());
+      }
+      this.setData({ loading: false });
+      if (done) done();
+    }).catch(() => { this.setData({ loading: false }); if (done) done(); });
+  },
+
+  previewImage(e) {
+    wx.previewImage({ current: e.currentTarget.dataset.u, urls: this.data.images });
+  },
+
+  playAudio(e) {
+    const id = e.currentTarget.dataset.id;
+    const url = e.currentTarget.dataset.u;
+    if (this.data.playingId === id) {
+      this._audio.stop();
+      this.setData({ playingId: '' });
+      return;
+    }
+    this._audio.stop();
+    this._audio.src = url;
+    this._audio.play();
+    this.setData({ playingId: id });
+  },
+
+  // 受保护封面：带 token 下载前 12 个到本地临时文件再显示（<image> 无法带请求头）
+  _loadCovers() {
+    const videos = this.data.videos || [];
+    videos.slice(0, 12).forEach((v, i) => {
+      if (v.cover || !v.coverFile) return;
+      api.downloadProtected('/api/gen/file/' + v.coverFile)
+        .then((tmp) => this.setData({ ['videos[' + i + '].cover']: tmp }))
+        .catch(() => {});
+    });
+  },
+
+  playVideo(e) {
+    const url = e.currentTarget.dataset.u || '';
+    // COS 直链可直接播；/api/gen/file/ 受保护视频要带 token 下载后用本地路径播
+    if (url.indexOf('/api/gen/file/') === -1) {
+      wx.previewMedia({ sources: [{ url, type: 'video' }] });
+      return;
+    }
+    wx.showLoading({ title: '加载视频中…' });
+    api.downloadProtected(url)
+      .then((tmp) => { wx.hideLoading(); wx.previewMedia({ sources: [{ url: tmp, type: 'video' }] }); })
+      .catch(() => { wx.hideLoading(); wx.showToast({ title: '视频加载失败，稍后重试', icon: 'none' }); });
+  }
+});

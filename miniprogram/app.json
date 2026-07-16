@@ -1,0 +1,35 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/inspiration/inspiration",
+    "pages/assets/assets",
+    "pages/profile/profile",
+    "pages/banana/banana",
+    "pages/video/video",
+    "pages/audio/audio",
+    "pages/clone/clone",
+    "pages/admin/admin",
+    "pages/login/login"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#0b0912",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "黄雀 AI",
+    "backgroundColor": "#0b0912",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#948da8",
+    "selectedColor": "#e24ba0",
+    "backgroundColor": "#100c18",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/home", "text": "首页", "iconPath": "assets/tabbar/home.png", "selectedIconPath": "assets/tabbar/home_on.png" },
+      { "pagePath": "pages/inspiration/inspiration", "text": "一键跟创", "iconPath": "assets/tabbar/idea.png", "selectedIconPath": "assets/tabbar/idea_on.png" },
+      { "pagePath": "pages/assets/assets", "text": "历史作品", "iconPath": "assets/tabbar/history.png", "selectedIconPath": "assets/tabbar/history_on.png" },
+      { "pagePath": "pages/profile/profile", "text": "我的", "iconPath": "assets/tabbar/profile.png", "selectedIconPath": "assets/tabbar/profile_on.png" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

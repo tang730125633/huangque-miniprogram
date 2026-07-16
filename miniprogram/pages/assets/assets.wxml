@@ -1,0 +1,54 @@
+<view class="container">
+
+  <!-- 分类 tabs -->
+  <view class="tabs">
+    <view wx:for="{{tabs}}" wx:key="key" class="tab {{tab===item.key?'on':''}}"
+      data-k="{{item.key}}" bindtap="switchTab">{{item.name}}</view>
+  </view>
+
+  <!-- 图片 -->
+  <block wx:if="{{tab==='image'}}">
+    <view wx:if="{{images.length}}" class="grid3">
+      <image wx:for="{{images}}" wx:key="*this" src="{{item}}" data-u="{{item}}" bindtap="previewImage"
+        class="cell-img" mode="aspectFill" lazy-load></image>
+    </view>
+    <view wx:elif="{{!loading}}" class="empty-state">
+      <image class="empty-ic" src="../../assets/icons/empty.svg" mode="aspectFit"></image>
+      <view class="empty-title">还没有作图作品</view>
+      <view class="empty-sub">去「作图」页生成第一张图吧</view>
+    </view>
+  </block>
+
+  <!-- 音频 -->
+  <block wx:if="{{tab==='audio'}}">
+    <view wx:if="{{audios.length}}">
+      <view wx:for="{{audios}}" wx:key="id" class="audio-row" data-id="{{item.id}}" data-u="{{item.url}}" bindtap="playAudio">
+        <view class="audio-play"><image class="ic-pp" src="{{playingId===item.id ? '../../assets/icons/pause_pink.svg' : '../../assets/icons/play_pink.svg'}}"></image></view>
+        <view class="audio-text">{{item.text}}</view>
+      </view>
+    </view>
+    <view wx:elif="{{!loading}}" class="empty-state">
+      <image class="empty-ic" src="../../assets/icons/em_wave.svg" mode="aspectFit"></image>
+      <view class="empty-title">还没有配音作品</view>
+      <view class="empty-sub">去「配音」页生成第一条音频吧</view>
+    </view>
+  </block>
+
+  <!-- 视频 -->
+  <block wx:if="{{tab==='video'}}">
+    <view wx:if="{{videos.length}}" class="grid2">
+      <view wx:for="{{videos}}" wx:key="url" class="cell-video" data-u="{{item.url}}" bindtap="playVideo">
+        <image wx:if="{{item.cover}}" src="{{item.cover}}" class="cell-video-cover" mode="aspectFill" lazy-load></image>
+        <view wx:else class="cell-video-ph"></view>
+        <view class="cell-video-play"><image class="ic-pp" src="../../assets/icons/play_pink.svg"></image></view>
+        <view class="cell-video-text">{{item.text}}</view>
+      </view>
+    </view>
+    <view wx:elif="{{!loading}}" class="empty-state">
+      <image class="empty-ic" src="../../assets/icons/em_video.svg" mode="aspectFit"></image>
+      <view class="empty-title">还没有视频作品</view>
+      <view class="empty-sub">去「视频」页生成第一条视频吧</view>
+    </view>
+  </block>
+
+</view>

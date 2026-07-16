@@ -1,0 +1,35 @@
+<view class="container">
+  <view class="brand">
+    <text class="brand-title gold">黄雀作图</text>
+    <text class="brand-sub muted">AI 生图工作台</text>
+  </view>
+
+  <view class="card">
+    <view class="tabs">
+      <view class="tab {{mode==='login'?'active':''}}" bindtap="setMode" data-m="login">登录</view>
+      <view class="tab {{mode==='register'?'active':''}}" bindtap="setMode" data-m="register">注册</view>
+    </view>
+
+    <view class="field">
+      <text class="field-label">账号</text>
+      <input class="input" type="text" placeholder="请输入账号" placeholder-class="ph"
+        value="{{username}}" bindinput="onUsername" />
+    </view>
+
+    <view class="field">
+      <text class="field-label">密码</text>
+      <input class="input" password="{{true}}" placeholder="请输入密码" placeholder-class="ph"
+        value="{{password}}" bindinput="onPassword" />
+    </view>
+
+    <view wx:if="{{mode==='register'}}" class="reg-tip"><image class="reg-tip-ic" src="../../assets/icons/gift.svg"></image>新用户注册即送 16 点，可免费体验作图</view>
+
+    <view wx:if="{{err}}" class="err">{{err}}</view>
+
+    <view class="btn-primary {{loading?'disabled':''}}" bindtap="submit">
+      {{loading ? '请稍候…' : (mode==='login' ? '登录' : '注册并登录')}}
+    </view>
+  </view>
+
+  <view class="foot muted">登录即表示同意服务条款 · 数据来自黄雀传媒后端</view>
+</view>

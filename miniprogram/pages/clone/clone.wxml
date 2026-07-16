@@ -1,0 +1,69 @@
+<view class="container">
+
+  <!-- 加载中 -->
+  <view wx:if="{{stage==='loading'}}" class="card center muted">加载中…</view>
+
+  <!-- 无槽位：点数购买 -->
+  <view wx:if="{{stage==='no-slot'}}" class="card">
+    <view class="label">开通声音克隆</view>
+    <view class="muted small tip">你还没有克隆名额。用点数开通一个专属音色槽位，即可上传样音克隆你自己的声音。</view>
+    <view class="muted small tip" wx:if="{{slotCost}}">开通需 {{slotCost}} 点{{points === null ? '' : ' · 当前点数 ' + points}}</view>
+    <view wx:if="{{err}}" class="err">{{err}}</view>
+    <view class="btn-primary {{busy?'disabled':''}}" bindtap="buySlot">{{busy ? '开通中…' : (slotCost ? '消耗 ' + slotCost + ' 点开通' : '开通名额')}}</view>
+  </view>
+
+  <!-- 有槽位：录音克隆 -->
+  <view wx:if="{{stage==='clone'}}">
+    <view class="card">
+      <view class="label">录制样音 <text class="muted small">（10-60 秒，安静环境，正常语速朗读一段）</text></view>
+
+      <view class="rec-box">
+        <view class="rec-btn {{recording?'on':''}}" bindtap="toggleRecord">
+          <image class="rec-ico-img" src="{{recording ? '../../assets/icons/stop_red.svg' : '../../assets/icons/rec_red.svg'}}"></image>
+        </view>
+        <view class="rec-info">
+          <view class="rec-state">{{recording ? ('录音中… ' + recSec + 's') : (hasSample ? '已录制 ' + recSec + 's' : '点击开始录音')}}</view>
+          <view wx:if="{{hasSample && !recording}}" class="muted small">点上方按钮可重录</view>
+        </view>
+        <view wx:if="{{hasSample && !recording}}" class="rec-play" bindtap="playSample"><image class="ic-pp-s" src="../../assets/icons/play_pink.svg"></image></view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">音色名称</view>
+      <input class="input" placeholder="给这个声音起个名字，如：我的声音" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="20" />
+    </view>
+
+    <view wx:if="{{err}}" class="err center">{{err}}</view>
+    <view class="btn-primary {{(busy||!hasSample)?'disabled':''}}" bindtap="submitClone">
+      {{busy ? '提交中…' : '开始克隆'}}
+    </view>
+    <view class="muted small center tip">克隆约需 1-3 分钟，可留在本页等待</view>
+  </view>
+
+  <!-- 克隆中 -->
+  <view wx:if="{{stage==='training'}}" class="card center">
+    <image class="state-ico spin-pulse" src="../../assets/icons/em_mic.svg"></image>
+    <view class="train-title">正在克隆你的声音…</view>
+    <view class="muted small">{{trainSec}}s · 豆包 MegaTTS 复刻中，请耐心等待</view>
+  </view>
+
+  <!-- 完成 -->
+  <view wx:if="{{stage==='ready'}}" class="card center">
+    <image class="state-ico" src="../../assets/icons/check.svg"></image>
+    <view class="train-title">克隆完成！</view>
+    <view wx:if="{{previewUrl}}" class="play-big" bindtap="playPreview"><image class="ic-pp-s" src="{{playing ? '../../assets/icons/pause_pink.svg' : '../../assets/icons/play_pink.svg'}}"></image> 试听</view>
+    <view class="muted small tip">已生成你的专属音色，去「配音」页的「个人音色」里就能选用它。</view>
+    <view class="btn-primary" bindtap="goAudio">去配音</view>
+    <view class="ghost-btn" bindtap="reclone">再克隆一次</view>
+  </view>
+
+  <!-- 失败 -->
+  <view wx:if="{{stage==='failed'}}" class="card center">
+    <image class="state-ico" src="../../assets/icons/warn.svg"></image>
+    <view class="train-title">克隆失败</view>
+    <view class="muted small tip">{{err || '样音质量可能不佳，请在安静环境重录一段更清晰的声音'}}</view>
+    <view class="btn-primary" bindtap="reclone">重新克隆</view>
+  </view>
+
+</view>

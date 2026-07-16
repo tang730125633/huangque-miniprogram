@@ -1,0 +1,8 @@
+{
+  "name": "huangque-miniprogram",
+  "version": "1.0.0",
+  "description": "黄雀 AI 小程序前端依赖",
+  "dependencies": {
+    "tdesign-miniprogram": "latest"
+  }
+}

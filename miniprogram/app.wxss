@@ -1,0 +1,81 @@
+/* 黄雀设计系统 · 深色炫彩（对标「颠覆」App） */
+page {
+  --bg: #0b0912;
+  --surface: #17131f;
+  --surface-muted: #211b2e;
+  --text: #f4f1fa;
+  --text-muted: #948da8;
+  --line: rgba(255,255,255,0.09);
+  --primary: #e24ba0;          /* 主色·品红 */
+  --primary-soft: rgba(226,75,160,0.16);
+  --primary-ink: #ffbfe2;
+  --secondary: #f0a54b;        /* 点数·暖橙 */
+  --accent: #4d8dff;
+  --success: #2bd576;
+  --warning: #f0b84b;
+  --error: #ff5c8a;
+  --grad: linear-gradient(135deg, #8b45e0, #e94ea8);
+  --grad-blue: linear-gradient(135deg, #5a4be2, #4d8dff);
+
+  /* TDesign 主题 token → 对齐深色炫彩 */
+  --td-brand-color: #b048c8;
+  --td-brand-color-light: rgba(176,72,200,0.16);
+  --td-brand-color-active: #8b3aa0;
+  --td-brand-color-focus: rgba(176,72,200,0.16);
+  --td-error-color: #ff5c8a;
+  --td-success-color: #2bd576;
+  --td-bg-color-page: #0b0912;
+  --td-text-color-primary: #f4f1fa;
+  --td-text-color-secondary: #948da8;
+  --td-text-color-placeholder: #6f6980;
+  --td-radius-default: 12rpx;
+
+  background: var(--bg);
+  color: var(--text);
+  font-size: 28rpx;
+  font-family: -apple-system, "PingFang SC", sans-serif;
+}
+
+.container { padding: 32rpx; }
+.card {
+  background: var(--surface);
+  border: 1rpx solid var(--line);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+.label { font-size: 27rpx; font-weight: 600; margin-bottom: 18rpx; color: var(--text); }
+.muted { color: var(--text-muted); }
+.small { font-size: 22rpx; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #8b45e0, #e94ea8);
+  color: #FFFFFF;
+  border-radius: 16rpx;
+  text-align: center;
+  padding: 26rpx;
+  font-weight: 600;
+  font-size: 30rpx;
+  display: flex; align-items: center; justify-content: center; gap: 12rpx;
+}
+.btn-primary.disabled { opacity: 0.55; }
+
+/* 图标通用尺寸 */
+.ic { width: 34rpx; height: 34rpx; vertical-align: middle; flex: none; }
+.ic-btn { width: 36rpx; height: 36rpx; }
+.ic-coin { width: 36rpx; height: 36rpx; margin-right: 10rpx; }
+
+.chip {
+  padding: 20rpx 8rpx;
+  text-align: center;
+  border-radius: 14rpx;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 1rpx solid var(--line);
+  font-size: 25rpx;
+}
+.chip.active {
+  color: var(--primary-ink);
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}

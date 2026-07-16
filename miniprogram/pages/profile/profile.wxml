@@ -1,0 +1,43 @@
+<view class="container">
+  <view class="card user-card">
+    <view class="avatar-ring"><view class="avatar">{{initial}}</view></view>
+    <view class="user-meta">
+      <view class="user-name-line">
+        <view class="user-name">{{user.name || user.display_name || user.username || '未登录'}}</view>
+        <view wx:if="{{isAdmin}}" class="role-badge">管理员</view>
+      </view>
+      <view class="muted small">{{user.username}}</view>
+    </view>
+  </view>
+
+  <view class="card points-card">
+    <text class="muted">账户点数</text>
+    <text class="points-num">{{user.points === undefined ? '—' : user.points}}</text>
+    <view class="muted small tip">点数用于体验生成任务 · 失败自动返还</view>
+  </view>
+
+  <view class="card menu-card">
+    <view wx:if="{{isAdmin}}" class="menu-item bordered admin-entry" bindtap="goAdmin">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/warn.svg"></image><text>管理中心</text></view>
+      <text class="muted">›</text>
+    </view>
+    <view class="menu-item bordered" bindtap="goAssets">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/folder.svg"></image><text>我的资产</text></view>
+      <text class="muted">›</text>
+    </view>
+    <view class="menu-item bordered" bindtap="goClone">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/mic.svg"></image><text>声音克隆</text></view>
+      <text class="muted">›</text>
+    </view>
+    <view class="menu-item bordered" bindtap="goAudio">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/em_wave.svg"></image><text>AI 配音</text></view>
+      <text class="muted">›</text>
+    </view>
+    <view class="menu-item" bindtap="refresh">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/refresh.svg"></image><text>刷新账户信息</text></view>
+      <text class="muted">›</text>
+    </view>
+  </view>
+
+  <view class="logout" bindtap="logout">退出登录</view>
+</view>

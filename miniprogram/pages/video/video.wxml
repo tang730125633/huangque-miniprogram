@@ -1,0 +1,425 @@
+<view class="container">
+
+  <!-- 头部：标题 + 点数 + 当前模式 -->
+  <view class="vhead">
+    <view class="vhead-top">
+      <text class="vhead-title">AI 视频创作</text>
+      <view class="pts"><image class="pts-ic" src="../../assets/icons/coin.svg"></image><text>{{points === null ? '—' : points + ' 点'}}</text></view>
+    </view>
+    <view class="vhead-mode muted">当前模式 · {{modeName}}</view>
+  </view>
+
+  <!-- 模式选择器（横向卡片）-->
+  <scroll-view class="mode-bar" scroll-x enable-flex show-scrollbar="{{false}}">
+    <view wx:for="{{modes}}" wx:key="key" class="mode-card {{mode===item.key?'on':''}}"
+      data-k="{{item.key}}" bindtap="selectMode">
+      <view class="mode-name">{{item.name}}</view>
+      <view class="mode-desc">{{item.desc}}</view>
+    </view>
+  </scroll-view>
+
+  <!-- ===== 模式：电影化身（motion 单人 / duo 双人 / open 开放式）===== -->
+  <block wx:if="{{mode==='cinematic'}}">
+    <view class="card">
+      <view class="label">玩法</view>
+      <view class="eng-grid">
+        <view wx:for="{{cineModes}}" wx:key="k" class="eng {{cineMode===item.k?'active':''}}"
+          data-k="{{item.k}}" bindtap="selectCineMode">
+          <view class="eng-name">{{item.name}}</view>
+          <view class="eng-desc">{{item.desc}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">我的形象
+        <text class="muted small">{{cineMode==='motion' ? '（选 1 个 · 新建 5 点）' : (cineMode==='duo' ? '（正好选 2 个）' : '（选 1~3 个）')}}</text>
+      </view>
+      <view class="avatar-grid">
+        <view wx:for="{{avatars}}" wx:key="id" class="avatar-cell {{avatarSelMap[item.id]?'on':''}}"
+          data-id="{{item.id}}" bindtap="selectAvatar">
+          <image wx:if="{{item.image}}" class="avatar-img" src="{{item.image}}" mode="aspectFill"></image>
+          <view wx:else class="avatar-img avatar-ph"></view>
+          <view class="avatar-name">{{item.name}}</view>
+        </view>
+        <view class="avatar-cell avatar-add {{avatarBusy?'disabled':''}}" bindtap="createAvatar">
+          <view class="avatar-add-ico">＋</view>
+          <view class="avatar-name">{{avatarBusy ? '创建中…' : '建形象'}}</view>
+        </view>
+      </view>
+      <view wx:if="{{avatarNote}}" class="muted small tip">{{avatarNote}}</view>
+      <view wx:if="{{!avatars.length && !avatarBusy}}" class="muted small tip">还没有形象：点「建形象」上传一张清晰正脸照，约 25 秒建好</view>
+    </view>
+
+    <!-- motion/duo：正好 1 个参考动作视频，提示词后端写死 -->
+    <view wx:if="{{cineMode!=='open'}}" class="card">
+      <view class="label">参考动作视频 <text class="muted small">（≤120 秒 · 形象将照着它演）</text></view>
+      <view wx:if="{{!cineVideoName}}" class="upbox" bindtap="chooseCineVideo">
+        <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+        <text class="muted small">上传参考动作视频（mp4/mov）</text>
+      </view>
+      <view wx:else class="file-chip">
+        <text class="file-name">{{cineVideoName}}</text>
+        <view class="up-clear-inline" bindtap="clearCineVideo">✕ 清除</view>
+      </view>
+    </view>
+
+    <!-- open：自写提示词 + 可选参考视频/参考图 -->
+    <block wx:if="{{cineMode==='open'}}">
+      <view class="card">
+        <view class="label">画面描述 <text class="muted small">（≤2000 字 · 说清每个形象/素材怎么用）</text></view>
+        <textarea class="prompt" placeholder="例如：两人在咖啡馆对坐聊天，镜头缓慢环绕，暖色调"
+          placeholder-class="ph" value="{{cinePrompt}}" bindinput="onCinePrompt" maxlength="2000" auto-height show-confirm-bar="{{false}}"></textarea>
+      </view>
+      <view class="card">
+        <view class="label">参考视频 <text class="muted small">（可选 · 最多 3 个 · ≤120 秒）</text></view>
+        <view wx:for="{{cineRefVideos}}" wx:key="index" class="file-chip">
+          <text class="file-name">{{item.name}}</text>
+          <view class="up-clear-inline" data-i="{{index}}" catchtap="removeCineRefVideo">✕ 清除</view>
+        </view>
+        <view wx:if="{{cineRefVideos.length < 3}}" class="upbox" bindtap="chooseCineRefVideo">
+          <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+          <text class="muted small">上传参考视频（mp4/mov）</text>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">参考图 <text class="muted small">（可选 · 与形象共用 9 张图额度）</text></view>
+        <view class="ref-grid">
+          <view wx:for="{{cineRefPreviews}}" wx:key="*this" class="ref-cell">
+            <image class="ref-img" src="{{item}}" mode="aspectFill"></image>
+            <view class="ref-del" data-i="{{index}}" catchtap="removeCineRefImg">✕</view>
+          </view>
+          <view class="ref-cell ref-add" bindtap="chooseCineRefImg">
+            <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="card">
+      <view class="label">画面比例</view>
+      <view class="ratio-grid">
+        <view wx:for="{{ratios}}" wx:key="*this" class="chip {{ratio===item?'active':''}}" data-v="{{item}}" bindtap="selectRatio">{{item}}</view>
+      </view>
+    </view>
+    <view wx:if="{{cineMode==='open'}}" class="card">
+      <view class="label">分辨率</view>
+      <view class="ratio-grid">
+        <view wx:for="{{cineResList}}" wx:key="*this" class="chip {{cineRes===item?'active':''}}" data-v="{{item}}" bindtap="selectCineRes">{{item}}</view>
+      </view>
+    </view>
+    <view wx:if="{{cineMode==='open'}}" class="card">
+      <view class="label">时长
+        <text class="muted small">（{{cineMode==='motion' ? '3' : '5'}} 点/秒 · 自适应跟随参考视频{{cineMode==='open' ? '，无参考视频按 10 秒' : ''}}）</text>
+      </view>
+      <view class="ratio-grid">
+        <view wx:for="{{cineDurs}}" wx:key="v" class="chip {{cineDur===item.v?'active':''}}" data-v="{{item.v}}" bindtap="selectCineDur">{{item.name}}</view>
+      </view>
+    </view>
+    <view wx:else class="card">
+      <view class="label">输出参数</view>
+      <view class="muted small">1080p · 自适应跟随参考视频时长</view>
+    </view>
+
+    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitCinematic">
+      {{busy ? '生成中…' : '生成电影化身视频（约 ' + cineEst + ' 点）'}}
+    </view>
+  </block>
+
+  <!-- ===== 模式 A：AI 视频生成 ===== -->
+  <block wx:elif="{{mode==='generate'}}">
+    <view class="card">
+      <view class="label">视频引擎</view>
+      <view class="eng-grid">
+        <view wx:for="{{engines}}" wx:key="key" class="eng {{engine===item.key?'active':''}}"
+          data-k="{{item.key}}" bindtap="selectEngine">
+          <view class="eng-name">{{item.name}}</view>
+          <view class="eng-desc">{{item.desc}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{engine==='grok'}}" class="card">
+      <view class="label">操作方式</view>
+      <view class="ratio-grid">
+        <view class="chip {{grokOp==='generate'?'active':''}}" data-v="generate" bindtap="selectGrokOp">生成新视频</view>
+        <view class="chip {{grokOp==='edit'?'active':''}}" data-v="edit" bindtap="selectGrokOp">编辑已有视频</view>
+      </view>
+    </view>
+
+    <!-- 果肉官方线（xAI）：模型 / 分辨率 / 时长，动态计价 -->
+    <block wx:if="{{engine==='grok' && grokOp==='generate'}}">
+      <view class="card">
+        <view class="label">模型</view>
+        <view class="seg">
+          <view wx:for="{{grokModels}}" wx:key="k" class="seg-item {{grokModel===item.k?'on':''}}"
+            data-k="{{item.k}}" bindtap="selectGrokModel">{{item.name}} · {{item.desc}}</view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">分辨率 <text class="muted small">（1080p 仅高清 1.5 支持）</text></view>
+        <view class="ratio-grid">
+          <view wx:for="{{grokResList}}" wx:key="*this" class="chip {{grokRes===item?'active':''}}" data-v="{{item}}" bindtap="selectGrokRes">{{item}}</view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">时长 <text class="muted small">（按模型×分辨率×秒动态计价）</text></view>
+        <view class="ratio-grid">
+          <view wx:for="{{grokDurs}}" wx:key="*this" class="chip {{grokDur===item?'active':''}}" data-v="{{item}}" bindtap="selectGrokDur">{{item}} 秒</view>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{engine==='grok' && grokOp==='edit'}}" class="card">
+      <view class="label">参考视频 <text class="muted small">（MP4 · 最长 8.7 秒 · 输出继承原时长和比例）</text></view>
+      <view wx:if="{{!editVideoName}}" class="upbox" bindtap="chooseEditVideo">
+        <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+        <text class="muted small">上传 MP4 参考视频</text>
+      </view>
+      <view wx:else class="up-preview">
+        <text class="muted small">{{editVideoName}}</text>
+        <view class="up-clear" bindtap="clearEditVideo">✕ 清除</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">画面描述</view>
+      <textarea class="prompt" placeholder="{{engine==='grok' && grokOp==='edit' ? '描述想怎么改这段视频，例如：把背景换成海边日落' : '描述你想要的视频画面，例如：秋天枫叶飘落，慢镜头，暖色调'}}"
+        placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="1000" auto-height show-confirm-bar="{{false}}"></textarea>
+    </view>
+
+    <view wx:if="{{engineRef && !(engine==='grok' && grokOp==='edit')}}" class="card">
+      <view class="label">参考图 <text class="muted small">（可选 · 图生视频，最多 7 张）</text></view>
+      <view class="ref-grid">
+        <view wx:for="{{refPreviews}}" wx:key="*this" class="ref-cell">
+          <image class="ref-img" src="{{item}}" mode="aspectFill"></image>
+          <view class="ref-del" data-i="{{index}}" catchtap="removeRef">✕</view>
+        </view>
+        <view wx:if="{{refPreviews.length < 7}}" class="ref-cell ref-add" bindtap="chooseRef">
+          <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="card">
+      <view class="label">画面比例</view>
+      <view class="ratio-grid">
+        <view wx:for="{{ratios}}" wx:key="*this" class="chip {{ratio===item?'active':''}}" data-v="{{item}}" bindtap="selectRatio">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitGenerate">
+      {{busy ? '生成中…' : (engine==='grok' && grokOp==='edit' ? '编辑视频（' + (editCost || '上传后计价') + ' 点）' : '立即生成（' + cost + ' 点）')}}
+    </view>
+  </block>
+
+  <!-- ===== 模式 B：数字人口播 ===== -->
+  <block wx:elif="{{mode==='talking'}}">
+    <view class="card">
+      <view class="label">出片方式</view>
+      <view class="seg">
+        <view class="seg-item {{!talkBatch?'on':''}}" data-v="single" bindtap="toggleTalkBatch">单条</view>
+        <view class="seg-item {{talkBatch?'on':''}}" data-v="batch" bindtap="toggleTalkBatch">批量（一段文案 × 多形象）</view>
+      </view>
+    </view>
+
+    <!-- 单条：上传一张照片 -->
+    <view wx:if="{{!talkBatch}}" class="card">
+      <view class="label">人物形象 <text class="muted small">（上传一张正脸照片）</text></view>
+      <view wx:if="{{!talkImgPreview}}" class="upbox" bindtap="chooseTalkImg">
+        <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+        <text class="muted small">上传人物照片</text>
+      </view>
+      <view wx:else class="up-preview">
+        <image class="up-img" src="{{talkImgPreview}}" mode="aspectFill"></image>
+        <view class="up-clear" bindtap="clearTalkImg">✕ 清除</view>
+      </view>
+    </view>
+
+    <!-- 批量：我的形象多选 + 上传照片，2~5 个，同一段文案各出一条 -->
+    <view wx:if="{{talkBatch}}" class="card">
+      <view class="label">批量形象 <text class="muted small">（已选 {{batchItems.length}}/5 · 至少 2 个）</text></view>
+      <view wx:if="{{avatars.length}}" class="avatar-grid">
+        <view wx:for="{{avatars}}" wx:key="id" class="avatar-cell {{batchSelMap[item.id]?'on':''}}"
+          data-id="{{item.id}}" bindtap="toggleBatchAvatar">
+          <image wx:if="{{item.image}}" class="avatar-img" src="{{item.image}}" mode="aspectFill"></image>
+          <view wx:else class="avatar-img avatar-ph"></view>
+          <view class="avatar-name">{{item.name}}</view>
+        </view>
+        <view class="avatar-cell avatar-add" bindtap="addBatchImage">
+          <view class="avatar-add-ico">＋</view>
+          <view class="avatar-name">传照片</view>
+        </view>
+      </view>
+      <view wx:else class="upbox" bindtap="addBatchImage">
+        <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+        <text class="muted small">上传人物照片（可多张）</text>
+      </view>
+      <view wx:if="{{batchItems.length}}" class="batch-sel">
+        <view wx:for="{{batchItems}}" wx:key="index" class="batch-sel-item">
+          <image wx:if="{{item.preview}}" class="batch-sel-img" src="{{item.preview}}" mode="aspectFill"></image>
+          <text class="batch-sel-name">{{item.label}}</text>
+          <view class="up-clear-inline" data-i="{{index}}" catchtap="removeBatchItem">✕</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!talkBatch}}" class="card">
+      <view class="label">口播来源</view>
+      <view class="seg">
+        <view class="seg-item {{talkMode==='text'?'on':''}}" data-k="text" bindtap="selectTalkMode">文案 + 音色</view>
+        <view class="seg-item {{talkMode==='audio'?'on':''}}" data-k="audio" bindtap="selectTalkMode">上传音频</view>
+      </view>
+    </view>
+
+    <block wx:if="{{talkMode==='text'}}">
+      <view class="card">
+        <view class="label">口播文案</view>
+        <textarea class="prompt" placeholder="输入口播文案，将按所选音色朗读"
+          placeholder-class="ph" value="{{talkText}}" bindinput="onTalkText" maxlength="1000" auto-height show-confirm-bar="{{false}}"></textarea>
+      </view>
+      <view class="card">
+        <view class="label">音色 <text class="muted small">（公共 / 个人克隆）</text></view>
+        <view wx:if="{{voices.length}}" class="voice-grid">
+          <view wx:for="{{voices}}" wx:key="key" class="voice-card {{voiceKey===item.key?'on':''}}" data-k="{{item.key}}" bindtap="selectVoice">
+            <view class="voice-name">{{item.name}}</view>
+            <view class="voice-sub">{{item.scope==='personal' ? '个人克隆' : '公共音色'}}</view>
+            <view class="voice-play" catchtap="playVoice" data-url="{{item.preview}}"><image class="ic-pp-xs" src="../../assets/icons/play_pink.svg"></image></view>
+          </view>
+        </view>
+        <view wx:else class="empty muted">暂无可用音色，可在「声音克隆」创建个人音色</view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="card">
+        <view class="label">口播音频 <text class="muted small">（mp3 / wav / m4a）</text></view>
+        <view wx:if="{{!talkAudioName}}" class="upbox" bindtap="chooseTalkAudio">
+          <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+          <text class="muted small">从聊天文件选择音频</text>
+        </view>
+        <view wx:else class="file-chip">
+          <text class="file-name">{{talkAudioName}}</text>
+          <view class="up-clear-inline" bindtap="chooseTalkAudio">重选</view>
+        </view>
+      </view>
+    </block>
+
+    <view class="card">
+      <view class="label">分辨率</view>
+      <view class="ratio-grid">
+        <view wx:for="{{resList}}" wx:key="*this" class="chip {{talkRes===item?'active':''}}" data-v="{{item}}" bindtap="selectTalkRes">{{item}}</view>
+      </view>
+    </view>
+    <view class="card">
+      <view class="label">画面比例</view>
+      <view class="ratio-grid">
+        <view wx:for="{{ratios}}" wx:key="*this" class="chip {{ratio===item?'active':''}}" data-v="{{item}}" bindtap="selectRatio">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitTalking">
+      {{busy ? '生成中…' : (talkBatch ? '批量生成 ' + batchItems.length + ' 条（约 ' + batchItems.length * 20 + ' 点）' : '生成口播视频（' + cost + ' 点）')}}
+    </view>
+
+    <!-- 批量任务进度 -->
+    <view wx:if="{{batchJobs.length}}" class="card">
+      <view class="label">批量进度</view>
+      <view wx:for="{{batchJobs}}" wx:key="jobId" class="batch-job">
+        <view class="batch-job-head">
+          <text class="batch-job-name">{{item.label}}</text>
+          <text class="batch-job-status {{item.status==='done'?'ok':(item.status==='failed'?'err':'')}}">{{item.statusText}}</text>
+        </view>
+        <block wx:if="{{item.status==='done' && item.url}}">
+          <video class="result-video" src="{{item.url}}" controls object-fit="contain" show-center-play-btn></video>
+          <view class="result-actions">
+            <view class="ghost-btn" data-url="{{item.url}}" bindtap="saveBatchVideo">保存到相册</view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </block>
+
+  <!-- 老「动作模仿」已随后端 #620 下线，统一并入「电影化身」 -->
+
+  <!-- ===== 模式 D：换装 / 换背景 ===== -->
+  <block wx:elif="{{mode==='tryon'}}">
+    <view class="card">
+      <view class="label">换装类型</view>
+      <view class="seg">
+        <view wx:for="{{tryonTypes}}" wx:key="key" class="seg-item {{tryonType===item.key?'on':''}}" data-k="{{item.key}}" bindtap="selectTryonType">{{item.name}}</view>
+      </view>
+    </view>
+
+    <!-- 视频换装：人物视频 + 衣服图 -->
+    <block wx:if="{{tryonType==='video_clothes'}}">
+      <view class="card">
+        <view class="label">人物视频 <text class="muted small">（≤15 秒）</text></view>
+        <view wx:if="{{!tryonPersonVideo}}" class="upbox" bindtap="chooseTryonPersonVideo">
+          <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+          <text class="muted small">上传人物视频</text>
+        </view>
+        <view wx:else class="file-chip">
+          <text class="file-name">{{tryonPersonVideoName}}</text>
+          <view class="up-clear-inline" bindtap="clearTryonPersonVideo">✕ 清除</view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">衣服图</view>
+        <view wx:if="{{!tryonClothesPreview}}" class="upbox" bindtap="chooseTryonClothes">
+          <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+          <text class="muted small">上传衣服图</text>
+        </view>
+        <view wx:else class="up-preview">
+          <image class="up-img" src="{{tryonClothesPreview}}" mode="aspectFill"></image>
+          <view class="up-clear" bindtap="clearTryonClothes">✕ 清除</view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 视频换背景：人物视频 + 背景图 -->
+    <block wx:else>
+      <view class="card">
+        <view class="label">人物视频 <text class="muted small">（≤15 秒）</text></view>
+        <view wx:if="{{!tryonPersonVideo}}" class="upbox" bindtap="chooseTryonPersonVideo">
+          <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+          <text class="muted small">上传人物视频</text>
+        </view>
+        <view wx:else class="file-chip">
+          <text class="file-name">{{tryonPersonVideoName}}</text>
+          <view class="up-clear-inline" bindtap="clearTryonPersonVideo">✕ 清除</view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">背景图</view>
+        <view wx:if="{{!tryonBgPreview}}" class="upbox" bindtap="chooseTryonBg">
+          <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+          <text class="muted small">上传背景图</text>
+        </view>
+        <view wx:else class="up-preview">
+          <image class="up-img" src="{{tryonBgPreview}}" mode="aspectFill"></image>
+          <view class="up-clear" bindtap="clearTryonBg">✕ 清除</view>
+        </view>
+      </view>
+    </block>
+
+    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitTryon">
+      {{busy ? '生成中…' : '生成换装视频（' + cost + ' 点）'}}
+    </view>
+  </block>
+
+  <!-- 共享：状态说明 -->
+  <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
+
+  <!-- 共享：生成结果 -->
+  <view wx:if="{{videoUrl}}" class="card">
+    <view class="label">生成结果</view>
+    <video class="result-video" src="{{videoUrl}}" controls object-fit="contain" show-center-play-btn></video>
+    <view class="result-actions">
+      <view class="ghost-btn" bindtap="saveVideo">保存到相册</view>
+      <view class="ghost-btn" bindtap="previewVideo">全屏播放</view>
+    </view>
+  </view>
+
+  <view class="bottom-safe"></view>
+</view>

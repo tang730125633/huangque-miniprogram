@@ -1,0 +1,76 @@
+<view class="container admin-page">
+  <view class="card admin-head">
+    <view>
+      <view class="head-kicker">ADMIN CONSOLE</view>
+      <view class="head-title">管理中心</view>
+      <view class="muted small">{{me.display_name || me.name || me.username}}</view>
+    </view>
+    <view class="admin-mark">管</view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab==='users'?'active':''}}" data-tab="users" bindtap="setTab">用户与点数</view>
+    <view class="tab {{tab==='audit'?'active':''}}" data-tab="audit" bindtap="setTab">操作流水</view>
+  </view>
+
+  <view wx:if="{{error}}" class="error-box">{{error}}</view>
+
+  <block wx:if="{{tab==='users'}}">
+    <view class="search-row">
+      <input class="search-input" value="{{query}}" placeholder="搜索账号或昵称" placeholder-class="placeholder" bindinput="onQuery" bindconfirm="searchUsers" confirm-type="search" />
+      <view class="search-btn" bindtap="searchUsers">搜索</view>
+    </view>
+    <view class="section-meta">共 {{total}} 个账号 · 点击账号调整点数</view>
+
+    <view wx:if="{{loading}}" class="empty">正在加载…</view>
+    <view wx:elif="{{!users.length}}" class="empty">没有找到账号</view>
+    <view wx:else class="user-list">
+      <view class="user-row" wx:for="{{users}}" wx:key="username" data-username="{{item.username}}" bindtap="openAdjust">
+        <view class="user-main">
+          <view class="user-name-line">
+            <text class="user-name">{{item.display_name || item.username}}</text>
+            <text wx:if="{{item.role==='admin'}}" class="mini-admin">管理员</text>
+          </view>
+          <view class="muted small">{{item.username}} · {{item.created_label}}</view>
+        </view>
+        <view class="points-side">
+          <text class="points-value">{{item.points}}</text>
+          <text class="muted tiny">点</text>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <block wx:if="{{tab==='audit'}}">
+    <view class="section-meta">最近 80 条人工点数调整记录</view>
+    <view wx:if="{{!audits.length}}" class="empty">暂无操作流水</view>
+    <view wx:else class="audit-list">
+      <view class="audit-row" wx:for="{{audits}}" wx:key="id">
+        <view class="audit-top">
+          <text class="audit-user">{{item.username}}</text>
+          <text class="audit-delta {{item.delta>0?'plus':'minus'}}">{{item.delta_label}}</text>
+        </view>
+        <view class="audit-reason">{{item.reason || '未填写原因'}}</view>
+        <view class="muted tiny">{{item.who_admin}} · {{item.before_points}} → {{item.after_points}} · {{item.time_label}}</view>
+      </view>
+    </view>
+  </block>
+</view>
+
+<view wx:if="{{showAdjust}}" class="modal-mask" bindtap="closeAdjust">
+  <view class="adjust-modal" catchtap="stopBubble">
+    <view class="modal-title">调整账户点数</view>
+    <view class="target-card">
+      <view class="target-name">{{target.display_name || target.username}}</view>
+      <view class="muted small">{{target.username}} · 当前 {{target.points}} 点</view>
+    </view>
+    <view class="field-label">调整数量</view>
+    <input class="field-input" type="number" value="{{delta}}" placeholder="增加填正数，扣减填负数" placeholder-class="placeholder" bindinput="onDelta" />
+    <view class="field-label">操作原因</view>
+    <textarea class="field-textarea" maxlength="300" value="{{reason}}" placeholder="必填，内容会写入审计流水" placeholder-class="placeholder" bindinput="onReason"></textarea>
+    <view class="modal-actions">
+      <view class="btn cancel" bindtap="closeAdjust">取消</view>
+      <view class="btn confirm {{saving?'disabled':''}}" bindtap="submitAdjust">{{saving?'提交中…':'下一步确认'}}</view>
+    </view>
+  </view>
+</view>

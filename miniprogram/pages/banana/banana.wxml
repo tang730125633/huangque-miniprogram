@@ -1,0 +1,103 @@
+<view class="container">
+
+  <!-- 点数条 -->
+  <view class="points-bar">
+    <view class="pb-left">
+      <image class="ic-coin" src="../../assets/icons/coin.svg"></image>
+      <text class="muted">当前点数</text>
+    </view>
+    <text class="points-num">{{points === null ? '—' : points}}</text>
+  </view>
+
+  <!-- 提示词 -->
+  <view class="card">
+    <view class="label">提示词</view>
+    <textarea class="prompt" placeholder="描述你想要的画面，例如：美业门店海报，暖光，高级感…"
+      placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="1000"
+      auto-height show-confirm-bar="{{false}}"></textarea>
+  </view>
+
+  <!-- 参考图（图生图） -->
+  <view class="card">
+    <view class="label">参考图 <text class="muted small">（可选 · 传图即「图生图」）</text></view>
+    <view wx:if="{{!refPreview}}" class="upbox" bindtap="chooseRef">
+      <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+      <text class="muted small">上传参考图</text>
+    </view>
+    <view wx:else class="up-preview">
+      <image class="up-img" src="{{refPreview}}" mode="aspectFill"></image>
+      <view class="up-clear" bindtap="clearRef">✕ 清除</view>
+    </view>
+  </view>
+
+  <!-- 引擎 -->
+  <view class="card">
+    <view class="label">引擎</view>
+    <view class="engine-grid">
+      <view wx:for="{{engines}}" wx:key="key" data-k="{{item.key}}" bindtap="selectEngine"
+        class="engine {{engine===item.key?'active':''}}">
+        <view class="engine-name">{{item.name}}</view>
+        <view class="engine-desc">{{item.desc}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 比例 -->
+  <view class="card">
+    <view class="label">比例</view>
+    <view class="grid ratio-grid">
+      <view wx:for="{{ratios}}" wx:key="*this" data-v="{{item}}" bindtap="selectRatio"
+        class="chip {{ratio===item?'active':''}}">{{item}}</view>
+    </view>
+  </view>
+
+  <!-- 清晰度 + 数量 -->
+  <view class="card row2">
+    <view class="col">
+      <view class="label">清晰度</view>
+      <view class="grid q-grid">
+        <view class="chip {{quality==='std'?'active':''}}" data-v="std" bindtap="selectQuality">标准</view>
+        <view class="chip {{quality==='hd'?'active':''}}" data-v="hd" bindtap="selectQuality">高清</view>
+      </view>
+    </view>
+    <view class="col">
+      <view class="label">数量 <text class="muted small">（≤{{maxCount}}）</text></view>
+      <view class="count-row">
+        <view class="count-btn" bindtap="dec">－</view>
+        <view class="count-val">{{count}}</view>
+        <view class="count-btn" bindtap="inc">＋</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成按钮 -->
+  <view class="btn-primary {{busy?'disabled':''}}" bindtap="generate">
+    {{busy ? '生成中…' : '立即生成（' + cost + ' 点）'}}
+  </view>
+  <view class="note" style="color:{{noteColor}}">{{note || ('本次预计消耗 ' + cost + ' 点 · 失败自动退点')}}</view>
+
+  <!-- 结果 -->
+  <view wx:if="{{resultUrl}}" class="card">
+    <view class="label">生成结果</view>
+    <image class="result-img" src="{{resultUrl}}" mode="widthFix" bindtap="previewResult"></image>
+    <view wx:if="{{thumbs.length}}" class="thumbs">
+      <image wx:for="{{thumbs}}" wx:key="*this" src="{{item}}" data-u="{{item}}" bindtap="pickThumb"
+        class="thumb {{resultUrl===item?'active':''}}" mode="aspectFill"></image>
+    </view>
+    <view class="result-actions">
+      <view class="ghost-btn" bindtap="saveResult"><image class="ic" src="../../assets/icons/download.svg"></image>保存到相册</view>
+      <view class="ghost-btn" bindtap="previewResult"><image class="ic" src="../../assets/icons/eye.svg"></image>查看大图</view>
+    </view>
+  </view>
+
+  <!-- 最近作品 -->
+  <view class="card">
+    <view class="label">最近作品</view>
+    <view wx:if="{{history.length}}" class="history-grid">
+      <image wx:for="{{history}}" wx:key="*this" src="{{item}}" data-u="{{item}}" bindtap="previewHistory"
+        class="history-img" mode="aspectFill"></image>
+    </view>
+    <view wx:else class="empty-state">还没有作品，快生成第一张吧</view>
+  </view>
+
+</view>

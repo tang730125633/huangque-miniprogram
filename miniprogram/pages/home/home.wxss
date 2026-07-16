@@ -1,0 +1,141 @@
+/* 顶部黑色留白高度：集中定义，便于真机校准 */
+.home {
+  --top-spacer: 300rpx;      /* 沉浸式顶部留白（不含状态栏安全区） */
+  --edge: 32rpx;             /* 页面左右边距 */
+  --gap: 22rpx;              /* 模块垂直间距 */
+  --card-radius: 28rpx;
+  min-height: 100vh;
+  background: #07060c;
+}
+
+/* 顶部留白：状态栏安全区 + 自定义留白 */
+.top-spacer {
+  height: calc(var(--top-spacer) + constant(safe-area-inset-top));
+  height: calc(var(--top-spacer) + env(safe-area-inset-top));
+  display: flex; align-items: flex-end;
+  padding: 0 var(--edge) 20rpx;
+  box-sizing: border-box;
+}
+.brandbar { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+.brand { font-size: 34rpx; font-weight: 600; color: rgba(255,255,255,0.92); letter-spacing: 1rpx; }
+.pts {
+  display: flex; align-items: center; gap: 6rpx;
+  background: rgba(255,255,255,0.07); border: 1rpx solid rgba(255,255,255,0.1);
+  padding: 10rpx 22rpx; border-radius: 40rpx; color: #f0a54b; font-size: 24rpx; font-weight: 600;
+}
+.pts-ic { width: 30rpx; height: 30rpx; }
+
+.content { padding: 0 var(--edge); }
+
+/* ===== 功能矩阵 ===== */
+.mosaic { display: flex; gap: var(--gap); }
+.primary-card {
+  position: relative; width: 49%; box-sizing: border-box;
+  min-height: 340rpx; border-radius: var(--card-radius);
+  padding: 34rpx 30rpx; overflow: hidden;
+  background: linear-gradient(150deg, #ff4d9d 0%, #b845e0 55%, #7a3ff0 100%);
+}
+.pc-title { font-size: 40rpx; font-weight: 700; color: #fff; }
+.pc-sub { font-size: 24rpx; color: rgba(255,255,255,0.86); margin-top: 14rpx; line-height: 1.45; }
+.pc-icon-slot {
+  position: absolute; left: 30rpx; bottom: 30rpx;
+  width: 132rpx; height: 132rpx; border-radius: 50%;
+  background: rgba(0,0,0,0.22); display: flex; align-items: center; justify-content: center;
+}
+.pc-icon { width: 108rpx; height: 108rpx; }
+
+.right-col { width: 49%; display: flex; flex-direction: column; gap: var(--gap); }
+.mini-card {
+  position: relative; flex: 1; min-height: 159rpx; box-sizing: border-box;
+  border-radius: var(--card-radius); padding: 26rpx 26rpx; overflow: hidden;
+  display: flex; align-items: center;
+}
+.mc-image { background: linear-gradient(145deg, #2a1740, #171022); }
+.mc-video { background: linear-gradient(145deg, #3a1730, #1c1020); }
+.mc-body { flex: 1; }
+.mc-title { font-size: 30rpx; font-weight: 600; color: #fff; }
+.tag {
+  display: inline-block; margin-top: 14rpx; padding: 6rpx 16rpx; border-radius: 20rpx;
+  font-size: 20rpx; color: #fff; font-weight: 500;
+}
+.tag-cyan { background: linear-gradient(135deg, #23c8c0, #2f8bed); }
+.tag-orange { background: linear-gradient(135deg, #ff8a3d, #ff4d6d); }
+.mc-icon { width: 92rpx; height: 92rpx; flex: none; margin-left: 12rpx; }
+
+/* ===== 数字人口播入口 ===== */
+.dh-entry {
+  position: relative; margin-top: var(--gap); min-height: 150rpx;
+  border-radius: var(--card-radius); padding: 30rpx 30rpx 30rpx 190rpx;
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(120deg, #2c1746, #1a1030);
+}
+.dh-avatar {
+  position: absolute; left: 26rpx; bottom: 0; width: 150rpx; height: 190rpx;
+  border-radius: 20rpx;
+}
+.dh-title { font-size: 32rpx; font-weight: 600; color: #fff; }
+.dh-cta { font-size: 25rpx; color: rgba(255,255,255,0.7); }
+
+/* ===== 顶部轮播 Banner ===== */
+.rt-swiper-wrap { position: relative; margin-top: var(--gap); height: 220rpx; }
+.rt-swiper { height: 220rpx; }
+.rt-banner {
+  position: relative; height: 220rpx; border-radius: var(--card-radius); overflow: hidden;
+  background: linear-gradient(135deg, #291440, #11101f);
+}
+/* 不用 inset：部分小程序渲染层热更新后不会稳定计算该简写，导致图片节点存在但没有铺满。 */
+.rt-bg {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%; display: block; z-index: 0;
+}
+.rt-mask {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 1;
+  background: linear-gradient(90deg, rgba(10,8,16,0.82) 30%, rgba(10,8,16,0.15));
+}
+.rt-text { position: absolute; left: 34rpx; top: 50rpx; z-index: 2; }
+.rt-title { font-size: 36rpx; font-weight: 700; color: #fff; }
+.rt-sub { font-size: 23rpx; color: rgba(255,255,255,0.7); margin-top: 12rpx; }
+.rt-page {
+  position: absolute; right: 24rpx; bottom: 22rpx; z-index: 3;
+  padding: 4rpx 18rpx; border-radius: 20rpx; background: rgba(10, 8, 16, 0.48);
+  color: rgba(255, 255, 255, 0.82); font-size: 22rpx; pointer-events: none;
+}
+
+/* ===== 教程与创作案例 ===== */
+.tut-head { display: flex; align-items: center; justify-content: center; gap: 20rpx; margin: 40rpx 0 24rpx; }
+.tut-title { font-size: 30rpx; font-weight: 600; color: #ff4d9d; }
+.tut-line { width: 90rpx; height: 2rpx; background: linear-gradient(90deg, transparent, rgba(255,77,157,0.7)); }
+.tut-line:last-child { background: linear-gradient(90deg, rgba(255,77,157,0.7), transparent); }
+
+.tut-scroll { white-space: nowrap; }
+.tut-card {
+  display: inline-block; width: 300rpx; margin-right: 20rpx; vertical-align: top;
+  border-radius: 22rpx; overflow: hidden; background: var(--surface); border: 1rpx solid var(--line);
+}
+.tut-cover { width: 300rpx; height: 400rpx; display: block; background: var(--surface-muted); }
+.tut-name { padding: 18rpx 20rpx; font-size: 25rpx; color: var(--text); white-space: normal; line-height: 1.4; }
+
+.home-asset-manifest {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.home-asset-manifest > view { width: 1px; height: 1px; background-size: cover; }
+.asset-video-mix { background-image: url('/assets/home/video-mix-banner.jpg'); }
+.asset-role-transfer { background-image: url('/assets/home/role-transfer-banner.jpg'); }
+.asset-tutorial-image { background-image: url('/assets/home/tutorial-image-creation.jpg'); }
+.asset-tutorial-video { background-image: url('/assets/home/tutorial-video-analysis.jpg'); }
+.asset-tutorial-human { background-image: url('/assets/home/tutorial-digital-human.jpg'); }
+
+.build-version {
+  margin-top: 34rpx;
+  text-align: center;
+  color: rgba(255,255,255,0.28);
+  font-size: 20rpx;
+  letter-spacing: 1rpx;
+}
+
+.bottom-safe { height: calc(40rpx + constant(safe-area-inset-bottom)); height: calc(40rpx + env(safe-area-inset-bottom)); }
