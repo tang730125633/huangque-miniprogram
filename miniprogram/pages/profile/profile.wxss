@@ -30,6 +30,8 @@
 .mi-left { display: flex; align-items: center; gap: 16rpx; }
 .mi-ic { width: 36rpx; height: 36rpx; }
 .admin-entry { color: var(--primary-ink); }
+.recharge-entry { color: var(--secondary); }
+.recharge-right { display: flex; align-items: center; gap: 14rpx; font-size: 21rpx; color: var(--text-muted); }
 
 .logout {
   margin-top: 20rpx; text-align: center; padding: 26rpx;
