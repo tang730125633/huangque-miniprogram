@@ -2,8 +2,21 @@
 
   <!-- 顶部沉浸式黑色留白（含胶囊安全区） -->
   <view class="top-spacer">
+    <!-- 纯 WXSS 动效：不依赖 GIF / 定时器，页面离开后由渲染层自动停止 -->
+    <view class="hero-motion" aria-hidden="true">
+      <view class="hero-aurora"></view>
+      <view class="hero-orbit hero-orbit-back"></view>
+      <view class="hero-orbit hero-orbit-front"></view>
+      <view class="hero-core"><view class="hero-core-dot"></view></view>
+      <view class="hero-spark hero-spark-one"></view>
+      <view class="hero-spark hero-spark-two"></view>
+      <view class="hero-spark hero-spark-three"></view>
+    </view>
     <view class="brandbar">
-      <text class="brand">黄雀 AI</text>
+      <view class="brand-lockup">
+        <text class="brand">黄雀 AI</text>
+        <text class="brand-tagline">CREATE · IMAGINE · SHARE</text>
+      </view>
       <view class="pts" bindtap="onTapPoints">
         <image class="pts-ic" src="../../assets/icons/coin.svg"></image>
         <text>{{points === null ? '去登录' : points + ' 点'}}</text>
