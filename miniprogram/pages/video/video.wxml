@@ -3,7 +3,7 @@
   <!-- 头部：标题 + 点数 + 当前模式 -->
   <view class="vhead">
     <view class="vhead-top">
-      <text class="vhead-title">AI 视频创作</text>
+      <text class="vhead-title">视频创作</text>
       <view class="pts"><image class="pts-ic" src="../../assets/icons/coin.svg"></image><text>{{points === null ? '—' : points + ' 点'}}</text></view>
     </view>
     <view class="vhead-mode muted">当前模式 · {{modeName}}</view>
@@ -213,7 +213,7 @@
     </view>
   </block>
 
-  <!-- ===== 模式 B：数字人口播 ===== -->
+  <!-- ===== 模式 B：数字化 IP ===== -->
   <block wx:elif="{{mode==='talking'}}">
     <view class="card">
       <view class="label">出片方式</view>

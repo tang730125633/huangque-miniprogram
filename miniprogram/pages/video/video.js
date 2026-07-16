@@ -3,12 +3,12 @@ const api = require('../../utils/api.js');
 // ===== 创作模式 =====
 // 2026-07-13 交接调整：老「动作模仿」后端已下线（VALID_VIDEO_MODES 只剩 text/audio），代码已删。
 // 2026-07-13 二次调整：后端 7-13 上线电影化身 duo/open、口播批量、果肉 xAI 官方线，
-// 「AI 视频生成」「数字人口播」入口放开（stable:true）；换装仍藏（SHOW_UNSTABLE）。
+// 「AI 视频生成」「数字化 IP」入口放开（stable:true）；换装仍藏（SHOW_UNSTABLE）。
 const SHOW_UNSTABLE = false;
 const MODES_ALL = [
   { key: 'cinematic', name: '电影化身', desc: '动作模仿 / 开放式生成', ready: true, stable: true },
   { key: 'generate', name: 'AI 视频生成', desc: '文生 / 图生视频', ready: true, stable: true },
-  { key: 'talking', name: '数字人口播', desc: '形象 + 文案 + 音色', ready: true, stable: true },
+  { key: 'talking', name: '数字化 IP', desc: '形象 + 文案 + 音色', ready: true, stable: true },
   { key: 'tryon', name: '换装 / 换背景', desc: '图片 / 视频换装换背景', ready: true, stable: false }
 ];
 const MODES = SHOW_UNSTABLE ? MODES_ALL : MODES_ALL.filter((m) => m.stable);
@@ -83,7 +83,7 @@ const TRYON_TYPES = [
 const HINTS = {
   cinematic: '动作模仿 3 点/秒，开放式 5 点/秒 · 失败自动退点',
   generate: '文生 / 图生视频，耗时约 1-6 分钟 · 点数以服务端返回为准，失败任务按服务端规则处理',
-  talking: '数字人口播，耗时约 3-9 分钟 · 批量最多 5 个形象共用一段文案 · 点数以服务端返回为准',
+  talking: '数字化 IP，耗时约 3-9 分钟 · 批量最多 5 个形象共用一段文案 · 点数以服务端返回为准',
   tryon: '换装 / 换背景，耗时约数分钟 · 点数以服务端返回为准，失败任务按服务端规则处理'
 };
 
@@ -154,7 +154,7 @@ Page({
     editDuration: 0,
     editCost: 0,
 
-    // ===== 数字人口播 talking =====
+    // ===== 数字化 IP talking =====
     talkMode: 'text',        // text | audio
     talkBatch: false,        // 批量出片：一段文案 × 多个形象（2~5 个）
     batchItems: [],          // [{kind:'avatar'|'image', id, data, preview, label}]
@@ -413,7 +413,7 @@ Page({
     this.submitJob('/api/gen/xiaole_video', body, this._genCost());
   },
 
-  // ===== 数字人口播 talking =====
+  // ===== 数字化 IP talking =====
   fetchVoices() {
     api.request('/api/gen/audio/voices', { method: 'GET' }).then((res) => {
       const items = (res.data && res.data.items) || [];

@@ -168,7 +168,7 @@
 .tag-orange { background: linear-gradient(135deg, #ff8a3d, #ff4d6d); }
 .mc-icon { width: 92rpx; height: 92rpx; flex: none; margin-left: 12rpx; }
 
-/* ===== 数字人口播入口 ===== */
+/* ===== 数字化 IP 入口 ===== */
 .dh-entry {
   position: relative; margin-top: var(--gap); min-height: 150rpx;
   border-radius: var(--card-radius); padding: 30rpx 30rpx 30rpx 190rpx;

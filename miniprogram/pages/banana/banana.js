@@ -7,9 +7,9 @@ const COSTBASE = {
 };
 const ENGINE_MAXN = { nb2: 2, pro: 2, gpt: 4, xiaole: 2, zelong2: 2 };
 const ENGINES = [
-  { key: 'nb2', name: 'Nano Banana 2', desc: '快·中文好 ✦推荐' },
-  { key: 'pro', name: 'Nano Banana Pro', desc: '精品·最强中文/4K' },
-  { key: 'gpt', name: 'gpt-image-2', desc: 'OpenAI·写实' },
+  { key: 'nb2', name: '黄雀生图 2', desc: '快·中文好 ✦推荐' },
+  { key: 'pro', name: '黄雀生图 Pro', desc: '精品·最强中文/4K' },
+  { key: 'gpt', name: '黄雀 Image 2', desc: 'OpenAI·写实' },
   { key: 'xiaole', name: '果肉生图', desc: '写实·稳定' }
   // 2026-07-13 泽龙2(zelong2)下线：近7天成功率仅19%、几乎全429限流。下方 COSTBASE/ENGINE_MAXN 里的 zelong2 为死键，无害。
 ];
