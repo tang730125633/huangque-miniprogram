@@ -26,10 +26,22 @@
 
     <view wx:if="{{err}}" class="err">{{err}}</view>
 
-    <view class="btn-primary {{loading?'disabled':''}}" bindtap="submit">
+    <view class="agreement-row">
+      <checkbox-group bindchange="onAgreementChange">
+        <label class="agreement-check">
+          <checkbox value="accepted" checked="{{agreed}}" color="#b048c8" />
+          <text>我已阅读并同意</text>
+        </label>
+      </checkbox-group>
+      <navigator class="agreement-link" url="/pages/legal/legal?type=terms">《用户服务协议》</navigator>
+      <text class="agreement-separator">和</text>
+      <text class="agreement-link" bindtap="openPrivacyContract">《隐私保护指引》</text>
+    </view>
+
+    <view class="btn-primary {{(loading || !agreed)?'disabled':''}}" bindtap="submit">
       {{loading ? '请稍候…' : (mode==='login' ? '登录' : '注册并登录')}}
     </view>
   </view>
 
-  <view class="foot muted">登录即表示同意服务条款 · 数据来自黄雀传媒后端</view>
+  <view class="foot muted">数据由黄雀传媒后端安全处理</view>
 </view>
