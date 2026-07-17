@@ -25,6 +25,21 @@
 .package-title { margin-top: 5rpx; color: var(--text-muted); font-size: 22rpx; }
 .pay-button { min-width: 146rpx; padding: 21rpx 22rpx; border-radius: 999rpx; text-align: center; color: #fff; background: var(--grad); font-size: 29rpx; font-weight: 650; }
 .pay-button.disabled { opacity: 0.48; }
+.custom-card {
+  padding: 28rpx 26rpx; border-radius: 22rpx; background: var(--surface); border: 1rpx solid var(--line);
+}
+.custom-copy { margin-bottom: 22rpx; }
+.custom-title { margin-bottom: 8rpx; font-size: 28rpx; font-weight: 600; }
+.custom-row { display: flex; align-items: center; gap: 18rpx; }
+.amount-input-wrap {
+  flex: 1; min-width: 0; height: 76rpx; display: flex; align-items: center; padding: 0 22rpx;
+  border-radius: 18rpx; background: var(--surface-muted); border: 1rpx solid var(--line);
+}
+.currency { margin-right: 10rpx; color: var(--secondary); font-size: 30rpx; font-weight: 700; }
+.amount-input { flex: 1; min-width: 0; color: var(--text); font-size: 30rpx; }
+.custom-pay-button { min-width: 170rpx; box-sizing: border-box; }
+.custom-preview { margin-top: 18rpx; color: var(--text-muted); font-size: 21rpx; }
+.custom-preview.active { color: var(--secondary); }
 .safe-note { margin: 28rpx 8rpx 0; text-align: center; color: var(--text-muted); font-size: 20rpx; line-height: 1.75; }
 .history-wrap { margin-top: 28rpx; }
 .order-card { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 26rpx; margin-bottom: 14rpx; }

@@ -28,6 +28,39 @@
     </view>
   </view>
 
+  <block wx:if="{{configured && custom}}">
+    <view class="section-title">自定义充值</view>
+    <view class="custom-card">
+      <view class="custom-copy">
+        <view class="custom-title">按实际需要充值</view>
+        <view class="muted small">1 元 = {{custom.points_per_yuan}} 点，仅支持 {{custom.min_amount_yuan}}~{{custom.max_amount_yuan}} 元整数</view>
+      </view>
+      <view class="custom-row">
+        <view class="amount-input-wrap">
+          <text class="currency">¥</text>
+          <input
+            class="amount-input"
+            type="number"
+            maxlength="4"
+            value="{{customAmount}}"
+            placeholder="输入金额"
+            bindinput="onCustomAmountInput"
+          />
+        </view>
+        <view
+          class="pay-button custom-pay-button {{(!customValid || payingId) ? 'disabled' : ''}}"
+          bindtap="startCustomPay"
+        >
+          <text wx:if="{{payingId === custom.package_id}}">处理中…</text>
+          <text wx:else>立即充值</text>
+        </view>
+      </view>
+      <view class="custom-preview {{customValid ? 'active' : ''}}">
+        {{customValid ? ('预计到账 ' + customPoints + ' 点') : '输入金额后自动计算到账点数'}}
+      </view>
+    </view>
+  </block>
+
   <view class="safe-note">
     <view>支付由微信官方虚拟支付提供</view>
     <view>支付完成后由服务器向微信核验订单，再自动发放点数</view>
