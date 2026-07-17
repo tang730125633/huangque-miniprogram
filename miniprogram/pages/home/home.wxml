@@ -103,11 +103,11 @@
 
     <!-- 静态声明动态图片，防止上传打包器将首页素材误判为未使用文件 -->
     <view class="home-asset-manifest" aria-hidden="true">
-      <view class="asset-video-mix"></view>
-      <view class="asset-role-transfer"></view>
-      <view class="asset-tutorial-image"></view>
-      <view class="asset-tutorial-video"></view>
-      <view class="asset-tutorial-human"></view>
+      <image src="/assets/home/video-mix-banner.jpg"></image>
+      <image src="/assets/home/role-transfer-banner.jpg"></image>
+      <image src="/assets/home/tutorial-image-creation.jpg"></image>
+      <image src="/assets/home/tutorial-video-analysis.jpg"></image>
+      <image src="/assets/home/tutorial-digital-human.jpg"></image>
     </view>
 
     <view class="build-version">版本 v0.024</view>

@@ -229,12 +229,7 @@
   opacity: 0;
   pointer-events: none;
 }
-.home-asset-manifest > view { width: 1px; height: 1px; background-size: cover; }
-.asset-video-mix { background-image: url('/assets/home/video-mix-banner.jpg'); }
-.asset-role-transfer { background-image: url('/assets/home/role-transfer-banner.jpg'); }
-.asset-tutorial-image { background-image: url('/assets/home/tutorial-image-creation.jpg'); }
-.asset-tutorial-video { background-image: url('/assets/home/tutorial-video-analysis.jpg'); }
-.asset-tutorial-human { background-image: url('/assets/home/tutorial-digital-human.jpg'); }
+.home-asset-manifest > image { width: 1px; height: 1px; }
 
 .build-version {
   margin-top: 34rpx;
