@@ -1,0 +1,7 @@
+.legal-page { padding-top: 30rpx; padding-bottom: 60rpx; }
+.legal-title { color: var(--text); font-size: 42rpx; font-weight: 700; text-align: center; }
+.legal-date { color: var(--text-muted); font-size: 22rpx; text-align: center; margin: 14rpx 0 30rpx; }
+.legal-section { margin-bottom: 18rpx; }
+.section-title { color: var(--text); font-size: 29rpx; font-weight: 650; margin-bottom: 14rpx; }
+.section-body { color: var(--text-muted); font-size: 25rpx; line-height: 1.85; text-align: justify; }
+.legal-footer { color: var(--text-muted); opacity: .72; font-size: 21rpx; text-align: center; margin-top: 30rpx; }

@@ -98,11 +98,12 @@
   <view class="btn-primary {{busy?'disabled':''}}" bindtap="generate">
     {{busy ? '生成中…' : '立即生成（' + cost + ' 点）'}}
   </view>
+  <view class="ai-disclosure">内容由人工智能生成，请遵守法律法规并自行核验后使用</view>
   <view class="note" style="color:{{noteColor}}">{{note || ('本次预计消耗 ' + cost + ' 点 · 失败自动退点')}}</view>
 
   <!-- 结果 -->
   <view wx:if="{{resultUrl}}" class="card">
-    <view class="label">生成结果</view>
+    <view class="label">生成结果 <text class="ai-badge">AI 生成</text></view>
     <image class="result-img" src="{{resultUrl}}" mode="widthFix" bindtap="previewResult"></image>
     <view wx:if="{{thumbs.length}}" class="thumbs">
       <image wx:for="{{thumbs}}" wx:key="*this" src="{{item}}" data-u="{{item}}" bindtap="pickThumb"
