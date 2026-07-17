@@ -10,6 +10,7 @@
     "pages/clone/clone",
     "pages/admin/admin",
     "pages/recharge/recharge",
+    "pages/legal/legal",
     "pages/login/login"
   ],
   "window": {
