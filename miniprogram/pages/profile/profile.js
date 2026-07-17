@@ -30,10 +30,6 @@ Page({
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); },
   goClone() { wx.navigateTo({ url: '/pages/clone/clone' }); },
   goRecharge() { wx.navigateTo({ url: '/pages/recharge/recharge' }); },
-  goLegal(e) {
-    const type = (e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.type) || 'privacy';
-    wx.navigateTo({ url: '/pages/legal/legal?type=' + type });
-  },
   goAdmin() {
     if (!this.data.isAdmin) return;
     wx.navigateTo({ url: '/pages/admin/admin' });

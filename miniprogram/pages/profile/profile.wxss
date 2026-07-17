@@ -44,3 +44,4 @@
   color: var(--text-muted); font-size: 22rpx; line-height: 1.8;
 }
 .legal-dot { opacity: .55; }
+.legal-link { color: inherit; display: inline; }
