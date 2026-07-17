@@ -34,6 +34,10 @@ Page({
   data: {
     points: null,
     packages: [],
+    custom: null,
+    customAmount: '',
+    customPoints: 0,
+    customValid: false,
     orders: [],
     configured: false,
     environment: 'production',
@@ -66,6 +70,7 @@ Page({
       if (me.statusCode === 200 && me.data && me.data.user) next.points = me.data.user.points;
       if (packs.statusCode === 200 && packs.data) {
         next.packages = packs.data.items || [];
+        next.custom = packs.data.custom || null;
         next.configured = !!packs.data.configured;
         next.environment = packs.data.environment || 'production';
       } else {
@@ -102,6 +107,33 @@ Page({
 
   startPay(e) {
     const packageId = e.currentTarget.dataset.id;
+    this.beginPayment(packageId);
+  },
+
+  onCustomAmountInput(e) {
+    const raw = String((e.detail && e.detail.value) || '').trim();
+    const config = this.data.custom;
+    const amount = /^\d+$/.test(raw) ? Number(raw) : 0;
+    const valid = !!config && Number.isInteger(amount) &&
+      amount >= Number(config.min_amount_yuan) &&
+      amount <= Number(config.max_amount_yuan);
+    this.setData({
+      customAmount: raw,
+      customValid: valid,
+      customPoints: valid ? amount * Number(config.points_per_yuan) : 0
+    });
+  },
+
+  startCustomPay() {
+    const config = this.data.custom;
+    if (!config || !this.data.customValid) {
+      wx.showToast({ title: '请输入有效的整数金额', icon: 'none' });
+      return;
+    }
+    this.beginPayment(config.package_id, Number(this.data.customAmount));
+  },
+
+  beginPayment(packageId, customAmountYuan) {
     if (!this.data.configured || this.data.payingId) return;
     if (wx.canIUse && !wx.canIUse('requestVirtualPayment')) {
       wx.showModal({ title: '请升级微信', content: '当前微信版本不支持小程序虚拟支付，请升级后在手机微信中重试。', showCancel: false });
@@ -110,11 +142,15 @@ Page({
     this.setData({ payingId: packageId, statusText: '正在创建微信订单…' });
     let orderId = '';
     wxLogin()
-      .then((code) => api.request('/api/auth/virtual-pay/order', {
-        method: 'POST',
-        data: { package_id: packageId, wx_code: code },
-        timeout: 30000
-      }))
+      .then((code) => {
+        const data = { package_id: packageId, wx_code: code };
+        if (customAmountYuan !== undefined) data.custom_amount_yuan = customAmountYuan;
+        return api.request('/api/auth/virtual-pay/order', {
+          method: 'POST',
+          data,
+          timeout: 30000
+        });
+      })
       .then((res) => {
         if (res.statusCode !== 200 || !res.data || !res.data.payment) {
           throw new Error((res.data && res.data.detail) || '微信订单创建失败');
