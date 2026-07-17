@@ -110,7 +110,7 @@
       <view class="asset-tutorial-human"></view>
     </view>
 
-    <view class="build-version">版本 v0.024（开发中）</view>
+    <view class="build-version">版本 v0.024</view>
     <view class="bottom-safe"></view>
   </view>
 </view>
