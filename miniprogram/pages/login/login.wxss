@@ -30,4 +30,19 @@
 }
 .reg-tip-ic { width: 30rpx; height: 30rpx; flex: none; }
 .err { color: var(--error); font-size: 25rpx; margin-bottom: 20rpx; }
+.agreement-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  margin: 4rpx 0 24rpx;
+  color: var(--text-muted);
+  font-size: 22rpx;
+  line-height: 1.7;
+}
+.agreement-check { display: flex; align-items: center; }
+.agreement-check checkbox { transform: scale(.78); transform-origin: center; margin-right: -4rpx; }
+.agreement-link { color: var(--primary); text-decoration: underline; }
+.agreement-separator { color: var(--text-muted); }
 .foot { text-align: center; font-size: 23rpx; margin-top: 30rpx; color: var(--text-muted); }

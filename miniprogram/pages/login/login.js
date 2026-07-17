@@ -5,6 +5,7 @@ Page({
     mode: 'login',
     username: '',
     password: '',
+    agreed: false,
     loading: false,
     err: ''
   },
@@ -19,6 +20,18 @@ Page({
   },
   onUsername(e) { this.setData({ username: e.detail.value }); },
   onPassword(e) { this.setData({ password: e.detail.value }); },
+  onAgreementChange(e) {
+    const values = (e.detail && e.detail.value) || [];
+    this.setData({ agreed: values.indexOf('accepted') !== -1, err: '' });
+  },
+  openPrivacyContract() {
+    const fallback = () => wx.navigateTo({ url: '/pages/legal/legal?type=privacy' });
+    if (!wx.openPrivacyContract) {
+      fallback();
+      return;
+    }
+    wx.openPrivacyContract({ fail: fallback });
+  },
 
   submit() {
     if (this.data.loading) return;
@@ -26,6 +39,10 @@ Page({
     const password = this.data.password || '';
     if (!username || !password) {
       this.setData({ err: '请填写账号和密码' });
+      return;
+    }
+    if (!this.data.agreed) {
+      this.setData({ err: '请先阅读并勾选《用户服务协议》和《隐私保护指引》' });
       return;
     }
     this.setData({ loading: true, err: '' });

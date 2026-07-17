@@ -97,7 +97,7 @@ Page({
   formatOrder(item) {
     const date = new Date(Number(item.created_at || 0) * 1000);
     const pad = (n) => (n < 10 ? '0' + n : '' + n);
-    const labels = { created: '待支付确认', credited: '已到账', failed: '未完成' };
+    const labels = { created: '待支付确认', credited: '已到账', refunded: '已退款', failed: '未完成' };
     return Object.assign({}, item, {
       amount_yuan: (Number(item.amount_fen || 0) / 100).toFixed(2),
       time_label: date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()),
