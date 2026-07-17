@@ -9,9 +9,33 @@
     <text class="points-num">{{points === null ? '—' : points}}</text>
   </view>
 
+  <!-- 模板即出图：仅回填可编辑提示词，不会自动生成或扣点 -->
+  <view class="card prompt-helper">
+    <view class="prompt-helper-head">
+      <view>
+        <view class="label helper-title">模板润色</view>
+        <view class="muted small helper-sub">选模板，填字段，一键生成可编辑提示词 · 免费</view>
+      </view>
+      <view wx:if="{{canUndoPrompt}}" class="prompt-undo" bindtap="undoPromptTemplate">撤销</view>
+    </view>
+    <scroll-view class="prompt-template-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="prompt-template-row">
+        <view wx:for="{{promptTemplates}}" wx:key="key" data-k="{{item.key}}" bindtap="selectPromptTemplate"
+          class="prompt-template-chip {{promptTemplateKey===item.key?'on':''}}">{{item.name}}</view>
+      </view>
+    </scroll-view>
+    <view class="prompt-fields">
+      <input class="prompt-field" value="{{tplBrand}}" data-key="tplBrand" bindinput="onTemplateField" maxlength="30" placeholder="品牌 / 门店" placeholder-class="ph" />
+      <input class="prompt-field" value="{{tplColor}}" data-key="tplColor" bindinput="onTemplateField" maxlength="30" placeholder="主色调" placeholder-class="ph" />
+      <input class="prompt-field" value="{{tplSelling}}" data-key="tplSelling" bindinput="onTemplateField" maxlength="60" placeholder="核心卖点" placeholder-class="ph" />
+      <input class="prompt-field" value="{{tplPrice}}" data-key="tplPrice" bindinput="onTemplateField" maxlength="40" placeholder="价格 / 权益" placeholder-class="ph" />
+    </view>
+    <view class="prompt-apply" bindtap="applyPromptTemplate">套用并润色</view>
+  </view>
+
   <!-- 提示词 -->
   <view class="card">
-    <view class="label">提示词</view>
+    <view class="label">提示词 <text class="muted small">（润色后仍可编辑）</text></view>
     <textarea class="prompt" placeholder="描述你想要的画面，例如：美业门店海报，暖光，高级感…"
       placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="1000"
       auto-height show-confirm-bar="{{false}}"></textarea>

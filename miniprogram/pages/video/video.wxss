@@ -42,6 +42,20 @@
   border-radius: 14rpx; padding: 22rpx; color: var(--text); font-size: 28rpx;
 }
 
+/* 视频镜头模板润色 */
+.prompt-helper { overflow: hidden; }
+.prompt-helper-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
+.helper-title { margin-bottom: 4rpx; }
+.helper-sub { line-height: 1.45; }
+.prompt-undo { flex: none; color: var(--primary); font-size: 23rpx; padding: 8rpx 16rpx; border: 1rpx solid var(--primary); border-radius: 30rpx; }
+.prompt-template-scroll { width: 100%; margin: 20rpx 0 16rpx; white-space: nowrap; }
+.prompt-template-row { display: inline-flex; gap: 12rpx; padding-right: 18rpx; }
+.prompt-template-chip { display: inline-block; padding: 14rpx 22rpx; border-radius: 30rpx; background: var(--surface-muted); border: 1rpx solid var(--line); color: var(--text-muted); font-size: 23rpx; }
+.prompt-template-chip.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-ink); }
+.prompt-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12rpx; }
+.prompt-field { box-sizing: border-box; width: 100%; height: 76rpx; padding: 0 18rpx; border-radius: 12rpx; background: var(--surface-muted); border: 1rpx solid var(--line); color: var(--text); font-size: 24rpx; }
+.prompt-apply { margin-top: 16rpx; padding: 19rpx 20rpx; border-radius: 14rpx; text-align: center; color: #fff; font-size: 26rpx; font-weight: 600; background: linear-gradient(100deg, #d83bcc, #7b46ff); }
+
 .upbox {
   height: 180rpx; border: 2rpx dashed var(--line); border-radius: 16rpx;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx;

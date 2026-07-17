@@ -182,8 +182,32 @@
       </view>
     </view>
 
+    <!-- 镜头模板：仅回填可编辑提示词，不会自动生成或扣点 -->
+    <view wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="card prompt-helper">
+      <view class="prompt-helper-head">
+        <view>
+          <view class="label helper-title">镜头模板润色</view>
+          <view class="muted small helper-sub">选场景、填内容，自动补全镜头语言 · 免费</view>
+        </view>
+        <view wx:if="{{canUndoPrompt}}" class="prompt-undo" bindtap="undoVideoPromptTemplate">撤销</view>
+      </view>
+      <scroll-view class="prompt-template-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="prompt-template-row">
+          <view wx:for="{{videoPromptTemplates}}" wx:key="key" data-k="{{item.key}}" bindtap="selectVideoPromptTemplate"
+            class="prompt-template-chip {{videoPromptTemplateKey===item.key?'on':''}}">{{item.name}}</view>
+        </view>
+      </scroll-view>
+      <view class="prompt-fields">
+        <input class="prompt-field" value="{{videoTplSubject}}" data-key="videoTplSubject" bindinput="onVideoTemplateField" maxlength="50" placeholder="主体 / 产品" placeholder-class="ph" />
+        <input class="prompt-field" value="{{videoTplScene}}" data-key="videoTplScene" bindinput="onVideoTemplateField" maxlength="60" placeholder="场景" placeholder-class="ph" />
+        <input class="prompt-field" value="{{videoTplAction}}" data-key="videoTplAction" bindinput="onVideoTemplateField" maxlength="60" placeholder="动作 / 展示方式" placeholder-class="ph" />
+        <input class="prompt-field" value="{{videoTplStyle}}" data-key="videoTplStyle" bindinput="onVideoTemplateField" maxlength="50" placeholder="视觉风格" placeholder-class="ph" />
+      </view>
+      <view class="prompt-apply" bindtap="applyVideoPromptTemplate">套用并润色</view>
+    </view>
+
     <view class="card">
-      <view class="label">画面描述</view>
+      <view class="label">画面描述 <text wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="muted small">（润色后仍可编辑）</text></view>
       <textarea class="prompt" placeholder="{{engine==='grok' && grokOp==='edit' ? '描述想怎么改这段视频，例如：把背景换成海边日落' : '描述你想要的视频画面，例如：秋天枫叶飘落，慢镜头，暖色调'}}"
         placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="1000" auto-height show-confirm-bar="{{false}}"></textarea>
     </view>

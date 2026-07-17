@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const promptTemplates = require('../../utils/prompt_templates.js');
 
 // 与后端 / 网页版一致的价目与上限
 const COSTBASE = {
@@ -21,6 +22,14 @@ Page({
   data: {
     engines: ENGINES,
     ratios: RATIOS,
+    promptTemplates: promptTemplates.IMAGE_TEMPLATES,
+    promptTemplateKey: 'poster',
+    tplBrand: '黄雀 AI',
+    tplColor: '紫粉霓虹',
+    tplSelling: '三秒生成视觉内容',
+    tplPrice: '免费体验',
+    promptUndo: '',
+    canUndoPrompt: false,
     prompt: '',
     engine: 'nb2',
     ratio: '9:16',
@@ -62,6 +71,35 @@ Page({
   },
 
   onPrompt(e) { this.setData({ prompt: e.detail.value }); },
+
+  selectPromptTemplate(e) { this.setData({ promptTemplateKey: e.currentTarget.dataset.k }); },
+  onTemplateField(e) {
+    const key = e.currentTarget.dataset.key;
+    if (['tplBrand', 'tplColor', 'tplSelling', 'tplPrice'].indexOf(key) < 0) return;
+    const patch = {}; patch[key] = e.detail.value;
+    this.setData(patch);
+  },
+  applyPromptTemplate() {
+    const result = promptTemplates.buildImagePrompt(this.data.promptTemplateKey, {
+      brand: this.data.tplBrand,
+      color: this.data.tplColor,
+      selling: this.data.tplSelling,
+      price: this.data.tplPrice
+    });
+    this.setData({
+      promptUndo: this.data.prompt,
+      canUndoPrompt: true,
+      prompt: result.prompt,
+      ratio: result.ratio
+    });
+    this.setNote('模板已润色，可继续修改提示词', '#2F6FED');
+    wx.showToast({ title: '已套用模板', icon: 'none' });
+  },
+  undoPromptTemplate() {
+    if (!this.data.canUndoPrompt) return;
+    this.setData({ prompt: this.data.promptUndo, promptUndo: '', canUndoPrompt: false });
+    this.setNote('已恢复套用前的提示词', '#68736D');
+  },
 
   selectEngine(e) {
     const engine = e.currentTarget.dataset.k;

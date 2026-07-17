@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const promptTemplates = require('../../utils/prompt_templates.js');
 
 // ===== 创作模式 =====
 // 2026-07-13 交接调整：老「动作模仿」后端已下线（VALID_VIDEO_MODES 只剩 text/audio），代码已删。
@@ -137,6 +138,14 @@ Page({
     engines: ENGINES,
     engine: 'grok',
     engineRef: true,
+    videoPromptTemplates: promptTemplates.VIDEO_TEMPLATES,
+    videoPromptTemplateKey: 'product',
+    videoTplSubject: '黄雀 AI 视觉服务',
+    videoTplScene: '紫粉霓虹的未来空间',
+    videoTplAction: '缓慢旋转展示核心亮点',
+    videoTplStyle: '高级、真实、细腻的电影光影',
+    promptUndo: '',
+    canUndoPrompt: false,
     prompt: '',
     refImgs: [],       // data URL 数组（后端 reference_images 字符串数组，果肉最多 7 张）
     refPreviews: [],
@@ -226,7 +235,7 @@ Page({
       ratios, ratio: '9:16',
       busy: false, note: '', noteColor: C_MUTED, defaultHint: HINTS[m.key] || '', videoUrl: '', cost,
       // 清各模式上传/输入，避免跨模式串数据
-      prompt: '', refImgs: [], refPreviews: [],
+      prompt: '', promptUndo: '', canUndoPrompt: false, refImgs: [], refPreviews: [],
       cineVideo: '', cineVideoName: '', cineVideoDur: 0,
       cinePrompt: '', cineRefVideos: [], cineRefImgs: [], cineRefPreviews: [], cineEst: 30,
       talkImg: '', talkImgPreview: '', talkText: '', talkAudio: '', talkAudioName: '',
@@ -325,6 +334,34 @@ Page({
     this.setData({ cost: this._genCost() });
   },
   onPrompt(e) { this.setData({ prompt: e.detail.value }); },
+  selectVideoPromptTemplate(e) { this.setData({ videoPromptTemplateKey: e.currentTarget.dataset.k }); },
+  onVideoTemplateField(e) {
+    const key = e.currentTarget.dataset.key;
+    if (['videoTplSubject', 'videoTplScene', 'videoTplAction', 'videoTplStyle'].indexOf(key) < 0) return;
+    const patch = {}; patch[key] = e.detail.value;
+    this.setData(patch);
+  },
+  applyVideoPromptTemplate() {
+    const result = promptTemplates.buildVideoPrompt(this.data.videoPromptTemplateKey, {
+      subject: this.data.videoTplSubject,
+      scene: this.data.videoTplScene,
+      action: this.data.videoTplAction,
+      style: this.data.videoTplStyle
+    });
+    this.setData({
+      promptUndo: this.data.prompt,
+      canUndoPrompt: true,
+      prompt: result.prompt,
+      ratio: result.ratio
+    });
+    this.setNote('镜头模板已润色，可继续修改画面描述', C_INFO);
+    wx.showToast({ title: '已套用镜头模板', icon: 'none' });
+  },
+  undoVideoPromptTemplate() {
+    if (!this.data.canUndoPrompt) return;
+    this.setData({ prompt: this.data.promptUndo, promptUndo: '', canUndoPrompt: false });
+    this.setNote('已恢复套用前的画面描述', C_MUTED);
+  },
   selectRatio(e) { this.setData({ ratio: e.currentTarget.dataset.v }); },
   chooseRef() {
     // 果肉图生视频：最多 7 张参考图（后端 XIAOLE_MAX_REF）。

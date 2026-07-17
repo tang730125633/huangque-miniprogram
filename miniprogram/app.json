@@ -9,6 +9,7 @@
     "pages/audio/audio",
     "pages/clone/clone",
     "pages/admin/admin",
+    "pages/recharge/recharge",
     "pages/login/login"
   ],
   "window": {
