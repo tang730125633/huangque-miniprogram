@@ -1,15 +1,54 @@
 const api = require('../../utils/api.js');
+const subscriptions = require('../../utils/subscriptions.js');
 
 Page({
   data: {
     user: {},
     initial: '黄',
-    isAdmin: false
+    isAdmin: false,
+    notificationText: '正在读取…',
+    notificationsConfigured: false
   },
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     this.refresh();
+    this.refreshNotifications();
+  },
+
+  refreshNotifications() {
+    subscriptions.loadConfig().then((config) => {
+      const events = config.events || [];
+      const remaining = events.reduce((sum, item) => sum + Number(item.remaining || 0), 0);
+      this.setData({
+        notificationsConfigured: !!config.configured,
+        notificationText: !config.configured ? '暂未配置' : (remaining > 0 ? ('已订阅 ' + remaining + ' 次') : '点击开启')
+      });
+    });
+  },
+
+  enableNotifications() {
+    if (!this.data.notificationsConfigured) {
+      wx.showToast({ title: '通知模板正在配置', icon: 'none' });
+      this.refreshNotifications();
+      return;
+    }
+    subscriptions.requestEvents(['work_complete', 'recharge_credited'])
+      .then((result) => {
+        if ((result.accepted || []).length) {
+          wx.showToast({ title: '通知已开启', icon: 'success' });
+        } else {
+          wx.showToast({ title: '未开启新通知', icon: 'none' });
+        }
+        this.refreshNotifications();
+      })
+      .catch((err) => {
+        wx.showModal({
+          title: '通知未开启',
+          content: (err && (err.errMsg || err.message)) || '请稍后重试',
+          showCancel: false
+        });
+      });
   },
 
   refresh() {

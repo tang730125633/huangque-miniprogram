@@ -1,5 +1,6 @@
 const api = require('../../utils/api.js');
 const promptTemplates = require('../../utils/prompt_templates.js');
+const subscriptions = require('../../utils/subscriptions.js');
 
 // 与后端 / 网页版一致的价目与上限
 const COSTBASE = {
@@ -50,6 +51,7 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    subscriptions.loadConfig();
     // 灵感页「跟创」带来的提示词 + 引擎（一次性消费）
     const fc = wx.getStorageSync('hq_followcreate');
     if (fc && fc.prompt) {
@@ -139,6 +141,7 @@ Page({
     if (this.data.busy) return;
     const prompt = (this.data.prompt || '').trim();
     if (!prompt) { this.setNote('请先输入提示词', '#C2413A'); return; }
+    subscriptions.requestEvents(['work_complete']).catch(() => {});
 
     const engine = this.data.engine;
     const body = { prompt, ratio: this.data.ratio, quality: this.data.quality, count: this.data.count };

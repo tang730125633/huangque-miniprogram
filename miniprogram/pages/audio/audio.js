@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const subscriptions = require('../../utils/subscriptions.js');
 
 const COST = 10;
 const POLL_INTERVAL = 2000;
@@ -38,6 +39,7 @@ Page({
   },
 
   onLoad() {
+    subscriptions.loadConfig();
     this._audio = wx.createInnerAudioContext();
     this._audio.onEnded(() => this.setData({ playing: false }));
     this._audio.onStop(() => this.setData({ playing: false }));
@@ -105,6 +107,7 @@ Page({
       this.setNote('点数不足（需 ' + COST + ' 点）', '#C2413A');
       return;
     }
+    subscriptions.requestEvents(['work_complete']).catch(() => {});
 
     this.setData({ busy: true, resultUrl: '', playing: false });
     if (this._audio) this._audio.stop();

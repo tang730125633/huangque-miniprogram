@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const subscriptions = require('../../utils/subscriptions.js');
 
 function wxLogin() {
   return new Promise(function (resolve, reject) {
@@ -51,6 +52,7 @@ Page({
       wx.reLaunch({ url: '/pages/login/login' });
       return;
     }
+    subscriptions.loadConfig();
     this.refresh();
   },
 
@@ -139,6 +141,13 @@ Page({
       wx.showModal({ title: '请升级微信', content: '当前微信版本不支持小程序虚拟支付，请升级后在手机微信中重试。', showCancel: false });
       return;
     }
+    this.setData({ payingId: packageId, statusText: '正在确认到账提醒…' });
+    subscriptions.requestEvents(['recharge_credited'])
+      .catch(() => ({ accepted: [] }))
+      .then(() => this._performPayment(packageId, customAmountYuan));
+  },
+
+  _performPayment(packageId, customAmountYuan) {
     this.setData({ payingId: packageId, statusText: '正在创建微信订单…' });
     let orderId = '';
     wxLogin()

@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const subscriptions = require('../../utils/subscriptions.js');
 const promptTemplates = require('../../utils/prompt_templates.js');
 
 // ===== 创作模式 =====
@@ -198,6 +199,7 @@ Page({
   },
 
   onLoad(options) {
+    subscriptions.loadConfig();
     let mode = (options && options.mode) || 'cinematic';
     if (VALID_MODES.indexOf(mode) < 0) mode = 'cinematic';
     this._pollToken = 0;
@@ -575,6 +577,7 @@ Page({
       this.setNote('点数不足（约需 ' + need + ' 点，当前 ' + this.data.points + ' 点）', C_ERR);
       return;
     }
+    subscriptions.requestEvents(['work_complete']).catch(() => {});
     const body = {
       mode: 'text', text, voice: this.data.voiceKey,
       resolution: this.data.talkRes, ratio: this.data.ratio, motion: 'medium',
@@ -816,6 +819,7 @@ Page({
       this.setData({ avatarNote: '点数不足（建形象需 ' + AVATAR_COST + ' 点）' }); return;
     }
     this._chooseImage('image/jpeg', (url) => {
+      subscriptions.requestEvents(['work_complete']).catch(() => {});
       this.setData({ avatarBusy: true, avatarNote: '建形象中，约 25 秒…' });
       api.request('/api/gen/avatar', { method: 'POST', data: { image_data: url }, timeout: 60000 })
         .then((res) => {
@@ -965,6 +969,7 @@ Page({
       this.setNote('点数不足（需 ' + need + ' 点，当前 ' + this.data.points + ' 点）', C_ERR);
       return;
     }
+    subscriptions.requestEvents(['work_complete']).catch(() => {});
     const token = ++this._pollToken; // 使旧轮询失效
     const t0 = Date.now();
     this.setData({ busy: true, videoUrl: '', cost: need });

@@ -25,6 +25,10 @@
       <view class="mi-left"><image class="mi-ic" src="../../assets/icons/coin.svg"></image><text>点数充值</text></view>
       <view class="recharge-right"><text>微信虚拟支付</text><text class="muted">›</text></view>
     </view>
+    <view class="menu-item bordered" bindtap="enableNotifications">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/em_bulb.svg"></image><text>作品与到账通知</text></view>
+      <view class="recharge-right"><text>{{notificationText}}</text><text class="muted">›</text></view>
+    </view>
     <view class="menu-item bordered" bindtap="goAssets">
       <view class="mi-left"><image class="mi-ic" src="../../assets/icons/folder.svg"></image><text>我的资产</text></view>
       <text class="muted">›</text>
