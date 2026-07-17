@@ -68,3 +68,6 @@
   flex: 1; text-align: center; padding: 20rpx; border-radius: 14rpx;
   border: 1rpx solid var(--primary); color: var(--primary); font-size: 26rpx;
 }
+
+.ai-disclosure { margin: 12rpx 8rpx 4rpx; text-align: center; color: var(--text-muted); font-size: 21rpx; line-height: 1.6; }
+.ai-badge { margin-left: 10rpx; padding: 3rpx 10rpx; border-radius: 999rpx; background: rgba(226,75,160,.16); color: #ff8dca; font-size: 19rpx; font-weight: 500; }
