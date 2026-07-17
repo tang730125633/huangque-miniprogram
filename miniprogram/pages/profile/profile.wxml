@@ -44,11 +44,11 @@
   </view>
 
   <view class="legal-links">
-    <text data-type="privacy" bindtap="goLegal">隐私保护指引</text>
+    <navigator class="legal-link" url="/pages/legal/legal?type=privacy">隐私保护指引</navigator>
     <text class="legal-dot">·</text>
-    <text data-type="terms" bindtap="goLegal">用户服务协议</text>
+    <navigator class="legal-link" url="/pages/legal/legal?type=terms">用户服务协议</navigator>
     <text class="legal-dot">·</text>
-    <text data-type="ai" bindtap="goLegal">AI 生成内容说明</text>
+    <navigator class="legal-link" url="/pages/legal/legal?type=ai">AI 生成内容说明</navigator>
   </view>
 
   <view class="logout" bindtap="logout">退出登录</view>
