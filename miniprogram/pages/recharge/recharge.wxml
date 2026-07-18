@@ -2,17 +2,16 @@
   <view class="balance-card">
     <view class="balance-label">当前点数</view>
     <view class="balance-value">{{points === null ? '—' : points}}</view>
-    <view class="balance-note">微信官方虚拟支付 · 到账后可用于所有生成任务</view>
+    <view class="balance-note">微信支付 V3 · 到账后可用于所有生成任务</view>
   </view>
 
-  <view wx:if="{{environment === 'sandbox'}}" class="sandbox-tip">当前为沙箱环境，仅供开发测试</view>
   <view wx:if="{{statusText}}" class="status-tip">{{statusText}}</view>
 
   <view class="section-title">选择充值档位</view>
   <view wx:if="{{loading}}" class="card empty-state">正在加载充值配置…</view>
   <view wx:elif="{{!configured}}" class="card empty-state">
     <view class="empty-title">充值功能配置中</view>
-    <view class="muted small">微信虚拟支付正式配置完成后即可使用</view>
+    <view class="muted small">微信支付配置完成后即可使用</view>
   </view>
   <view wx:else class="package-list">
     <view wx:for="{{packages}}" wx:key="id" class="package-card {{item.recommended ? 'recommended' : ''}}">
@@ -21,7 +20,7 @@
         <view class="package-points">{{item.points}}<text> 点</text></view>
         <view class="package-title">{{item.title}}</view>
       </view>
-      <view class="pay-button {{payingId ? 'disabled' : ''}}" data-id="{{item.id}}" bindtap="startPay">
+      <view class="pay-button {{payingId ? 'disabled' : ''}}" data-id="{{item.id}}" data-amount="{{item.amount}}" bindtap="startPay">
         <text wx:if="{{payingId === item.id}}">处理中…</text>
         <text wx:else>¥{{item.price_yuan}}</text>
       </view>
@@ -62,8 +61,8 @@
   </block>
 
   <view class="safe-note">
-    <view>支付由微信官方虚拟支付提供</view>
-    <view>支付完成后由服务器向微信核验订单，再自动发放点数</view>
+    <view>支付由微信支付 V3 JSAPI 提供</view>
+    <view>支付完成后由服务器验签回调，再自动发放点数</view>
   </view>
 
   <view wx:if="{{orders.length}}" class="history-wrap">
