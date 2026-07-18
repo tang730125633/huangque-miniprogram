@@ -16,6 +16,7 @@
   <view wx:else class="package-list">
     <view wx:for="{{packages}}" wx:key="id" class="package-card {{item.recommended ? 'recommended' : ''}}">
       <view wx:if="{{item.recommended}}" class="recommend-badge">推荐</view>
+      <view wx:if="{{item.testOnly}}" class="recommend-badge">支付测试</view>
       <view class="package-main">
         <view class="package-points">{{item.points}}<text> 点</text></view>
         <view class="package-title">{{item.title}}</view>
