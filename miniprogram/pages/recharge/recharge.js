@@ -33,6 +33,15 @@ const PACKAGES = [
   { id: 'points_5000', title: '5000 点', price_yuan: '499.00', amount: 499, points: 5000, recommended: true }
 ];
 
+const TEST_PACKAGE = {
+  id: 'jsapi_test_010',
+  title: '真机支付测试',
+  price_yuan: '0.10',
+  amount: 0.1,
+  points: 1,
+  testOnly: true
+};
+
 const CUSTOM = { package_id: 'custom_points', min_amount_yuan: 10, max_amount_yuan: 5000, points_per_yuan: 10 };
 
 Page({
@@ -65,8 +74,9 @@ Page({
   refresh() {
     this.setData({ loading: true, statusText: '' });
     api.request('/api/auth/me', { method: 'GET' }).then((me) => {
-      const next = { loading: false, packages: PACKAGES, custom: CUSTOM, configured: true };
-      if (me.statusCode === 200 && me.data && me.data.user) next.points = me.data.user.points;
+      const user = me.statusCode === 200 && me.data && me.data.user;
+      const next = { loading: false, packages: [TEST_PACKAGE].concat(PACKAGES), custom: CUSTOM, configured: true };
+      if (user) next.points = user.points;
       this.setData(next);
       this.refreshOrders();
     }).catch(() => {
