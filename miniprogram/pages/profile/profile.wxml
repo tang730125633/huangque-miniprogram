@@ -21,10 +21,6 @@
       <view class="mi-left"><image class="mi-ic" src="../../assets/icons/warn.svg"></image><text>管理中心</text></view>
       <text class="muted">›</text>
     </view>
-    <view class="menu-item bordered recharge-entry" bindtap="goRecharge">
-      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/coin.svg"></image><text>点数充值</text></view>
-      <view class="recharge-right"><text>微信支付 V3</text><text class="muted">›</text></view>
-    </view>
     <view class="menu-item bordered" bindtap="goAssets">
       <view class="mi-left"><image class="mi-ic" src="../../assets/icons/folder.svg"></image><text>我的资产</text></view>
       <text class="muted">›</text>
