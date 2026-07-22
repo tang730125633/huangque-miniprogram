@@ -33,7 +33,7 @@
 
     <view class="card">
       <view class="label">我的形象
-        <text class="muted small">{{cineMode==='motion' ? '（选 1 个 · 新建 5 点）' : (cineMode==='duo' ? '（正好选 2 个）' : '（选 1~3 个）')}}</text>
+        <text class="muted small">{{cineMode==='motion' ? '（选 1 个 · 新建 2 点）' : (cineMode==='duo' ? '（正好选 2 个）' : '（选 1~3 个）')}}</text>
       </view>
       <view class="avatar-grid">
         <view wx:for="{{avatars}}" wx:key="id" class="avatar-cell {{avatarSelMap[item.id]?'on':''}}"
@@ -110,7 +110,7 @@
     </view>
     <view wx:if="{{cineMode==='open'}}" class="card">
       <view class="label">时长
-        <text class="muted small">（{{cineMode==='motion' ? '3' : '5'}} 点/秒 · 自适应跟随参考视频{{cineMode==='open' ? '，无参考视频按 10 秒' : ''}}）</text>
+        <text class="muted small">（10 点/秒 · 自适应跟随参考视频{{cineMode==='open' ? '，无参考视频按 10 秒' : ''}}）</text>
       </view>
       <view class="ratio-grid">
         <view wx:for="{{cineDurs}}" wx:key="v" class="chip {{cineDur===item.v?'active':''}}" data-v="{{item.v}}" bindtap="selectCineDur">{{item.name}}</view>
@@ -143,7 +143,7 @@
       <view class="label">操作方式</view>
       <view class="ratio-grid">
         <view class="chip {{grokOp==='generate'?'active':''}}" data-v="generate" bindtap="selectGrokOp">生成新视频</view>
-        <view class="chip {{grokOp==='edit'?'active':''}}" data-v="edit" bindtap="selectGrokOp">编辑已有视频</view>
+        <view class="chip" data-v="edit" bindtap="selectGrokOp">编辑维护中</view>
       </view>
     </view>
 
@@ -344,7 +344,7 @@
     </view>
 
     <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitTalking">
-      {{busy ? '生成中…' : (talkBatch ? '批量生成 ' + batchItems.length + ' 条（约 ' + batchItems.length * 20 + ' 点）' : '生成口播视频（' + cost + ' 点）')}}
+      {{busy ? '生成中…' : (talkBatch ? '批量生成 ' + batchItems.length + ' 条（约 ' + batchItems.length * cost + ' 点）' : '生成口播视频（' + cost + ' 点）')}}
     </view>
 
     <!-- 批量任务进度 -->

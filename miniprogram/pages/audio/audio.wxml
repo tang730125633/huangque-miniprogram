@@ -8,9 +8,9 @@
 
   <!-- 配音文案 -->
   <view class="card">
-    <view class="label">配音文案 <text class="muted small">（{{text.length}}/1200）</text></view>
+    <view class="label">配音文案 <text class="muted small">（{{text.length}}/1000）</text></view>
     <textarea class="prompt" placeholder="输入要配音的文案，例如：家人们，这家新开的美容院真的绝了…"
-      placeholder-class="ph" value="{{text}}" bindinput="onText" maxlength="1200"
+      placeholder-class="ph" value="{{text}}" bindinput="onText" maxlength="1000"
       auto-height show-confirm-bar="{{false}}"></textarea>
   </view>
 

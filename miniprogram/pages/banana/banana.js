@@ -3,8 +3,8 @@ const promptTemplates = require('../../utils/prompt_templates.js');
 
 // 与后端 / 网页版一致的价目与上限
 const COSTBASE = {
-  nb2: { std: 10, hd: 14 }, pro: { std: 18, hd: 26 },
-  gpt: { std: 8, hd: 12 }, xiaole: { std: 8, hd: 12 }, zelong2: { std: 8, hd: 12 }
+  nb2: { std: 18, hd: 35 }, pro: { std: 35, hd: 44 },
+  gpt: { std: 20, hd: 35 }, xiaole: { std: 12, hd: 16 }, zelong2: { std: 8, hd: 12 }
 };
 const ENGINE_MAXN = { nb2: 2, pro: 2, gpt: 4, xiaole: 2, zelong2: 2 };
 const ENGINES = [
@@ -36,7 +36,7 @@ Page({
     quality: 'hd',
     count: 1,
     maxCount: 2,
-    cost: 14,
+    cost: 35,
     refImg: '',        // base64（发给后端）
     refPreview: '',    // 本地临时路径（用于预览）
     busy: false,
