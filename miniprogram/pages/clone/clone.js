@@ -59,8 +59,12 @@ Page({
       if (slots.length) {
         const slot = slots[0];
         this.setData({ slotId: slot.slot_id, name: slot.display_name || '我的声音' });
-        if (slot.status === 'training') { this.setData({ stage: 'training' }); this.pollStatus(0); }
-        else if (slot.status === 'ready') { this.setData({ stage: 'ready', previewUrl: slot.preview_url || '' }); }
+        if (slot.status === 'ready' || slot.preview_url) {
+          this.setData({ stage: 'ready', previewUrl: slot.preview_url || '' });
+        } else if (slot.status === 'training') {
+          this.setData({ stage: 'training' });
+          this.pollStatus(0);
+        }
         else { this.setData({ stage: 'clone' }); }
       } else {
         this.setData({ stage: 'no-slot' });
@@ -154,8 +158,9 @@ Page({
         .then((res) => {
           // 后端返回 {ok, result:{status, preview_url, clone_error, ...}}，状态嵌在 result 里
           const d = (res.data && res.data.result) || res.data || {};
-          if (d.status === 'ready') {
-            this.setData({ stage: 'ready', previewUrl: d.preview_url || '' });
+          const previewUrl = d.preview_url || (d.voice && d.voice.preview_url) || '';
+          if (d.status === 'ready' || previewUrl) {
+            this.setData({ stage: 'ready', previewUrl });
           } else if (d.status === 'failed') {
             this.setData({ stage: 'failed', err: d.clone_error || '' });
           } else if (n >= CLONE_POLL_MAX) {

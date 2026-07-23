@@ -11,5 +11,7 @@ assert(source.includes('this.data.recSec < 10'));
 assert(source.includes('请录制至少 10 秒'));
 assert(source.includes('recProgress: Math.min(100'));
 assert(source.includes('this.data.recording || !this.data.hasSample'));
+assert(source.includes("slot.status === 'ready' || slot.preview_url"));
+assert(source.includes("d.status === 'ready' || previewUrl"));
 
 console.log('clone recording contract OK');
