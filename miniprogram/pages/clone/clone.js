@@ -2,7 +2,7 @@ const api = require('../../utils/api.js');
 
 const CLONE_POLL_INTERVAL = 5000;
 const CLONE_POLL_MAX = 60; // 60 * 5s = 5 min
-const VOICE_CONSENT_VERSION = '2026-07-23-v1';
+const VOICE_CONSENT_VERSION = '2026-07-23-v2';
 
 Page({
   data: {
@@ -26,11 +26,16 @@ Page({
     trainSec: 0,
     previewUrl: '',
     playing: false,
+    consentGateVisible: true,
     voiceConsent: false,
     voiceConsentAt: ''
   },
 
-  onLoad() {
+  onLoad() {},
+
+  _initMedia() {
+    if (this._mediaReady) return;
+    this._mediaReady = true;
     this._rec = wx.getRecorderManager();
     this._rec.onStart(() => { this.setData({ recording: true, recSec: 0, recProgress: 0 }); this._startTimer(); });
     this._rec.onStop((res) => {
@@ -54,6 +59,7 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    if (this.data.consentGateVisible || !this.data.voiceConsent) return;
     if (!this.data.recording && !this.data.busy) this.loadSlots();
   },
 
@@ -136,13 +142,21 @@ Page({
 
   onName(e) { this.setData({ name: e.detail.value }); },
 
-  onVoiceConsentChange(e) {
-    const values = (e && e.detail && e.detail.value) || [];
-    const agreed = values.indexOf('agreed') >= 0;
+  acceptVoiceConsent() {
+    const acceptedAt = new Date().toISOString();
     this.setData({
-      voiceConsent: agreed,
-      voiceConsentAt: agreed ? new Date().toISOString() : '',
+      consentGateVisible: false,
+      voiceConsent: true,
+      voiceConsentAt: acceptedAt,
       err: ''
+    });
+    this._initMedia();
+    this.loadSlots();
+  },
+
+  declineVoiceConsent() {
+    wx.navigateBack({
+      fail: () => wx.switchTab({ url: '/pages/home/home' })
     });
   },
 
@@ -289,7 +303,7 @@ Page({
   },
 
   reclone() {
-    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, recProgress: 0, err: '', previewUrl: '', playing: false, voiceConsent: false, voiceConsentAt: '' });
+    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, recProgress: 0, err: '', previewUrl: '', playing: false });
   },
 
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); }
