@@ -1,6 +1,6 @@
 <view class="container legal-page">
   <view class="legal-title">{{title}}</view>
-  <view class="legal-date">生效日期：2026 年 7 月 17 日</view>
+  <view class="legal-date">生效日期：{{effectiveDate}}</view>
   <view wx:for="{{sections}}" wx:key="index" class="card legal-section">
     <view class="section-title">{{item[0]}}</view>
     <view class="section-body">{{item[1]}}</view>

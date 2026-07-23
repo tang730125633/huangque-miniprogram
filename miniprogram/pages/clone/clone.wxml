@@ -97,6 +97,20 @@
   </view>
 
   <view wx:if="{{stage==='clone'}}">
+    <view class="voice-consent-panel">
+      <view class="consent-title">声纹信息授权</view>
+      <view class="consent-copy">录音将用于提取声纹特征并创建你的专属音色。请确认录制的是本人声音，并在充分了解处理规则后单独授权。</view>
+      <view class="consent-action">
+        <checkbox-group bindchange="onVoiceConsentChange">
+          <label class="consent-check">
+            <checkbox value="agreed" checked="{{voiceConsent}}" color="#e24ba0"></checkbox>
+            <text>我已阅读并单独同意</text>
+          </label>
+        </checkbox-group>
+        <navigator class="consent-link" url="/pages/legal/legal?type=voiceprint">《声纹授权协议》</navigator>
+      </view>
+    </view>
+
     <view class="section">
       <view class="section-head">
         <view>
@@ -140,7 +154,7 @@
 
     <view wx:if="{{err}}" class="err-box">{{err}}</view>
     <view class="action-dock">
-      <view class="btn-primary {{(busy||recording||!hasSample)?'disabled':''}}" bindtap="submitClone">
+      <view class="btn-primary {{(busy||recording||!hasSample||!voiceConsent)?'disabled':''}}" bindtap="submitClone">
         {{busy ? '正在提交…' : '开始复刻'}}
       </view>
       <view class="action-note">预计 1–3 分钟，提交后请保持页面开启</view>
