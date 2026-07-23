@@ -17,22 +17,22 @@ const VALID_MODES = MODES.map((m) => m.key);
 
 // ===== 电影化身（cinematic）=====
 // 三种玩法（后端 CINEMATIC_MODES）：
-// - motion 单人动作模仿：正好 1 形象 + 1 参考视频，提示词后端写死，3 点/秒
+// - motion 单人动作模仿：正好 1 形象 + 1 参考视频，提示词后端写死，10 点/秒
 // - duo    双人动作模仿：正好 2 形象 + 1 参考视频，提示词后端写死，5 点/秒
-// - open   开放式生成：1~3 形象 + 自写提示词(≤2000字) + 可选参考视频/图，5 点/秒
+// - open   开放式生成：1~3 形象 + 自写提示词(≤2000字) + 可选参考视频/图，10 点/秒
 // 2026-07-13 三次调整：双人动作模仿(duo)去掉——强哥明确该玩法上游无法生成。
 // 仅从 UI 列表摘除；下方 duo 相关的 rate/avatars/分支为死代码，无害，留着不动。
 const CINE_MODES = [
-  { k: 'motion', name: '动作模仿', desc: '1 形象照着演 · 3点/秒' },
-  { k: 'open', name: '开放式生成', desc: '自写提示词 · 5点/秒' }
+  { k: 'motion', name: '动作模仿', desc: '1 形象照着演 · 10点/秒' },
+  { k: 'open', name: '开放式生成', desc: '自写提示词 · 10点/秒' }
 ];
-const CINE_RATES = { motion: 3, duo: 5, open: 5 }; // 后端 CINEMATIC_RATE_PER_SEC
+const CINE_RATES = { motion: 10, duo: 30, open: 10 }; // 后端 CINEMATIC_RATE_PER_SEC
 const CINE_NEED_AVATARS = { motion: 1, duo: 2 };   // 后端 CINEMATIC_MODE_AVATARS（「正好 N 个」）
 const CINE_MAX_AVATARS = 3;                        // open 上限（后端 CINEMATIC_MAX_AVATARS）
 const CINE_PROMPT_MAX = 2000;                      // 后端 CINEMATIC_PROMPT_MAX
 const CINE_MAX_REF_VIDEOS = 3;                     // 后端 CINEMATIC_MAX_MEDIA_VIDEOS（仅 open 可多个）
 const CINE_MAX_MEDIA_IMAGES = 9;                   // 后端：形象数+参考图 ≤ 9
-const AVATAR_COST = 5;                     // 建形象 5 点（后端 AVATAR_COST，失败自动退点）
+const AVATAR_COST = 2;                     // 建形象 2 点（后端 AVATAR_COST，失败自动退点）
 const CINE_DURATIONS = [                   // motion/duo：后端仅支持 自适应 / 10 / 15
   { v: 'auto', name: '自适应' }, { v: 10, name: '10 秒' }, { v: 15, name: '15 秒' }
 ];
@@ -50,20 +50,17 @@ const ENGINES = [
 ];
 // 价格集中配置（后端返回 points_left/cost 为准，不散落魔法数字）
 const ENGINE_COST = { micro: 30, omni: 30 }; // 豆姐/欧米固定 30；果肉走 xAI 动态计价见 _grokEstimate
-// 果肉官方线（xAI）：模型 × 分辨率 × 时长动态计价，公式与后端 points.py 逐字一致：
-// ceil((duration × per_second + image_input) × USD_CNY × BUFFER × 10)，1点=0.1元
+// 果肉官方线：模型 × 分辨率 × 时长动态计价；参考图不额外收点。
 const GROK_MODELS = [
   { k: 'grok-imagine-video', name: '标准 1.0', desc: '480p/720p' },
   { k: 'grok-imagine-video-1.5', name: '高清 1.5', desc: '最高 1080p' }
 ];
 const GROK_PRICE = {
-  'grok-imagine-video': { '480p': 0.05, '720p': 0.07 },
-  'grok-imagine-video-1.5': { '480p': 0.08, '720p': 0.14, '1080p': 0.25 }
+  'grok-imagine-video': { '480p': 10, '720p': 12 },
+  'grok-imagine-video-1.5': { '480p': 15, '720p': 25, '1080p': 44 }
 };
 const GROK_DURATIONS = [5, 8, 10, 12, 15];  // 后端 1~15 秒任意整数，取常用档
-const XAI_USD_CNY = 7.3;   // 与后端 env 默认一致，仅展示用，实扣以返回 cost 为准
-const XAI_BUFFER = 1.2;
-const VIDEO_COST = 20;       // 口播/动作：后端 COST['video']=VIDEO_COST(env,默认20)，以返回 cost 为准
+const VIDEO_COST = 30;       // 口播最低一档：1~30 秒 30 点
 const VIDEO_BATCH_MAX = 5;   // 口播批量：一段文案 × 最多 5 个形象（后端 VIDEO_BATCH_MAX）
 const TRYON_COST_SINGLE = 25; // 换装/换背景单段：后端 cost_of('tryon') 单段25/两段40，以返回 cost 为准
 
@@ -82,9 +79,9 @@ const TRYON_TYPES = [
 ];
 
 const HINTS = {
-  cinematic: '动作模仿 3 点/秒，开放式 5 点/秒 · 失败自动退点',
-  generate: '文生 / 图生视频，耗时约 1-6 分钟 · 点数以服务端返回为准，失败任务按服务端规则处理',
-  talking: '数字化 IP，耗时约 3-9 分钟 · 批量最多 5 个形象共用一段文案 · 点数以服务端返回为准',
+  cinematic: '动作模仿、开放式生成均为 10 点/秒 · 失败自动退点',
+  generate: 'AI 视频价格随模型、清晰度与时长变化 · 失败自动退点',
+  talking: '数字化 IP 30 点/30 秒 · 不足 30 秒按 30 秒计 · 失败自动退点',
   tryon: '换装 / 换背景，耗时约数分钟 · 点数以服务端返回为准，失败任务按服务端规则处理'
 };
 
@@ -229,11 +226,12 @@ Page({
     const m = MODES.find((x) => x.key === mode) || MODES[0];
     const cost = mode === 'cinematic' ? 0
       : (mode === 'generate' ? this._genCost() : (mode === 'tryon' ? TRYON_COST_SINGLE : VIDEO_COST));
+    const defaultHint = mode === 'generate' ? this._genPricingHint() : (HINTS[m.key] || '');
     const ratios = mode === 'cinematic' ? RATIOS_CINE : (mode === 'generate' ? RATIOS_GEN : RATIOS_VIDEO);
     this.setData({
       mode: m.key, modeReady: m.ready, modeName: m.name,
       ratios, ratio: '9:16',
-      busy: false, note: '', noteColor: C_MUTED, defaultHint: HINTS[m.key] || '', videoUrl: '', cost,
+      busy: false, note: '', noteColor: C_MUTED, defaultHint, videoUrl: '', cost,
       // 清各模式上传/输入，避免跨模式串数据
       prompt: '', promptUndo: '', canUndoPrompt: false, refImgs: [], refPreviews: [],
       cineVideo: '', cineVideoName: '', cineVideoDur: 0,
@@ -300,8 +298,26 @@ Page({
   _grokEstimate(model, res, dur, hasRefs) {
     const perSec = (GROK_PRICE[model] || {})[res];
     if (!perSec) return 0;
-    const imageInput = hasRefs ? (model === 'grok-imagine-video-1.5' ? 0.01 : 0.002) : 0;
-    return Math.max(1, Math.ceil((dur * perSec + imageInput) * XAI_USD_CNY * XAI_BUFFER * 10));
+    return Math.max(1, dur * perSec);
+  },
+  _genPricingHint() {
+    const d = this.data;
+    if (d.engine !== 'grok') {
+      return 'AI 视频 ' + (ENGINE_COST[d.engine] || 30) + ' 点/次 · 失败自动退点';
+    }
+    const perSec = (GROK_PRICE[d.grokModel] || {})[d.grokRes] || 0;
+    const modelName = d.grokModel === 'grok-imagine-video-1.5' ? '高清 1.5' : '标准 1.0';
+    const total = this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0);
+    return 'AI 视频 ' + modelName + ' · ' + d.grokRes + ' · '
+      + perSec + ' 点/秒 × ' + d.grokDur + ' 秒 = ' + total + ' 点 · 失败自动退点';
+  },
+  _syncGenPricing() {
+    this.setData({
+      cost: this._genCost(),
+      defaultHint: this._genPricingHint(),
+      note: '',
+      noteColor: C_MUTED
+    });
   },
   _genCost() {
     const d = this.data;
@@ -314,7 +330,7 @@ Page({
     const patch = { engine, engineRef: eng.ref };
     if (!eng.ref) { this._b64.refImgs = []; patch.refPreviews = []; }
     this.setData(patch);
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   selectGrokModel(e) {
     const model = e.currentTarget.dataset.k;
@@ -323,15 +339,15 @@ Page({
     // 1080p 只有 1.5 支持，切回 1.0 时收敛到 720p，避免 400
     if (resList.indexOf(this.data.grokRes) < 0) patch.grokRes = '720p';
     this.setData(patch);
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   selectGrokRes(e) {
     this.setData({ grokRes: e.currentTarget.dataset.v });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   selectGrokDur(e) {
     this.setData({ grokDur: +e.currentTarget.dataset.v });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   onPrompt(e) { this.setData({ prompt: e.detail.value }); },
   selectVideoPromptTemplate(e) { this.setData({ videoPromptTemplateKey: e.currentTarget.dataset.k }); },
@@ -376,7 +392,7 @@ Page({
             if (this.data.refPreviews.length >= GEN_MAX_REF) return;
             this._b64.refImgs.push(url); // base64 存实例属性，与 refPreviews 平行
             this.setData({ refPreviews: this.data.refPreviews.concat([f.tempFilePath]) });
-            this.setData({ cost: this._genCost() }); // 参考图影响果肉 image_input 计价
+            this._syncGenPricing();
           });
         });
       }
@@ -387,16 +403,22 @@ Page({
     this._b64.refImgs.splice(i, 1);
     const prevs = this.data.refPreviews.slice(); prevs.splice(i, 1);
     this.setData({ refPreviews: prevs });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   clearRef() {
     this._b64.refImgs = [];
     this.setData({ refPreviews: [] });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
 
   // ===== 果肉官方视频编辑（xAI）=====
-  selectGrokOp(e) { this.setData({ grokOp: e.currentTarget.dataset.v }); },
+  selectGrokOp(e) {
+    if (e.currentTarget.dataset.v === 'edit') {
+      wx.showToast({ title: '果肉视频编辑维护中', icon: 'none' });
+      return;
+    }
+    this.setData({ grokOp: 'generate' });
+  },
   chooseEditVideo() {
     wx.chooseMedia({
       count: 1, mediaType: ['video'], sourceType: ['album'], maxDuration: 9,
@@ -467,7 +489,15 @@ Page({
   selectTalkMode(e) { this.setData({ talkMode: e.currentTarget.dataset.k, note: '' }); },
   chooseTalkImg() { this._chooseImage('image/jpeg', (url, prev) => { this._b64.talkImg = url; this.setData({ talkImgPreview: prev }); }); },
   clearTalkImg() { this._b64.talkImg = ''; this.setData({ talkImgPreview: '' }); },
-  onTalkText(e) { this.setData({ talkText: e.detail.value }); },
+  onTalkText(e) {
+    const text = e.detail.value || '';
+    this.setData({ talkText: text, cost: this._talkEstimate(text) });
+  },
+
+  _talkEstimate(text) {
+    const seconds = Math.max(1, String(text || '').trim().length / 4);
+    return Math.max(30, Math.ceil(seconds / 30) * 30);
+  },
   selectVoice(e) {
     const key = e.currentTarget.dataset.k;
     const v = this.data.voices.find((x) => x.key === key);
@@ -570,7 +600,7 @@ Page({
     const text = (this.data.talkText || '').trim();
     if (!text) { this.setNote('请先输入口播文案', C_ERR); return; }
     if (!this.data.voiceKey) { this.setNote('请先选择音色', C_ERR); return; }
-    const need = VIDEO_COST * items.length;
+    const need = this._talkEstimate(text) * items.length;
     if (this.data.points !== null && this.data.points < need) {
       this.setNote('点数不足（约需 ' + need + ' 点，当前 ' + this.data.points + ' 点）', C_ERR);
       return;
@@ -878,11 +908,11 @@ Page({
     this.setData({ cineEst: this._cineEstimate() });
   },
 
-  // 预估点数：秒数 × 玩法单价（motion 3 / duo 5 / open 5）；自适应跟随第一个参考视频，
+  // 预估点数：秒数 × 玩法单价；自适应跟随第一个参考视频，
   // 无参考视频（open 纯提示词）回落 10 秒。实扣以服务端为准。
   _cineEstimate() {
     const mode = this.data.cineMode;
-    const rate = CINE_RATES[mode] || 5;
+    const rate = CINE_RATES[mode] || 10;
     let refDur = 0;
     if (mode === 'open') refDur = this.data.cineRefVideos.length ? this.data.cineRefVideos[0].dur : 0;
     else refDur = this.data.cineVideoDur;

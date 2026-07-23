@@ -33,7 +33,7 @@
 
     <view class="card">
       <view class="label">我的形象
-        <text class="muted small">{{cineMode==='motion' ? '（选 1 个 · 新建 5 点）' : (cineMode==='duo' ? '（正好选 2 个）' : '（选 1~3 个）')}}</text>
+        <text class="muted small">{{cineMode==='motion' ? '（选 1 个）' : (cineMode==='duo' ? '（正好选 2 个）' : '（选 1~3 个）')}}</text>
       </view>
       <view class="avatar-grid">
         <view wx:for="{{avatars}}" wx:key="id" class="avatar-cell {{avatarSelMap[item.id]?'on':''}}"
@@ -110,7 +110,7 @@
     </view>
     <view wx:if="{{cineMode==='open'}}" class="card">
       <view class="label">时长
-        <text class="muted small">（{{cineMode==='motion' ? '3' : '5'}} 点/秒 · 自适应跟随参考视频{{cineMode==='open' ? '，无参考视频按 10 秒' : ''}}）</text>
+        <text class="muted small">（10 点/秒 · 自适应跟随参考视频{{cineMode==='open' ? '，无参考视频按 10 秒' : ''}}）</text>
       </view>
       <view class="ratio-grid">
         <view wx:for="{{cineDurs}}" wx:key="v" class="chip {{cineDur===item.v?'active':''}}" data-v="{{item.v}}" bindtap="selectCineDur">{{item.name}}</view>
@@ -124,6 +124,7 @@
     <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitCinematic">
       {{busy ? '生成中…' : '生成电影化身视频（约 ' + cineEst + ' 点）'}}
     </view>
+    <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
   </block>
 
   <!-- ===== 模式 A：AI 视频生成 ===== -->
@@ -143,7 +144,7 @@
       <view class="label">操作方式</view>
       <view class="ratio-grid">
         <view class="chip {{grokOp==='generate'?'active':''}}" data-v="generate" bindtap="selectGrokOp">生成新视频</view>
-        <view class="chip {{grokOp==='edit'?'active':''}}" data-v="edit" bindtap="selectGrokOp">编辑已有视频</view>
+        <view class="chip" data-v="edit" bindtap="selectGrokOp">编辑维护中</view>
       </view>
     </view>
 
@@ -235,19 +236,12 @@
     <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitGenerate">
       {{busy ? '生成中…' : (engine==='grok' && grokOp==='edit' ? '编辑视频（' + (editCost || '上传后计价') + ' 点）' : '立即生成（' + cost + ' 点）')}}
     </view>
+    <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
     <view class="ai-disclosure">内容由人工智能生成，请遵守法律法规并自行核验后使用</view>
   </block>
 
   <!-- ===== 模式 B：数字化 IP ===== -->
   <block wx:elif="{{mode==='talking'}}">
-    <view class="card">
-      <view class="label">出片方式</view>
-      <view class="seg">
-        <view class="seg-item {{!talkBatch?'on':''}}" data-v="single" bindtap="toggleTalkBatch">单条</view>
-        <view class="seg-item {{talkBatch?'on':''}}" data-v="batch" bindtap="toggleTalkBatch">批量（一段文案 × 多形象）</view>
-      </view>
-    </view>
-
     <!-- 单条：上传一张照片 -->
     <view wx:if="{{!talkBatch}}" class="card">
       <view class="label">人物形象 <text class="muted small">（上传一张正脸照片）</text></view>
@@ -344,8 +338,9 @@
     </view>
 
     <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitTalking">
-      {{busy ? '生成中…' : (talkBatch ? '批量生成 ' + batchItems.length + ' 条（约 ' + batchItems.length * 20 + ' 点）' : '生成口播视频（' + cost + ' 点）')}}
+      {{busy ? '生成中…' : (talkBatch ? '批量生成 ' + batchItems.length + ' 条（约 ' + batchItems.length * cost + ' 点）' : '生成口播视频（' + cost + ' 点）')}}
     </view>
+    <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
 
     <!-- 批量任务进度 -->
     <view wx:if="{{batchJobs.length}}" class="card">
@@ -431,10 +426,8 @@
     <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitTryon">
       {{busy ? '生成中…' : '生成换装视频（' + cost + ' 点）'}}
     </view>
+    <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
   </block>
-
-  <!-- 共享：状态说明 -->
-  <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
 
   <!-- 共享：生成结果 -->
   <view wx:if="{{videoUrl}}" class="card">

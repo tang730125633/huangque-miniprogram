@@ -143,6 +143,10 @@
 }
 .pc-title { font-size: 40rpx; font-weight: 700; color: #fff; }
 .pc-sub { font-size: 24rpx; color: rgba(255,255,255,0.86); margin-top: 14rpx; line-height: 1.45; }
+.pc-price {
+  display: inline-block; margin-top: 14rpx; padding: 6rpx 14rpx; border-radius: 18rpx;
+  background: rgba(0,0,0,.2); color: #fff; font-size: 22rpx; font-weight: 600;
+}
 .pc-icon-slot {
   position: absolute; left: 30rpx; bottom: 30rpx;
   width: 132rpx; height: 132rpx; border-radius: 50%;
@@ -179,6 +183,7 @@
   position: absolute; left: 26rpx; bottom: 0; width: 150rpx; height: 190rpx;
   border-radius: 20rpx;
 }
+.dh-copy { display: flex; flex-direction: column; gap: 8rpx; }
 .dh-title { font-size: 32rpx; font-weight: 600; color: #fff; }
 .dh-cta { font-size: 25rpx; color: rgba(255,255,255,0.7); }
 

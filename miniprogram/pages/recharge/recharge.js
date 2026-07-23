@@ -28,9 +28,9 @@ function requestPayment(params) {
 }
 
 const PACKAGES = [
-  { id: 'points_1000', title: '1000 点', price_yuan: '99.00', amount: 99, points: 1000 },
-  { id: 'points_2000', title: '2000 点', price_yuan: '199.00', amount: 199, points: 2000 },
-  { id: 'points_5000', title: '5000 点', price_yuan: '499.00', amount: 499, points: 5000, recommended: true }
+  { id: 'points_1000', title: '1000 点', price_yuan: '100.00', amount: 100, points: 1000 },
+  { id: 'points_2000', title: '2000 点', price_yuan: '200.00', amount: 200, points: 2000 },
+  { id: 'points_5000', title: '5000 点', price_yuan: '500.00', amount: 500, points: 5000, recommended: true }
 ];
 
 const TEST_PACKAGE = {

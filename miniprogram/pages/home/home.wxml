@@ -30,7 +30,8 @@
     <view class="mosaic">
       <view class="primary-card" bindtap="onTapPrimaryCreation">
         <view class="pc-title">视频创作</view>
-        <view class="pc-sub">文生视频、图生视频与数字化 IP</view>
+        <view class="pc-sub">文生视频与图生视频</view>
+        <view class="pc-price">10 点/秒起</view>
         <view class="pc-icon-slot">
           <image class="pc-icon" src="{{assets.creativeSymbol}}" mode="aspectFit"></image>
         </view>
@@ -58,7 +59,9 @@
     <!-- 数字化 IP 入口 -->
     <view class="dh-entry" bindtap="onTapDigitalHuman">
       <image class="dh-avatar" src="{{assets.digitalHumanAvatar}}" mode="aspectFill"></image>
-      <text class="dh-title">数字化 IP</text>
+      <view class="dh-copy">
+        <text class="dh-title">数字化 IP</text>
+      </view>
       <text class="dh-cta">立即制作 ›</text>
     </view>
 
