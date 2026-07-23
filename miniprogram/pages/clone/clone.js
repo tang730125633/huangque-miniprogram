@@ -24,7 +24,8 @@ Page({
     audioFormat: 'mp3',
     trainSec: 0,
     previewUrl: '',
-    playing: false
+    playing: false,
+    voiceConsent: false
   },
 
   onLoad() {
@@ -133,6 +134,11 @@ Page({
 
   onName(e) { this.setData({ name: e.detail.value }); },
 
+  onVoiceConsentChange(e) {
+    const values = (e && e.detail && e.detail.value) || [];
+    this.setData({ voiceConsent: values.indexOf('agreed') >= 0, err: '' });
+  },
+
   buySlot() {
     if (this.data.busy || !this.data.canBuySlot) return;
     wx.showModal({
@@ -168,6 +174,11 @@ Page({
   },
 
   toggleRecord() {
+    if (!this.data.voiceConsent) {
+      this.setData({ err: '请先阅读并单独同意《声纹授权协议》' });
+      wx.showToast({ title: '请先同意声纹授权协议', icon: 'none' });
+      return;
+    }
     if (this.data.recording) {
       this._rec.stop();
     } else {
@@ -208,6 +219,10 @@ Page({
 
   submitClone() {
     if (this.data.busy || this.data.recording || !this.data.hasSample) return;
+    if (!this.data.voiceConsent) {
+      this.setData({ err: '请先阅读并单独同意《声纹授权协议》' });
+      return;
+    }
     if (!this.data.slotId) { this.setData({ err: '缺少音色槽位，请先开通名额' }); return; }
     const name = (this.data.name || '我的声音').trim();
     this.setData({ busy: true, err: '' });
@@ -259,7 +274,7 @@ Page({
   },
 
   reclone() {
-    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, recProgress: 0, err: '', previewUrl: '', playing: false });
+    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, recProgress: 0, err: '', previewUrl: '', playing: false, voiceConsent: false });
   },
 
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); }
