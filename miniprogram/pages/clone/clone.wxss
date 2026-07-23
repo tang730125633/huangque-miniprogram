@@ -1,6 +1,50 @@
 .clone-page { padding-bottom: calc(48rpx + env(safe-area-inset-bottom)); }
 .ph { color: #6f6980; }
 
+.consent-gate-mask {
+  position: fixed; inset: 0; z-index: 1000; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  padding: 48rpx 34rpx calc(48rpx + env(safe-area-inset-bottom));
+  background: rgba(5,3,12,.94);
+}
+.consent-gate-dialog {
+  width: 100%; max-width: 660rpx; box-sizing: border-box; padding: 38rpx 32rpx 30rpx;
+  border: 1rpx solid rgba(226,75,160,.38); border-radius: 18rpx;
+  background: #171120; box-shadow: 0 28rpx 80rpx rgba(0,0,0,.45);
+}
+.consent-gate-icon {
+  width: 78rpx; height: 78rpx; margin: 0 auto; border-radius: 20rpx;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 32rpx; font-weight: 700;
+  background: #b93f91;
+}
+.consent-gate-title { margin-top: 24rpx; text-align: center; color: var(--text); font-size: 32rpx; font-weight: 700; }
+.consent-gate-copy { margin-top: 18rpx; color: #c9c0d4; font-size: 23rpx; line-height: 1.75; }
+.consent-gate-link {
+  display: block; margin-top: 18rpx; text-align: center;
+  color: var(--primary-ink); font-size: 24rpx; text-decoration: underline;
+}
+.consent-gate-notice {
+  margin-top: 20rpx; padding: 18rpx; border-radius: 12rpx;
+  color: var(--text-muted); font-size: 20rpx; line-height: 1.65;
+  background: rgba(255,255,255,.035); border: 1rpx solid var(--line);
+}
+.consent-gate-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin-top: 28rpx; }
+.consent-gate-cancel,
+.consent-gate-confirm {
+  min-height: 82rpx; border-radius: 12rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24rpx; font-weight: 600;
+}
+.consent-gate-cancel { color: #c9c0d4; background: var(--surface); border: 1rpx solid var(--line); }
+.consent-gate-confirm { color: #fff; background: #b93f91; border: 1rpx solid #d958ac; }
+.voice-consent-status {
+  min-height: 64rpx; margin-bottom: 20rpx; padding: 0 18rpx;
+  display: flex; align-items: center; justify-content: space-between; gap: 18rpx;
+  color: #c9c0d4; font-size: 20rpx; border-radius: 12rpx;
+  background: rgba(43,213,118,.06); border: 1rpx solid rgba(43,213,118,.2);
+}
+
 .page-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 24rpx;
   padding: 8rpx 2rpx 28rpx;
