@@ -45,7 +45,7 @@
   <view wx:if="{{stage==='training'}}" class="card center">
     <image class="state-ico spin-pulse" src="../../assets/icons/em_mic.svg"></image>
     <view class="train-title">正在克隆你的声音…</view>
-    <view class="muted small">{{trainSec}}s · 豆包 MegaTTS 复刻中，请耐心等待</view>
+    <view class="muted small">{{trainSec}}s · AI 音色复刻中，请耐心等待</view>
   </view>
 
   <!-- 完成 -->
