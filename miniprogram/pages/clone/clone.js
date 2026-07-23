@@ -58,7 +58,7 @@ Page({
   },
 
   loadSlots() {
-    api.request('/api/gen/audio/slots', { method: 'GET' }).then((res) => {
+    api.request('/api/gen/audio/slots', { method: 'GET', timeout: 12000 }).then((res) => {
       const d = res.data || {};
       const rawSlots = d.items || d.slots || (Array.isArray(d) ? d : []);
       const slots = rawSlots.map((slot, index) => this._formatSlot(slot, index));
