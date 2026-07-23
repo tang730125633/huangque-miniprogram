@@ -2,6 +2,7 @@ const api = require('../../utils/api.js');
 
 const CLONE_POLL_INTERVAL = 5000;
 const CLONE_POLL_MAX = 60; // 60 * 5s = 5 min
+const VOICE_CONSENT_VERSION = '2026-07-23-v1';
 
 Page({
   data: {
@@ -25,7 +26,8 @@ Page({
     trainSec: 0,
     previewUrl: '',
     playing: false,
-    voiceConsent: false
+    voiceConsent: false,
+    voiceConsentAt: ''
   },
 
   onLoad() {
@@ -136,7 +138,12 @@ Page({
 
   onVoiceConsentChange(e) {
     const values = (e && e.detail && e.detail.value) || [];
-    this.setData({ voiceConsent: values.indexOf('agreed') >= 0, err: '' });
+    const agreed = values.indexOf('agreed') >= 0;
+    this.setData({
+      voiceConsent: agreed,
+      voiceConsentAt: agreed ? new Date().toISOString() : '',
+      err: ''
+    });
   },
 
   buySlot() {
@@ -229,7 +236,15 @@ Page({
 
     api.request('/api/gen/audio/clone-vip', {
       method: 'POST', timeout: 60000,
-      data: { slot_id: this.data.slotId, audio: this.data.audioB64, audio_format: this.data.audioFormat, name: name }
+      data: {
+        slot_id: this.data.slotId,
+        audio: this.data.audioB64,
+        audio_format: this.data.audioFormat,
+        name: name,
+        voice_consent: true,
+        voice_consent_version: VOICE_CONSENT_VERSION,
+        voice_consent_at: this.data.voiceConsentAt
+      }
     }).then((res) => {
       this.setData({ busy: false });
       const d = res.data || {};
@@ -274,7 +289,7 @@ Page({
   },
 
   reclone() {
-    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, recProgress: 0, err: '', previewUrl: '', playing: false, voiceConsent: false });
+    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, recProgress: 0, err: '', previewUrl: '', playing: false, voiceConsent: false, voiceConsentAt: '' });
   },
 
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); }

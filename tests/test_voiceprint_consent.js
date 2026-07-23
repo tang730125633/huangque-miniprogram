@@ -18,12 +18,18 @@ assert(legal.includes('本人的声音'));
 
 assert(page.includes('bindchange="onVoiceConsentChange"'));
 assert(page.includes('url="/pages/legal/legal?type=voiceprint"'));
-assert(page.includes('我已阅读并单独同意'));
+assert(page.includes('我已阅读并单独同意《声纹授权协议》'));
 assert(page.includes('!voiceConsent'));
+assert(page.includes('stage!==\'loading\''));
+assert(page.indexOf('class="voice-consent-panel"') < page.indexOf('class="voice-library"'));
 
 assert(source.includes('voiceConsent: false'));
+assert(source.includes("const VOICE_CONSENT_VERSION = '2026-07-23-v1'"));
 assert(source.includes('onVoiceConsentChange'));
 assert(source.includes('if (!this.data.voiceConsent)'));
 assert(source.includes('请先阅读并单独同意《声纹授权协议》'));
+assert(source.includes('voice_consent: true'));
+assert(source.includes('voice_consent_version: VOICE_CONSENT_VERSION'));
+assert(source.includes('voice_consent_at: this.data.voiceConsentAt'));
 
 console.log('voiceprint consent tests passed');
