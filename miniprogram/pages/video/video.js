@@ -80,8 +80,8 @@ const TRYON_TYPES = [
 
 const HINTS = {
   cinematic: '动作模仿、开放式生成均为 10 点/秒 · 失败自动退点',
-  generate: '文生 / 图生视频，耗时约 1-6 分钟 · 点数以服务端返回为准，失败任务按服务端规则处理',
-  talking: '数字化 IP，耗时约 3-9 分钟 · 批量最多 5 个形象共用一段文案 · 点数以服务端返回为准',
+  generate: 'AI 视频价格随模型、清晰度与时长变化 · 失败自动退点',
+  talking: '数字化 IP 30 点/30 秒 · 不足 30 秒按 30 秒计 · 失败自动退点',
   tryon: '换装 / 换背景，耗时约数分钟 · 点数以服务端返回为准，失败任务按服务端规则处理'
 };
 
@@ -226,11 +226,12 @@ Page({
     const m = MODES.find((x) => x.key === mode) || MODES[0];
     const cost = mode === 'cinematic' ? 0
       : (mode === 'generate' ? this._genCost() : (mode === 'tryon' ? TRYON_COST_SINGLE : VIDEO_COST));
+    const defaultHint = mode === 'generate' ? this._genPricingHint() : (HINTS[m.key] || '');
     const ratios = mode === 'cinematic' ? RATIOS_CINE : (mode === 'generate' ? RATIOS_GEN : RATIOS_VIDEO);
     this.setData({
       mode: m.key, modeReady: m.ready, modeName: m.name,
       ratios, ratio: '9:16',
-      busy: false, note: '', noteColor: C_MUTED, defaultHint: HINTS[m.key] || '', videoUrl: '', cost,
+      busy: false, note: '', noteColor: C_MUTED, defaultHint, videoUrl: '', cost,
       // 清各模式上传/输入，避免跨模式串数据
       prompt: '', promptUndo: '', canUndoPrompt: false, refImgs: [], refPreviews: [],
       cineVideo: '', cineVideoName: '', cineVideoDur: 0,
@@ -299,6 +300,25 @@ Page({
     if (!perSec) return 0;
     return Math.max(1, dur * perSec);
   },
+  _genPricingHint() {
+    const d = this.data;
+    if (d.engine !== 'grok') {
+      return 'AI 视频 ' + (ENGINE_COST[d.engine] || 30) + ' 点/次 · 失败自动退点';
+    }
+    const perSec = (GROK_PRICE[d.grokModel] || {})[d.grokRes] || 0;
+    const modelName = d.grokModel === 'grok-imagine-video-1.5' ? '高清 1.5' : '标准 1.0';
+    const total = this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0);
+    return 'AI 视频 ' + modelName + ' · ' + d.grokRes + ' · '
+      + perSec + ' 点/秒 × ' + d.grokDur + ' 秒 = ' + total + ' 点 · 失败自动退点';
+  },
+  _syncGenPricing() {
+    this.setData({
+      cost: this._genCost(),
+      defaultHint: this._genPricingHint(),
+      note: '',
+      noteColor: C_MUTED
+    });
+  },
   _genCost() {
     const d = this.data;
     if (d.engine !== 'grok') return ENGINE_COST[d.engine] || 30;
@@ -310,7 +330,7 @@ Page({
     const patch = { engine, engineRef: eng.ref };
     if (!eng.ref) { this._b64.refImgs = []; patch.refPreviews = []; }
     this.setData(patch);
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   selectGrokModel(e) {
     const model = e.currentTarget.dataset.k;
@@ -319,15 +339,15 @@ Page({
     // 1080p 只有 1.5 支持，切回 1.0 时收敛到 720p，避免 400
     if (resList.indexOf(this.data.grokRes) < 0) patch.grokRes = '720p';
     this.setData(patch);
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   selectGrokRes(e) {
     this.setData({ grokRes: e.currentTarget.dataset.v });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   selectGrokDur(e) {
     this.setData({ grokDur: +e.currentTarget.dataset.v });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   onPrompt(e) { this.setData({ prompt: e.detail.value }); },
   selectVideoPromptTemplate(e) { this.setData({ videoPromptTemplateKey: e.currentTarget.dataset.k }); },
@@ -372,7 +392,7 @@ Page({
             if (this.data.refPreviews.length >= GEN_MAX_REF) return;
             this._b64.refImgs.push(url); // base64 存实例属性，与 refPreviews 平行
             this.setData({ refPreviews: this.data.refPreviews.concat([f.tempFilePath]) });
-            this.setData({ cost: this._genCost() }); // 参考图影响果肉 image_input 计价
+            this._syncGenPricing();
           });
         });
       }
@@ -383,12 +403,12 @@ Page({
     this._b64.refImgs.splice(i, 1);
     const prevs = this.data.refPreviews.slice(); prevs.splice(i, 1);
     this.setData({ refPreviews: prevs });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
   clearRef() {
     this._b64.refImgs = [];
     this.setData({ refPreviews: [] });
-    this.setData({ cost: this._genCost() });
+    this._syncGenPricing();
   },
 
   // ===== 果肉官方视频编辑（xAI）=====
