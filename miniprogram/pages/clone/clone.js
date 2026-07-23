@@ -15,6 +15,7 @@ Page({
     recording: false,
     hasSample: false,
     recSec: 0,
+    recProgress: 0,
     audioB64: '',
     audioFormat: 'mp3',
     trainSec: 0,
@@ -24,7 +25,7 @@ Page({
 
   onLoad() {
     this._rec = wx.getRecorderManager();
-    this._rec.onStart(() => { this.setData({ recording: true, recSec: 0 }); this._startTimer(); });
+    this._rec.onStart(() => { this.setData({ recording: true, recSec: 0, recProgress: 0 }); this._startTimer(); });
     this._rec.onStop((res) => {
       this._stopTimer();
       this.setData({ recording: false });
@@ -99,14 +100,17 @@ Page({
     this._stopTimer();
     this._timer = setInterval(() => {
       const s = this.data.recSec + 1;
-      this.setData({ recSec: s });
+      this.setData({ recSec: s, recProgress: Math.min(100, Math.round(s / 60 * 100)) });
       if (s >= 60) this._rec.stop();
     }, 1000);
   },
   _stopTimer() { if (this._timer) { clearInterval(this._timer); this._timer = null; } },
 
   _readSample(filePath) {
-    if (this.data.recSec < 3) { this.setData({ err: '录音太短，请录制至少 5 秒' }); return; }
+    if (this.data.recSec < 10) {
+      this.setData({ err: '录音太短，请录制至少 10 秒', hasSample: false, audioB64: '' });
+      return;
+    }
     this._sampleFile = filePath;
     wx.getFileSystemManager().readFile({
       filePath, encoding: 'base64',
@@ -123,7 +127,7 @@ Page({
   },
 
   submitClone() {
-    if (this.data.busy || !this.data.hasSample) return;
+    if (this.data.busy || this.data.recording || !this.data.hasSample) return;
     if (!this.data.slotId) { this.setData({ err: '缺少音色槽位，请先开通名额' }); return; }
     const name = (this.data.name || '我的声音').trim();
     this.setData({ busy: true, err: '' });
@@ -171,7 +175,7 @@ Page({
   },
 
   reclone() {
-    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, err: '', previewUrl: '', playing: false });
+    this.setData({ stage: 'clone', hasSample: false, audioB64: '', recSec: 0, recProgress: 0, err: '', previewUrl: '', playing: false });
   },
 
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); }

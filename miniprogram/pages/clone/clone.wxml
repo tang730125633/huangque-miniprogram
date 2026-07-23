@@ -1,69 +1,148 @@
-<view class="container">
-
-  <!-- 加载中 -->
-  <view wx:if="{{stage==='loading'}}" class="card center muted">加载中…</view>
-
-  <!-- 无槽位：点数购买 -->
-  <view wx:if="{{stage==='no-slot'}}" class="card">
-    <view class="label">开通声音克隆</view>
-    <view class="muted small tip">你还没有克隆名额。用点数开通一个专属音色槽位，即可上传样音克隆你自己的声音。</view>
-    <view class="muted small tip" wx:if="{{slotCost}}">开通需 {{slotCost}} 点{{points === null ? '' : ' · 当前点数 ' + points}}</view>
-    <view wx:if="{{err}}" class="err">{{err}}</view>
-    <view class="btn-primary {{busy?'disabled':''}}" bindtap="buySlot">{{busy ? '开通中…' : (slotCost ? '消耗 ' + slotCost + ' 点开通' : '开通名额')}}</view>
+<view class="container clone-page">
+  <view class="page-head">
+    <view>
+      <view class="page-title">复刻我的声音</view>
+      <view class="page-sub">录制一段清晰人声，生成可用于配音和数字化 IP 的个人音色</view>
+    </view>
+    <image class="head-icon" src="../../assets/icons/mic.svg"></image>
   </view>
 
-  <!-- 有槽位：录音克隆 -->
-  <view wx:if="{{stage==='clone'}}">
-    <view class="card">
-      <view class="label">录制样音 <text class="muted small">（10-60 秒，安静环境，正常语速朗读一段）</text></view>
+  <view wx:if="{{stage!=='loading' && stage!=='no-slot'}}" class="steps">
+    <view class="step {{stage==='clone'?'active':'done'}}">
+      <view class="step-dot">{{stage==='clone'?'1':'✓'}}</view>
+      <text>录制样音</text>
+    </view>
+    <view class="step-line {{stage!=='clone'?'done':''}}"></view>
+    <view class="step {{stage==='training'?'active':(stage==='ready'?'done':'')}}">
+      <view class="step-dot">{{stage==='ready'?'✓':'2'}}</view>
+      <text>AI 复刻</text>
+    </view>
+    <view class="step-line {{stage==='ready'?'done':''}}"></view>
+    <view class="step {{stage==='ready'?'active':''}}">
+      <view class="step-dot">3</view>
+      <text>开始使用</text>
+    </view>
+  </view>
 
-      <view class="rec-box">
-        <view class="rec-btn {{recording?'on':''}}" bindtap="toggleRecord">
-          <image class="rec-ico-img" src="{{recording ? '../../assets/icons/stop_red.svg' : '../../assets/icons/rec_red.svg'}}"></image>
+  <view wx:if="{{stage==='loading'}}" class="state-panel">
+    <view class="loading-ring"></view>
+    <view class="state-title">正在读取音色信息</view>
+    <view class="state-copy">请稍候</view>
+  </view>
+
+  <view wx:if="{{stage==='no-slot'}}">
+    <view class="access-panel">
+      <view class="access-icon"><image src="../../assets/icons/em_wave.svg"></image></view>
+      <view class="access-title">开通专属音色槽位</view>
+      <view class="access-copy">一个槽位可保存一份个人音色，复刻完成后可在 AI 配音和数字化 IP 中直接使用。</view>
+      <view class="benefits">
+        <view class="benefit"><text class="benefit-mark">✓</text><text>保留个人音色</text></view>
+        <view class="benefit"><text class="benefit-mark">✓</text><text>支持重复使用</text></view>
+        <view class="benefit"><text class="benefit-mark">✓</text><text>可重新录制</text></view>
+      </view>
+    </view>
+    <view class="price-band" wx:if="{{slotCost}}">
+      <view>
+        <view class="price-label">槽位价格</view>
+        <view class="price-balance">当前点数 {{points === null ? '—' : points}}</view>
+      </view>
+      <view class="price-value">{{slotCost}}<text> 点</text></view>
+    </view>
+    <view wx:if="{{err}}" class="err-box">{{err}}</view>
+    <view class="action-dock">
+      <view class="btn-primary {{busy?'disabled':''}}" bindtap="buySlot">
+        {{busy ? '开通中…' : '开通专属音色槽位'}}
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{stage==='clone'}}">
+    <view class="section">
+      <view class="section-head">
+        <view>
+          <view class="section-title">录制样音</view>
+          <view class="section-sub">建议 10–60 秒，保持正常语速</view>
         </view>
-        <view class="rec-info">
-          <view class="rec-state">{{recording ? ('录音中… ' + recSec + 's') : (hasSample ? '已录制 ' + recSec + 's' : '点击开始录音')}}</view>
-          <view wx:if="{{hasSample && !recording}}" class="muted small">点上方按钮可重录</view>
+        <view class="duration {{recording?'live':''}}">{{recSec}} / 60 秒</view>
+      </view>
+
+      <view class="recorder {{recording?'recording':(hasSample?'ready':'')}}">
+        <view class="rec-btn" bindtap="toggleRecord">
+          <image class="rec-ico-img" src="{{recording ? '../../assets/icons/stop.svg' : '../../assets/icons/rec.svg'}}"></image>
         </view>
-        <view wx:if="{{hasSample && !recording}}" class="rec-play" bindtap="playSample"><image class="ic-pp-s" src="../../assets/icons/play_pink.svg"></image></view>
+        <view class="rec-main">
+          <view class="rec-state">{{recording ? '正在录音' : (hasSample ? '样音已录制' : '点击开始录音')}}</view>
+          <view class="rec-hint">{{recording ? '朗读下方示例文字，点击停止录音' : (hasSample ? '可以试听或重新录制' : '请在安静环境中录制')}}</view>
+          <view class="progress"><view class="progress-fill" style="width:{{recProgress}}%"></view></view>
+        </view>
+        <view wx:if="{{hasSample && !recording}}" class="icon-action" bindtap="playSample">
+          <image src="../../assets/icons/play_pink.svg"></image>
+        </view>
+      </view>
+
+      <view class="script-box">
+        <view class="script-label">建议朗读</view>
+        <view class="script-text">大家好，这是我的专属声音。我会用自然清晰的表达，为每一段内容带来真实而有温度的讲述。</view>
+      </view>
+
+      <view class="quality-row">
+        <view class="quality-item"><text class="quality-dot"></text>环境安静</view>
+        <view class="quality-item"><text class="quality-dot"></text>距离稳定</view>
+        <view class="quality-item"><text class="quality-dot"></text>正常语速</view>
       </view>
     </view>
 
-    <view class="card">
-      <view class="label">音色名称</view>
-      <input class="input" placeholder="给这个声音起个名字，如：我的声音" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="20" />
+    <view class="section name-section">
+      <view class="section-title">音色名称</view>
+      <input class="input" placeholder="例如：我的声音" placeholder-class="ph" value="{{name}}" bindinput="onName" maxlength="20" />
+      <view class="field-count">{{name.length}} / 20</view>
     </view>
 
-    <view wx:if="{{err}}" class="err center">{{err}}</view>
-    <view class="btn-primary {{(busy||!hasSample)?'disabled':''}}" bindtap="submitClone">
-      {{busy ? '提交中…' : '开始克隆'}}
+    <view wx:if="{{err}}" class="err-box">{{err}}</view>
+    <view class="action-dock">
+      <view class="btn-primary {{(busy||recording||!hasSample)?'disabled':''}}" bindtap="submitClone">
+        {{busy ? '正在提交…' : '开始复刻'}}
+      </view>
+      <view class="action-note">预计 1–3 分钟，提交后请保持页面开启</view>
     </view>
-    <view class="muted small center tip">克隆约需 1-3 分钟，可留在本页等待</view>
   </view>
 
-  <!-- 克隆中 -->
-  <view wx:if="{{stage==='training'}}" class="card center">
-    <image class="state-ico spin-pulse" src="../../assets/icons/em_mic.svg"></image>
-    <view class="train-title">正在克隆你的声音…</view>
-    <view class="muted small">{{trainSec}}s · AI 音色复刻中，请耐心等待</view>
+  <view wx:if="{{stage==='training'}}" class="state-panel training-panel">
+    <view class="training-visual">
+      <view class="wave wave-a"></view>
+      <view class="wave wave-b"></view>
+      <view class="wave wave-c"></view>
+      <view class="wave wave-d"></view>
+      <view class="wave wave-e"></view>
+    </view>
+    <view class="state-title">正在复刻你的声音</view>
+    <view class="state-copy">AI 正在学习音色特征，请保持页面开启</view>
+    <view class="elapsed">{{trainSec}} 秒</view>
+    <view class="training-track"><view class="training-fill"></view></view>
   </view>
 
-  <!-- 完成 -->
-  <view wx:if="{{stage==='ready'}}" class="card center">
-    <image class="state-ico" src="../../assets/icons/check.svg"></image>
-    <view class="train-title">克隆完成！</view>
-    <view wx:if="{{previewUrl}}" class="play-big" bindtap="playPreview"><image class="ic-pp-s" src="{{playing ? '../../assets/icons/pause_pink.svg' : '../../assets/icons/play_pink.svg'}}"></image> 试听</view>
-    <view class="muted small tip">已生成你的专属音色，去「配音」页的「个人音色」里就能选用它。</view>
-    <view class="btn-primary" bindtap="goAudio">去配音</view>
-    <view class="ghost-btn" bindtap="reclone">再克隆一次</view>
+  <view wx:if="{{stage==='ready'}}" class="state-panel success-panel">
+    <view class="state-icon success"><image src="../../assets/icons/check.svg"></image></view>
+    <view class="state-title">专属音色已准备好</view>
+    <view class="state-copy">现在可以在“个人音色”中选择它生成配音</view>
+    <view wx:if="{{previewUrl}}" class="preview-btn" bindtap="playPreview">
+      <image src="{{playing ? '../../assets/icons/pause_pink.svg' : '../../assets/icons/play_pink.svg'}}"></image>
+      <text>{{playing ? '暂停试听' : '试听我的音色'}}</text>
+    </view>
+    <view class="state-actions">
+      <view class="btn-primary" bindtap="goAudio">去生成配音</view>
+      <view class="ghost-btn" bindtap="reclone">重新录制</view>
+    </view>
   </view>
 
-  <!-- 失败 -->
-  <view wx:if="{{stage==='failed'}}" class="card center">
-    <image class="state-ico" src="../../assets/icons/warn.svg"></image>
-    <view class="train-title">克隆失败</view>
-    <view class="muted small tip">{{err || '样音质量可能不佳，请在安静环境重录一段更清晰的声音'}}</view>
-    <view class="btn-primary" bindtap="reclone">重新克隆</view>
+  <view wx:if="{{stage==='failed'}}" class="state-panel failed-panel">
+    <view class="state-icon failed"><image src="../../assets/icons/warn.svg"></image></view>
+    <view class="state-title">本次复刻未完成</view>
+    <view class="state-copy">{{err || '请在安静环境中重新录制一段更清晰的声音'}}</view>
+    <view class="failure-tips">
+      <view>录音时与手机保持约一拳距离</view>
+      <view>避免音乐、回声和其他人的声音</view>
+    </view>
+    <view class="btn-primary" bindtap="reclone">重新录制</view>
   </view>
-
 </view>

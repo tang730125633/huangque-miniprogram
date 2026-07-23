@@ -7,8 +7,13 @@ const page = fs.readFileSync(
   'utf8'
 );
 
-assert(page.includes('AI 音色复刻中'));
+assert(page.includes('AI 正在学习音色特征'));
 assert(!page.includes('MegaTTS'));
 assert(!page.includes('豆包'));
+assert(page.includes('录制样音'));
+assert(page.includes('AI 复刻'));
+assert(page.includes('开始使用'));
+assert(page.includes('建议朗读'));
+assert(page.includes('开通专属音色槽位'));
 
 console.log('clone provider copy OK');
