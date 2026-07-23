@@ -20,7 +20,8 @@ assert(page.includes('bindchange="onVoiceConsentChange"'));
 assert(page.includes('url="/pages/legal/legal?type=voiceprint"'));
 assert(page.includes('我已阅读并单独同意《声纹授权协议》'));
 assert(page.includes('!voiceConsent'));
-assert(page.includes('stage!==\'loading\''));
+assert(page.includes('<view class="voice-consent-panel">'));
+assert(!page.includes('wx:if="{{stage!==\'loading\'}}" class="voice-consent-panel"'));
 assert(page.indexOf('class="voice-consent-panel"') < page.indexOf('class="voice-library"'));
 
 assert(source.includes('voiceConsent: false'));
@@ -31,5 +32,6 @@ assert(source.includes('请先阅读并单独同意《声纹授权协议》'));
 assert(source.includes('voice_consent: true'));
 assert(source.includes('voice_consent_version: VOICE_CONSENT_VERSION'));
 assert(source.includes('voice_consent_at: this.data.voiceConsentAt'));
+assert(source.includes("api.request('/api/gen/audio/slots', { method: 'GET', timeout: 12000 })"));
 
 console.log('voiceprint consent tests passed');
