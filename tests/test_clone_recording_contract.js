@@ -13,5 +13,9 @@ assert(source.includes('recProgress: Math.min(100'));
 assert(source.includes('this.data.recording || !this.data.hasSample'));
 assert(source.includes("slot.status === 'ready' || slot.preview_url"));
 assert(source.includes("d.status === 'ready' || previewUrl"));
+assert(source.includes("api.request('/api/gen/audio/buy-slot'"));
+assert(source.includes('slotCount < slotMax'));
+assert(source.includes('selectSlotByIndex'));
+assert(source.includes('wx.showModal'));
 
 console.log('clone recording contract OK');

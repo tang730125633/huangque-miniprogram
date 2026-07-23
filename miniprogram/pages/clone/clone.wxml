@@ -7,6 +7,58 @@
     <image class="head-icon" src="../../assets/icons/mic.svg"></image>
   </view>
 
+  <view wx:if="{{stage!=='loading'}}" class="voice-library">
+    <view class="library-head">
+      <view>
+        <view class="library-title">我的音色</view>
+        <view class="library-count">已拥有 {{slotCount}} 个 · 最多 {{slotMax}} 个</view>
+      </view>
+      <view class="points-balance">
+        <text class="points-number">{{points === null ? '--' : points}}</text>
+        <text>点</text>
+      </view>
+    </view>
+
+    <scroll-view wx:if="{{slots.length}}" class="slot-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="slot-list">
+        <view
+          wx:for="{{slots}}"
+          wx:key="slot_id"
+          class="voice-slot {{slotId===item.slot_id?'selected':''}}"
+          data-index="{{index}}"
+          bindtap="selectSlot"
+        >
+          <view class="slot-wave">
+            <view></view><view></view><view></view><view></view>
+          </view>
+          <view class="slot-name">{{item.displayName}}</view>
+          <view class="slot-status {{item.statusClass}}">{{item.statusLabel}}</view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view wx:else class="empty-library">
+      <image src="../../assets/icons/em_wave.svg"></image>
+      <view>
+        <view class="empty-title">还没有专属音色</view>
+        <view class="empty-copy">购买槽位后即可录音复刻</view>
+      </view>
+    </view>
+
+    <view class="slot-purchase">
+      <view>
+        <view class="purchase-title">新增音色槽位</view>
+        <view class="purchase-copy">一个槽位保存一个音色，{{slotCost}} 点/个</view>
+      </view>
+      <view
+        class="buy-slot-btn {{(!canBuySlot||busy)?'disabled':''}}"
+        bindtap="buySlot"
+      >
+        {{busy ? '处理中…' : (canBuySlot ? '购买槽位' : '已达上限')}}
+      </view>
+    </view>
+  </view>
+
   <view wx:if="{{stage!=='loading' && stage!=='no-slot'}}" class="steps">
     <view class="step {{stage==='clone'?'active':'done'}}">
       <view class="step-dot">{{stage==='clone'?'1':'✓'}}</view>
@@ -31,29 +83,17 @@
   </view>
 
   <view wx:if="{{stage==='no-slot'}}">
-    <view class="access-panel">
+    <view class="access-panel empty-access">
       <view class="access-icon"><image src="../../assets/icons/em_wave.svg"></image></view>
-      <view class="access-title">开通专属音色槽位</view>
-      <view class="access-copy">一个槽位可保存一份个人音色，复刻完成后可在 AI 配音和数字化 IP 中直接使用。</view>
+      <view class="access-title">创建你的第一个专属音色</view>
+      <view class="access-copy">在上方购买音色槽位后，录制一段清晰人声即可开始复刻。</view>
       <view class="benefits">
         <view class="benefit"><text class="benefit-mark">✓</text><text>保留个人音色</text></view>
         <view class="benefit"><text class="benefit-mark">✓</text><text>支持重复使用</text></view>
         <view class="benefit"><text class="benefit-mark">✓</text><text>可重新录制</text></view>
       </view>
     </view>
-    <view class="price-band" wx:if="{{slotCost}}">
-      <view>
-        <view class="price-label">槽位价格</view>
-        <view class="price-balance">当前点数 {{points === null ? '—' : points}}</view>
-      </view>
-      <view class="price-value">{{slotCost}}<text> 点</text></view>
-    </view>
     <view wx:if="{{err}}" class="err-box">{{err}}</view>
-    <view class="action-dock">
-      <view class="btn-primary {{busy?'disabled':''}}" bindtap="buySlot">
-        {{busy ? '开通中…' : '开通专属音色槽位'}}
-      </view>
-    </view>
   </view>
 
   <view wx:if="{{stage==='clone'}}">

@@ -7,8 +7,12 @@ Page({
   data: {
     stage: 'loading',   // loading | no-slot | clone | training | ready | failed
     slotId: '',
-    slotCost: 0,        // 后端 /slots 返回的槽位点数价格
-    points: null,       // 当前点数（/slots 返回）
+    slots: [],
+    slotCount: 0,
+    slotMax: 5,
+    slotCost: 50,
+    canBuySlot: true,
+    points: null,
     name: '',
     busy: false,
     err: '',
@@ -47,46 +51,118 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
-    if (this.data.stage === 'loading') this.loadSlots();
+    if (!this.data.recording && !this.data.busy) this.loadSlots();
   },
 
   loadSlots() {
     api.request('/api/gen/audio/slots', { method: 'GET' }).then((res) => {
       const d = res.data || {};
-      // 后端返回 {items, slot_count, slot_max, slot_cost, points}
-      const slots = d.items || d.slots || (Array.isArray(d) ? d : []);
-      this.setData({ slotCost: d.slot_cost || 0, points: (d.points == null ? null : d.points) });
+      const rawSlots = d.items || d.slots || (Array.isArray(d) ? d : []);
+      const slots = rawSlots.map((slot, index) => this._formatSlot(slot, index));
+      const slotCount = d.slot_count == null ? slots.length : Number(d.slot_count);
+      const slotMax = Number(d.slot_max || 5);
+      this.setData({
+        slots,
+        slotCount,
+        slotMax,
+        slotCost: Number(d.slot_cost || 50),
+        canBuySlot: slotCount < slotMax,
+        points: d.points == null ? null : d.points
+      });
       if (slots.length) {
-        const slot = slots[0];
-        this.setData({ slotId: slot.slot_id, name: slot.display_name || '我的声音' });
-        if (slot.status === 'ready' || slot.preview_url) {
-          this.setData({ stage: 'ready', previewUrl: slot.preview_url || '' });
-        } else if (slot.status === 'training') {
-          this.setData({ stage: 'training' });
-          this.pollStatus(0);
-        }
-        else { this.setData({ stage: 'clone' }); }
+        const selectedIndex = Math.max(0, slots.findIndex((slot) => slot.slot_id === this.data.slotId));
+        this.selectSlotByIndex(selectedIndex);
       } else {
-        this.setData({ stage: 'no-slot' });
+        this.setData({ stage: 'no-slot', slotId: '', name: '', previewUrl: '' });
       }
     }).catch(() => { this.setData({ stage: 'no-slot' }); });
   },
 
+  _formatSlot(slot, index) {
+    const ready = slot.status === 'ready' || !!slot.preview_url;
+    const status = ready ? 'ready' : (slot.status || 'active');
+    const statusMap = {
+      active: { label: '待复刻', className: 'idle' },
+      training: { label: '复刻中', className: 'training' },
+      ready: { label: '可使用', className: 'ready' },
+      failed: { label: '需重试', className: 'failed' }
+    };
+    const meta = statusMap[status] || statusMap.active;
+    return Object.assign({}, slot, {
+      status,
+      displayName: slot.voice_name || slot.display_name || ('音色 ' + (index + 1)),
+      statusLabel: meta.label,
+      statusClass: meta.className
+    });
+  },
+
+  selectSlot(e) {
+    this.selectSlotByIndex(Number(e.currentTarget.dataset.index || 0));
+  },
+
+  selectSlotByIndex(index) {
+    const slot = this.data.slots[index];
+    if (!slot) return;
+    if (this._pollTimer) clearTimeout(this._pollTimer);
+    this.setData({
+      slotId: slot.slot_id,
+      name: slot.displayName,
+      previewUrl: slot.preview_url || '',
+      playing: false,
+      err: slot.clone_error || ''
+    });
+    if (slot.status === 'ready' || slot.preview_url) {
+      this.setData({ stage: 'ready' });
+    } else if (slot.status === 'training') {
+      this.setData({ stage: 'training', trainSec: 0 });
+      this.pollStatus(0);
+    } else if (slot.status === 'failed') {
+      this.setData({ stage: 'failed' });
+    } else {
+      this.setData({ stage: 'clone' });
+    }
+  },
+
+  _updateSelectedSlot(changes) {
+    const slots = this.data.slots.map((slot, index) => {
+      if (slot.slot_id !== this.data.slotId) return slot;
+      return this._formatSlot(Object.assign({}, slot, changes), index);
+    });
+    this.setData({ slots });
+  },
+
   onName(e) { this.setData({ name: e.detail.value }); },
 
-  // 兑换码入口已废弃（后端 redeem-slot 恒 410），槽位改为点数购买
   buySlot() {
-    if (this.data.busy) return;
+    if (this.data.busy || !this.data.canBuySlot) return;
+    wx.showModal({
+      title: '购买音色槽位',
+      content: '将消耗 ' + this.data.slotCost + ' 点，购买后可新增 1 个专属音色。',
+      confirmText: '确认购买',
+      success: (result) => {
+        if (result.confirm) this._purchaseSlot();
+      }
+    });
+  },
+
+  _purchaseSlot() {
     this.setData({ busy: true, err: '' });
     api.request('/api/gen/audio/buy-slot', { method: 'POST', data: {} }).then((res) => {
-      this.setData({ busy: false });
       const d = res.data || {};
       if (res.statusCode === 200 && d.ok && d.slot && d.slot.slot_id) {
-        this.setData({ slotId: d.slot.slot_id, points: (d.points_left == null ? this.data.points : d.points_left), stage: 'clone', err: '' });
+        this.setData({
+          busy: false,
+          slotId: d.slot.slot_id,
+          points: d.points_left == null ? this.data.points : d.points_left,
+          stage: 'loading',
+          err: ''
+        });
+        wx.showToast({ title: '槽位购买成功', icon: 'success' });
+        this.loadSlots();
       } else if (res.statusCode === 402) {
-        this.setData({ err: d.detail || ('点数不足，开通名额需 ' + (d.need || this.data.slotCost) + ' 点') });
+        this.setData({ busy: false, err: d.detail || ('点数不足，购买槽位需 ' + (d.need || this.data.slotCost) + ' 点') });
       } else {
-        this.setData({ err: d.detail || '开通失败，请稍后重试' });
+        this.setData({ busy: false, err: d.detail || '购买失败，请稍后重试' });
       }
     }).catch(() => { this.setData({ busy: false, err: '网络错误，请重试' }); });
   },
@@ -143,6 +219,7 @@ Page({
       this.setData({ busy: false });
       const d = res.data || {};
       if (res.statusCode === 200 && d.ok) {
+        this._updateSelectedSlot({ status: 'training', clone_error: '' });
         this.setData({ stage: 'training', trainSec: 0 });
         this.pollStatus(0);
       } else {
@@ -160,8 +237,10 @@ Page({
           const d = (res.data && res.data.result) || res.data || {};
           const previewUrl = d.preview_url || (d.voice && d.voice.preview_url) || '';
           if (d.status === 'ready' || previewUrl) {
+            this._updateSelectedSlot({ status: 'ready', preview_url: previewUrl });
             this.setData({ stage: 'ready', previewUrl });
           } else if (d.status === 'failed') {
+            this._updateSelectedSlot({ status: 'failed', clone_error: d.clone_error || '' });
             this.setData({ stage: 'failed', err: d.clone_error || '' });
           } else if (n >= CLONE_POLL_MAX) {
             this.setData({ stage: 'failed', err: '克隆超时，请稍后到配音页查看或重试' });
