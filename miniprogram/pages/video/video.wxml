@@ -164,7 +164,7 @@
         </view>
       </view>
       <view class="card">
-        <view class="label">时长 <text class="muted small">（按模型×分辨率×秒动态计价）</text></view>
+        <view class="label">时长 <text class="muted small">（标准 1.0 最长 10 秒，高清 1.5 最长 15 秒）</text></view>
         <view class="ratio-grid">
           <view wx:for="{{grokDurs}}" wx:key="*this" class="chip {{grokDur===item?'active':''}}" data-v="{{item}}" bindtap="selectGrokDur">{{item}} 秒</view>
         </view>
@@ -214,19 +214,19 @@
     </view>
 
     <view wx:if="{{engineRef && !(engine==='grok' && grokOp==='edit')}}" class="card">
-      <view class="label">参考图 <text class="muted small">（可选 · 图生视频，最多 7 张）</text></view>
+      <view class="label">参考图 <text class="muted small">{{grokModel==='grok-imagine-video-1.5' ? '（必选 · 仅 1 张首帧图）' : '（可选 · 最多 7 张）'}}</text></view>
       <view class="ref-grid">
         <view wx:for="{{refPreviews}}" wx:key="*this" class="ref-cell">
           <image class="ref-img" src="{{item}}" mode="aspectFill"></image>
           <view class="ref-del" data-i="{{index}}" catchtap="removeRef">✕</view>
         </view>
-        <view wx:if="{{refPreviews.length < 7}}" class="ref-cell ref-add" bindtap="chooseRef">
+        <view wx:if="{{refPreviews.length < (grokModel==='grok-imagine-video-1.5' ? 1 : 7)}}" class="ref-cell ref-add" bindtap="chooseRef">
           <image class="ic-up" src="../../assets/icons/upload.svg"></image>
         </view>
       </view>
     </view>
 
-    <view wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="card">
+    <view wx:if="{{!(engine==='grok' && grokOp==='edit') && !(engine==='grok' && grokModel==='grok-imagine-video-1.5')}}" class="card">
       <view class="label">画面比例</view>
       <view class="ratio-grid">
         <view wx:for="{{ratios}}" wx:key="*this" class="chip {{ratio===item?'active':''}}" data-v="{{item}}" bindtap="selectRatio">{{item}}</view>
