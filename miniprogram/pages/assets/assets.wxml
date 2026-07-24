@@ -9,8 +9,13 @@
   <!-- 图片 -->
   <block wx:if="{{tab==='image'}}">
     <view wx:if="{{images.length}}" class="grid3">
-      <image wx:for="{{images}}" wx:key="*this" src="{{item}}" data-u="{{item}}" bindtap="previewImage"
-        class="cell-img" mode="aspectFill" lazy-load></image>
+      <view wx:for="{{images}}" wx:key="*this" class="cell-image-wrap">
+        <image src="{{item}}" data-u="{{item}}" bindtap="previewImage"
+          class="cell-img" mode="aspectFill" lazy-load></image>
+        <view class="download-btn" data-u="{{item}}" catchtap="saveImage" aria-label="保存图片到相册">
+          <image class="download-ic" src="../../assets/icons/download.svg" mode="aspectFit"></image>
+        </view>
+      </view>
     </view>
     <view wx:elif="{{!loading}}" class="empty-state">
       <image class="empty-ic" src="../../assets/icons/empty.svg" mode="aspectFit"></image>
@@ -41,6 +46,9 @@
         <image wx:if="{{item.cover}}" src="{{item.cover}}" class="cell-video-cover" mode="aspectFill" lazy-load></image>
         <view wx:else class="cell-video-ph"></view>
         <view class="cell-video-play"><image class="ic-pp" src="../../assets/icons/play_pink.svg"></image></view>
+        <view class="download-btn" data-u="{{item.url}}" catchtap="saveVideo" aria-label="保存视频到相册">
+          <image class="download-ic" src="../../assets/icons/download.svg" mode="aspectFit"></image>
+        </view>
         <view class="cell-video-text">{{item.text}}</view>
       </view>
     </view>
