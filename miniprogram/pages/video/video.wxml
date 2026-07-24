@@ -164,7 +164,7 @@
         </view>
       </view>
       <view class="card">
-        <view class="label">时长 <text class="muted small">（标准 1.0 最长 10 秒，高清 1.5 最长 15 秒）</text></view>
+        <view class="label">时长 <text class="muted small">（标准 1.0 带参考图最长 10 秒，无参考图与高清 1.5 最长 15 秒）</text></view>
         <view class="ratio-grid">
           <view wx:for="{{grokDurs}}" wx:key="*this" class="chip {{grokDur===item?'active':''}}" data-v="{{item}}" bindtap="selectGrokDur">{{item}} 秒</view>
         </view>

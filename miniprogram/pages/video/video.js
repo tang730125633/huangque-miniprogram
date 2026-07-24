@@ -59,8 +59,8 @@ const GROK_PRICE = {
   'grok-imagine-video': { '480p': 10, '720p': 12 },
   'grok-imagine-video-1.5': { '480p': 15, '720p': 25, '1080p': 44 }
 };
-const GROK_DURATIONS_STANDARD = [5, 8, 10];
-const GROK_DURATIONS_15 = [5, 8, 10, 12, 15];
+const GROK_DURATIONS_FULL = [5, 8, 10, 12, 15];
+const GROK_DURATIONS_REFERENCE = [5, 8, 10];
 const VIDEO_COST = 30;       // 口播最低一档：1~30 秒 30 点
 const VIDEO_BATCH_MAX = 5;   // 口播批量：一段文案 × 最多 5 个形象（后端 VIDEO_BATCH_MAX）
 const TRYON_COST_SINGLE = 25; // 换装/换背景单段：后端 cost_of('tryon') 单段25/两段40，以返回 cost 为准
@@ -152,7 +152,7 @@ Page({
     grokModel: 'grok-imagine-video',
     grokResList: ['480p', '720p'],   // 1.5 另加 1080p（selectGrokModel 里切换）
     grokRes: '720p',
-    grokDurs: GROK_DURATIONS_STANDARD,
+    grokDurs: GROK_DURATIONS_FULL,
     grokDur: 10,
     // 果肉官方视频编辑（xAI）：上传 MP4 参考视频，输出继承原时长和比例
     grokOp: 'generate',      // generate | edit
@@ -340,11 +340,11 @@ Page({
     const patch = {
       grokModel: model,
       grokResList: resList,
-      grokDurs: is15 ? GROK_DURATIONS_15 : GROK_DURATIONS_STANDARD
+      grokDurs: is15 || !this.data.refPreviews.length ? GROK_DURATIONS_FULL : GROK_DURATIONS_REFERENCE
     };
     // 1080p 只有 1.5 支持，切回 1.0 时收敛到 720p，避免 400
     if (resList.indexOf(this.data.grokRes) < 0) patch.grokRes = '720p';
-    if (!is15 && this.data.grokDur > 10) patch.grokDur = 10;
+    if (!is15 && this.data.refPreviews.length && this.data.grokDur > 10) patch.grokDur = 10;
     if (is15 && this.data.refPreviews.length > 1) {
       this._b64.refImgs = this._b64.refImgs.slice(0, 1);
       patch.refPreviews = this.data.refPreviews.slice(0, 1);
@@ -406,8 +406,18 @@ Page({
         (res.tempFiles || []).forEach((f) => {
           this._readDataURL(f.tempFilePath, 'image/jpeg', (url) => {
             if (this.data.refPreviews.length >= maxRef) return;
+            const firstStandardRef = this.data.grokModel === 'grok-imagine-video'
+              && this.data.refPreviews.length === 0;
             this._b64.refImgs.push(url); // base64 存实例属性，与 refPreviews 平行
-            this.setData({ refPreviews: this.data.refPreviews.concat([f.tempFilePath]) });
+            const patch = { refPreviews: this.data.refPreviews.concat([f.tempFilePath]) };
+            if (firstStandardRef) {
+              patch.grokDurs = GROK_DURATIONS_REFERENCE;
+              if (this.data.grokDur > 10) {
+                patch.grokDur = 10;
+                wx.showToast({ title: '带参考图已切换为10秒', icon: 'none' });
+              }
+            }
+            this.setData(patch);
             this._syncGenPricing();
           });
         });
@@ -418,12 +428,18 @@ Page({
     const i = +e.currentTarget.dataset.i;
     this._b64.refImgs.splice(i, 1);
     const prevs = this.data.refPreviews.slice(); prevs.splice(i, 1);
-    this.setData({ refPreviews: prevs });
+    const patch = { refPreviews: prevs };
+    if (this.data.grokModel === 'grok-imagine-video' && !prevs.length) patch.grokDurs = GROK_DURATIONS_FULL;
+    this.setData(patch);
     this._syncGenPricing();
   },
   clearRef() {
     this._b64.refImgs = [];
-    this.setData({ refPreviews: [] });
+    this.setData({
+      refPreviews: [],
+      grokDurs: this.data.grokModel === 'grok-imagine-video'
+        ? GROK_DURATIONS_FULL : this.data.grokDurs
+    });
     this._syncGenPricing();
   },
 
@@ -477,8 +493,8 @@ Page({
     const body = { channel: this.data.engine, prompt: prompt };
     if (this.data.engine === 'grok') {
       const is15 = this.data.grokModel === 'grok-imagine-video-1.5';
-      if (!is15 && this.data.grokDur > 10) {
-        this.setNote('果肉标准 1.0 最长支持 10 秒', C_ERR);
+      if (!is15 && this.data.refPreviews.length && this.data.grokDur > 10) {
+        this.setNote('果肉标准 1.0 带参考图时最长支持 10 秒', C_ERR);
         return;
       }
       if (is15 && this.data.refPreviews.length !== 1) {
