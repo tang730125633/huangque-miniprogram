@@ -59,7 +59,7 @@ const GROK_PRICE = {
   'grok-imagine-video': { '480p': 10, '720p': 12 },
   'grok-imagine-video-1.5': { '480p': 15, '720p': 25, '1080p': 44 }
 };
-const GROK_DURATIONS = [5, 8, 10, 12, 15];  // 后端 1~15 秒任意整数，取常用档
+const GROK_DURATIONS = [5, 8, 10];
 const VIDEO_COST = 30;       // 口播最低一档：1~30 秒 30 点
 const VIDEO_BATCH_MAX = 5;   // 口播批量：一段文案 × 最多 5 个形象（后端 VIDEO_BATCH_MAX）
 const TRYON_COST_SINGLE = 25; // 换装/换背景单段：后端 cost_of('tryon') 单段25/两段40，以返回 cost 为准
@@ -144,7 +144,7 @@ Page({
     promptUndo: '',
     canUndoPrompt: false,
     prompt: '',
-    refImgs: [],       // data URL 数组（后端 reference_images 字符串数组，果肉最多 7 张）
+    refImgs: [],       // data URL 数组；标准版最多 7 张，1.5 仅 1 张首帧图
     refPreviews: [],
     // 果肉官方线（xAI）参数：模型 / 分辨率 / 时长，动态计价
     grokModels: GROK_MODELS,
@@ -334,10 +334,16 @@ Page({
   },
   selectGrokModel(e) {
     const model = e.currentTarget.dataset.k;
-    const resList = model === 'grok-imagine-video-1.5' ? ['480p', '720p', '1080p'] : ['480p', '720p'];
+    const is15 = model === 'grok-imagine-video-1.5';
+    const resList = is15 ? ['480p', '720p', '1080p'] : ['480p', '720p'];
     const patch = { grokModel: model, grokResList: resList };
     // 1080p 只有 1.5 支持，切回 1.0 时收敛到 720p，避免 400
     if (resList.indexOf(this.data.grokRes) < 0) patch.grokRes = '720p';
+    if (is15 && this.data.refPreviews.length > 1) {
+      this._b64.refImgs = this._b64.refImgs.slice(0, 1);
+      patch.refPreviews = this.data.refPreviews.slice(0, 1);
+      wx.showToast({ title: '高清 1.5 仅保留第1张首帧图', icon: 'none' });
+    }
     this.setData(patch);
     this._syncGenPricing();
   },
@@ -380,16 +386,20 @@ Page({
   },
   selectRatio(e) { this.setData({ ratio: e.currentTarget.dataset.v }); },
   chooseRef() {
-    // 果肉图生视频：最多 7 张参考图（后端 XIAOLE_MAX_REF）。
+    // 标准版最多 7 张参考图；高清 1.5 只接受 1 张首帧图。
     // reference_images 要「字符串数组」（dataURL/URL），服务端转存 COS 后喂上游
-    const left = GEN_MAX_REF - this.data.refPreviews.length;
-    if (left <= 0) { this.setNote('参考图最多 ' + GEN_MAX_REF + ' 张', C_ERR); return; }
+    const maxRef = this.data.grokModel === 'grok-imagine-video-1.5' ? 1 : GEN_MAX_REF;
+    const left = maxRef - this.data.refPreviews.length;
+    if (left <= 0) {
+      this.setNote(maxRef === 1 ? '果肉高清 1.5 仅支持 1 张首帧图' : '参考图最多 ' + maxRef + ' 张', C_ERR);
+      return;
+    }
     wx.chooseMedia({
       count: left, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
       success: (res) => {
         (res.tempFiles || []).forEach((f) => {
           this._readDataURL(f.tempFilePath, 'image/jpeg', (url) => {
-            if (this.data.refPreviews.length >= GEN_MAX_REF) return;
+            if (this.data.refPreviews.length >= maxRef) return;
             this._b64.refImgs.push(url); // base64 存实例属性，与 refPreviews 平行
             this.setData({ refPreviews: this.data.refPreviews.concat([f.tempFilePath]) });
             this._syncGenPricing();
@@ -460,6 +470,14 @@ Page({
     }
     const body = { channel: this.data.engine, prompt: prompt, ratio: this.data.ratio };
     if (this.data.engine === 'grok') {
+      if (this.data.grokDur > 10) {
+        this.setNote('果肉视频最长支持 10 秒', C_ERR);
+        return;
+      }
+      if (this.data.grokModel === 'grok-imagine-video-1.5' && this.data.refPreviews.length !== 1) {
+        this.setNote('果肉高清 1.5 必须上传且只能上传 1 张首帧图', C_ERR);
+        return;
+      }
       // 果肉官方线（xAI）：模型/分辨率/时长全量传给后端，动态计价
       body.model = this.data.grokModel;
       body.resolution = this.data.grokRes;

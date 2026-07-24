@@ -81,6 +81,59 @@ Page({
     wx.previewImage({ current: e.currentTarget.dataset.u, urls: this.data.images });
   },
 
+  saveImage(e) {
+    this._saveToAlbum(e.currentTarget.dataset.u, 'image');
+  },
+
+  saveVideo(e) {
+    this._saveToAlbum(e.currentTarget.dataset.u, 'video');
+  },
+
+  _saveToAlbum(url, mediaType) {
+    if (!url) return;
+    wx.showLoading({ title: '保存中', mask: true });
+    const save = (filePath) => {
+      const method = mediaType === 'video' ? 'saveVideoToPhotosAlbum' : 'saveImageToPhotosAlbum';
+      wx[method]({
+        filePath,
+        success: () => {
+          wx.hideLoading();
+          wx.showToast({ title: '已保存到相册' });
+        },
+        fail: (err) => {
+          wx.hideLoading();
+          const message = String((err && err.errMsg) || '');
+          if (message.indexOf('auth deny') !== -1 || message.indexOf('authorize') !== -1) {
+            this._showAlbumSettings();
+            return;
+          }
+          wx.showToast({ title: '保存失败，请稍后重试', icon: 'none' });
+        }
+      });
+    };
+    if (url.indexOf('http') !== 0) {
+      save(url);
+      return;
+    }
+    api.downloadProtected(url)
+      .then(save)
+      .catch(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '下载失败，请稍后重试', icon: 'none' });
+      });
+  },
+
+  _showAlbumSettings() {
+    wx.showModal({
+      title: '需要相册权限',
+      content: '请在设置中允许保存到相册后重试。',
+      confirmText: '去设置',
+      success: (res) => {
+        if (res.confirm) wx.openSetting();
+      }
+    });
+  },
+
   playAudio(e) {
     const id = e.currentTarget.dataset.id;
     const url = e.currentTarget.dataset.u;
