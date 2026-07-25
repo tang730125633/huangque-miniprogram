@@ -1,10 +1,12 @@
 const api = require('../../utils/api.js');
+const membership = require('../../utils/membership.js');
 
 Page({
   data: {
     user: {},
     initial: '黄',
-    isAdmin: false
+    isAdmin: false,
+    membership: membership.buildMembershipView({})
   },
 
   onShow() {
@@ -20,7 +22,8 @@ Page({
         this.setData({
           user,
           initial: label.charAt(0).toUpperCase(),
-          isAdmin: user.role === 'admin'
+          isAdmin: user.role === 'admin',
+          membership: membership.buildMembershipView(user)
         });
       }
     }).catch(() => {});
