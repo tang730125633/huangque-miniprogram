@@ -1,0 +1,38 @@
+<view class="container invite-page">
+  <view wx:if="{{loading}}" class="card loading-state">正在读取邀请数据…</view>
+  <view wx:elif="{{error}}" class="card error-state">{{error}}</view>
+
+  <block wx:else>
+    <view class="card invite-code-card">
+      <view class="section-label">我的邀请码</view>
+      <view class="invite-code">{{code}}</view>
+      <view class="invite-actions">
+        <button class="action-button" bindtap="copyCode">复制邀请码</button>
+        <button class="action-button primary" bindtap="copyLink">复制邀请链接</button>
+      </view>
+    </view>
+
+    <view class="stats-grid">
+      <view class="stat-item"><text class="stat-value">{{stats.valid_invites || 0}}</text><text class="stat-label">有效直邀</text></view>
+      <view class="stat-item"><text class="stat-value">{{stats.today_new || 0}}</text><text class="stat-label">今日新增</text></view>
+      <view class="stat-item"><text class="stat-value">{{stats.indirect_invites || 0}}</text><text class="stat-label">二级邀请</text></view>
+      <view class="stat-item reward"><text class="stat-value">{{rewardTotal}}</text><text class="stat-label">累计奖励点数</text></view>
+    </view>
+
+    <view class="card referrer-card">
+      <view class="section-label">推荐我的人</view>
+      <view wx:if="{{referrer}}" class="referrer-name">{{referrer.name}} <text class="muted">{{referrer.account_id}}</text></view>
+      <view wx:else class="muted">无推荐人</view>
+    </view>
+
+    <view class="section-title">奖励记录</view>
+    <view wx:if="{{!rewards.length}}" class="card empty-state">暂无邀请奖励记录</view>
+    <view wx:for="{{rewards}}" wx:key="id" class="reward-row">
+      <view class="reward-info">
+        <view class="reward-title">{{item.title}}</view>
+        <view class="reward-meta">奖励仅计入独立台账</view>
+      </view>
+      <view class="reward-points">{{item.pointsText}}</view>
+    </view>
+  </block>
+</view>

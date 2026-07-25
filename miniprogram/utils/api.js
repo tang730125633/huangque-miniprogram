@@ -1,5 +1,6 @@
 // 统一请求封装：拼接 API base、带上 Bearer token、401 自动跳登录
 const TOKEN_KEY = 'hq_token';
+let membershipPromptOpen = false;
 
 function getBase() {
   const app = getApp();
@@ -13,6 +14,31 @@ function setToken(t) {
 }
 function clearToken() {
   wx.removeStorageSync(TOKEN_KEY);
+}
+
+function isMembershipRequired(res) {
+  return !!(
+    res && res.statusCode === 403 && res.data &&
+    res.data.code === 'membership_required'
+  );
+}
+
+function showMembershipRequired(detail) {
+  if (membershipPromptOpen || !wx.showModal) return;
+  membershipPromptOpen = true;
+  wx.showModal({
+    title: '需要有效会员',
+    content: detail || '请先开通或续费会员后再使用生成能力。',
+    confirmText: '查看会员',
+    cancelText: '稍后处理',
+    confirmColor: '#b048c8',
+    success: function (result) {
+      if (result.confirm) wx.switchTab({ url: '/pages/profile/profile' });
+    },
+    complete: function () {
+      membershipPromptOpen = false;
+    }
+  });
 }
 
 function request(path, options) {
@@ -36,6 +62,9 @@ function request(path, options) {
           if (cur.indexOf('pages/login/login') === -1) {
             wx.reLaunch({ url: '/pages/login/login' });
           }
+        }
+        if (isMembershipRequired(res)) {
+          showMembershipRequired(res.data.detail);
         }
         resolve(res);
       },
@@ -79,4 +108,7 @@ function downloadProtected(url) {
   });
 }
 
-module.exports = { request, getToken, setToken, clearToken, getBase, absUrl, downloadProtected };
+module.exports = {
+  request, getToken, setToken, clearToken, getBase, absUrl, downloadProtected,
+  isMembershipRequired, showMembershipRequired
+};

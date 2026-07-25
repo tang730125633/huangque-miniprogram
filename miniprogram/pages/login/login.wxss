@@ -17,6 +17,8 @@
   font-size: 29rpx;
 }
 .ph { color: #6f6980; }
+.invite-input { text-transform: uppercase; letter-spacing: 4rpx; }
+.invite-hint { margin-top: 10rpx; color: var(--text-muted); font-size: 22rpx; }
 .reg-tip {
   background: var(--primary-soft);
   border: 1rpx solid rgba(184,107,43,0.3);

@@ -32,6 +32,13 @@ Page({
   goAssets() { wx.switchTab({ url: '/pages/assets/assets' }); },
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); },
   goClone() { wx.navigateTo({ url: '/pages/clone/clone' }); },
+  goInvite() {
+    if (this.data.membership.status !== 'active') {
+      api.showMembershipRequired();
+      return;
+    }
+    wx.navigateTo({ url: '/pages/invite/invite' });
+  },
   goAdmin() {
     if (!this.data.isAdmin) return;
     wx.navigateTo({ url: '/pages/admin/admin' });
