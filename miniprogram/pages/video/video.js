@@ -1023,6 +1023,7 @@ Page({
         if (token !== this._pollToken) return; // 已切模式
         const d = res.data || {};
         if (res.statusCode === 401) { this.setData({ busy: false }); return; }
+        if (api.isMembershipRequired(res)) { this.setData({ busy: false, note: '' }); return; }
         if (res.statusCode === 402) {
           this.setData({ busy: false });
           this.setNote('点数不足' + (d.need ? '（需 ' + d.need + ' 点）' : ''), C_ERR);

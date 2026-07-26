@@ -45,13 +45,19 @@ Page({
       api.request('/api/auth/invite/reward-points?limit=20&offset=0', { method: 'GET' }),
       api.request('/api/auth/invite/referrer', { method: 'GET' })
     ]).then((responses) => {
+      const fallbackErrors = [
+        '邀请码读取失败', '邀请统计读取失败', '奖励记录读取失败', '推荐人信息读取失败'
+      ];
+      responses.forEach((response, index) => {
+        if (response.statusCode !== 200) {
+          const body = response.data || {};
+          throw new Error(body.detail || fallbackErrors[index]);
+        }
+      });
       const code = responses[0].data || {};
       const dashboard = responses[1].data || {};
       const rewards = responses[2].data || {};
       const referrer = responses[3].data || {};
-      if (responses[0].statusCode !== 200) {
-        throw new Error(code.detail || '邀请码读取失败');
-      }
       this.setData({
         loading: false,
         code: code.code || '',
