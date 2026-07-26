@@ -171,6 +171,24 @@
       </view>
     </block>
 
+    <block wx:if="{{engine==='micro' || engine==='omni'}}">
+      <view class="card">
+        <view class="label">时长 <text class="muted small">（30 点/秒）</text></view>
+        <view class="ratio-grid">
+          <view wx:for="{{officialDurations}}" wx:key="*this" class="chip {{officialDuration===item?'active':''}}"
+            data-v="{{item}}" bindtap="selectOfficialDuration">{{item}} 秒</view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">清晰度</view>
+        <view class="ratio-grid">
+          <view wx:for="{{officialResolutions}}" wx:key="*this" class="chip {{officialResolution===item?'active':''}}"
+            data-v="{{item}}" bindtap="selectOfficialResolution">{{item}}</view>
+        </view>
+        <view class="muted small">{{engine==='micro' ? 'Seedance 官方标准模型 · 自动生成声音' : 'Omni 官方通道 · 720p 有声视频'}}</view>
+      </view>
+    </block>
+
     <view wx:if="{{engine==='grok' && grokOp==='edit'}}" class="card">
       <view class="label">参考视频 <text class="muted small">（MP4 · 最长 8.7 秒 · 输出继承原时长和比例）</text></view>
       <view wx:if="{{!editVideoName}}" class="upbox" bindtap="chooseEditVideo">
@@ -214,13 +232,13 @@
     </view>
 
     <view wx:if="{{engineRef && !(engine==='grok' && grokOp==='edit')}}" class="card">
-      <view class="label">参考图 <text class="muted small">{{grokModel==='grok-imagine-video-1.5' ? '（必选 · 仅 1 张首帧图）' : '（可选 · 最多 7 张）'}}</text></view>
+      <view class="label">参考图 <text class="muted small">{{engineRefHint}}</text></view>
       <view class="ref-grid">
         <view wx:for="{{refPreviews}}" wx:key="*this" class="ref-cell">
           <image class="ref-img" src="{{item}}" mode="aspectFill"></image>
           <view class="ref-del" data-i="{{index}}" catchtap="removeRef">✕</view>
         </view>
-        <view wx:if="{{refPreviews.length < (grokModel==='grok-imagine-video-1.5' ? 1 : 7)}}" class="ref-cell ref-add" bindtap="chooseRef">
+        <view wx:if="{{refPreviews.length < engineRefMax}}" class="ref-cell ref-add" bindtap="chooseRef">
           <image class="ic-up" src="../../assets/icons/upload.svg"></image>
         </view>
       </view>

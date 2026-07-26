@@ -139,21 +139,13 @@ const pageDefinition = {
   },
 
   refreshOrders(reconcilePending) {
-    const virtual = this.data.membershipActive;
-    const path = virtual ? '/api/auth/virtual-pay/orders?limit=20' : '/api/auth/recharge/orders?limit=20';
-    return api.request(path, { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/virtual-pay/orders?limit=20', { method: 'GET' }).then((res) => {
       if (res.statusCode !== 200 || !res.data) return;
       const items = (res.data.items || []).map(this.formatOrder);
       this.setData({ orders: items });
       if (!reconcilePending) return items;
-      if (virtual) {
-        const pendingVirtual = items.filter((item) => item.status === 'created').slice(0, 3);
-        return Promise.all(pendingVirtual.map((item) => this.confirmVirtualOrder(item.order_id, true))).then(() => items);
-      }
-      const pending = items.filter(isMiniProgramWxPayOrder);
-      return Promise.all(pending.map((item) => this.reconcileOrder(item.order_id).catch(() => null))).then((results) => {
-        return results.some((result) => result && result.statusCode === 200) ? this.refreshOrders(false) : items;
-      });
+      const pending = items.filter((item) => item.status === 'created').slice(0, 3);
+      return Promise.all(pending.map((item) => this.confirmVirtualOrder(item.order_id, true))).then(() => items);
     }).catch(() => {});
   },
 
