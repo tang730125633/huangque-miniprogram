@@ -79,7 +79,8 @@ Page({
   onShareAppMessage() {
     return {
       title: '黄雀AI邀请你注册',
-      path: invite.registrationSharePath(this.data.code)
+      path: invite.registrationSharePath(this.data.code),
+      imageUrl: '/assets/share/invite-card.jpg'
     };
   }
 });

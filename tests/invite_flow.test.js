@@ -38,7 +38,9 @@ assert.match(inviteJs, /\/api\/auth\/invite\/reward-points/);
 assert.match(inviteJs, /\/api\/auth\/invite\/referrer/);
 assert.match(inviteJs, /onShareAppMessage\(\)/);
 assert.match(inviteJs, /invite\.registrationSharePath\(this\.data\.code\)/);
+assert.match(inviteJs, /imageUrl:\s*'\/assets\/share\/invite-card\.jpg'/);
 assert.match(inviteWxml, /open-type="share"/);
 assert.doesNotMatch(inviteWxml, /bindtap="copyLink"/);
+assert.ok(fs.existsSync(path.join(root, 'miniprogram/assets/share/invite-card.jpg')));
 
 console.log('invite flow tests passed');
