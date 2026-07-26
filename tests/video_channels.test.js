@@ -8,6 +8,8 @@ const videoWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/video/video
 
 assert.match(videoJs, /key: 'micro', name: '黄豆视频'/);
 assert.match(videoJs, /key: 'omni', name: '欧米视频'/);
+assert.match(videoWxml, /黄豆视频官方标准模型/);
+assert.match(videoWxml, /欧米视频官方通道/);
 assert.match(videoJs, /health\.seedance_video_enabled === true/);
 assert.match(videoJs, /health\.omni_video_enabled === true/);
 assert.match(videoJs, /body\.model = cfg\.model/);
