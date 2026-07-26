@@ -6,8 +6,8 @@ const root = path.resolve(__dirname, '..');
 const videoJs = fs.readFileSync(path.join(root, 'miniprogram/pages/video/video.js'), 'utf8');
 const videoWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/video/video.wxml'), 'utf8');
 
-assert.match(videoJs, /key: 'micro', name: 'Seedance 视频'/);
-assert.match(videoJs, /key: 'omni', name: 'Omni 视频'/);
+assert.match(videoJs, /key: 'micro', name: '黄豆视频'/);
+assert.match(videoJs, /key: 'omni', name: '欧米视频'/);
 assert.match(videoJs, /health\.seedance_video_enabled === true/);
 assert.match(videoJs, /health\.omni_video_enabled === true/);
 assert.match(videoJs, /body\.model = cfg\.model/);
