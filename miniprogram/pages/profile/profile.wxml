@@ -4,9 +4,33 @@
     <view class="user-meta">
       <view class="user-name-line">
         <view class="user-name">{{user.name || user.display_name || user.username || '未登录'}}</view>
+        <view class="membership-badge {{membership.tierClass}}">{{membership.name}}</view>
         <view wx:if="{{isAdmin}}" class="role-badge">管理员</view>
       </view>
       <view class="muted small">{{user.username}}</view>
+    </view>
+  </view>
+
+  <view class="card membership-card {{membership.tierClass}}">
+    <view class="membership-heading">
+      <view>
+        <view class="membership-eyebrow">会员账户</view>
+        <view class="membership-name">{{membership.name}}</view>
+      </view>
+      <view class="membership-status {{membership.status}}">{{membership.statusText}}</view>
+    </view>
+    <view class="membership-details">
+      <view class="membership-row">
+        <text class="membership-label">有效期至</text>
+        <text class="membership-value">{{membership.expiresText}}</text>
+      </view>
+      <view class="membership-row">
+        <text class="membership-label">点数购买</text>
+        <text class="membership-value">{{membership.discountText}}</text>
+      </view>
+    </view>
+    <view wx:if="{{membership.showNonmemberNotice}}" class="membership-notice">
+      体验官会员由平台统一开通，当前小程序不提供充值入口。
     </view>
   </view>
 
@@ -27,6 +51,10 @@
     </view>
     <view class="menu-item bordered" bindtap="goClone">
       <view class="mi-left"><image class="mi-ic" src="../../assets/icons/mic.svg"></image><text>声音克隆</text></view>
+      <text class="muted">›</text>
+    </view>
+    <view wx:if="{{membership.status==='active'}}" class="menu-item bordered" bindtap="goInvite">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/gift.svg"></image><text>邀请中心</text></view>
       <text class="muted">›</text>
     </view>
     <view class="menu-item bordered" bindtap="goAudio">

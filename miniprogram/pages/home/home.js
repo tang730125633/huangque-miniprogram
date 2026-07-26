@@ -3,6 +3,8 @@ const api = require('../../utils/api.js');
 Page({
   data: {
     points: null,
+    membershipActive: false,
+    membershipEnforced: false,
     bannerCurrent: 0,
     bannerAutoplay: true,
 
@@ -54,6 +56,10 @@ Page({
   // 受保护功能：未登录先去登录
   _guardNav(path) {
     if (!api.getToken()) { wx.navigateTo({ url: '/pages/login/login' }); return; }
+    if (this.data.membershipEnforced && !this.data.membershipActive) {
+      api.showMembershipRequired();
+      return;
+    }
     wx.navigateTo({ url: path });
   },
 
@@ -93,7 +99,11 @@ Page({
   refreshPoints() {
     api.request('/api/auth/me', { method: 'GET' }).then((res) => {
       if (res.statusCode === 200 && res.data && res.data.user) {
-        this.setData({ points: res.data.user.points });
+        this.setData({
+          points: res.data.user.points,
+          membershipActive: !!res.data.user.membership_active,
+          membershipEnforced: !!res.data.membership_enforcement_enabled
+        });
       }
     }).catch(() => {});
   }

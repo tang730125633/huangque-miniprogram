@@ -8,6 +8,7 @@
     "pages/video/video",
     "pages/audio/audio",
     "pages/clone/clone",
+    "pages/invite/invite",
     "pages/admin/admin",
     "pages/recharge/recharge",
     "pages/legal/legal",

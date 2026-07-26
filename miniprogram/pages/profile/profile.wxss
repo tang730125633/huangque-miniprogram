@@ -13,11 +13,53 @@
   font-size: 40rpx; font-weight: 600;
 }
 .user-name { font-size: 32rpx; font-weight: 600; color: var(--text); }
-.user-name-line { display: flex; align-items: center; gap: 14rpx; }
+.user-meta { min-width: 0; flex: 1; }
+.user-name { max-width: 100%; overflow-wrap: anywhere; }
+.user-name-line { display: flex; align-items: center; flex-wrap: wrap; gap: 14rpx; }
 .role-badge {
   padding: 5rpx 13rpx; border-radius: 999rpx;
   color: #ffd9ef; background: rgba(226,75,160,0.18);
   border: 1rpx solid rgba(226,75,160,0.5); font-size: 20rpx; font-weight: 600;
+}
+.membership-badge {
+  padding: 5rpx 13rpx; border-radius: 999rpx; flex: none;
+  color: #c6c1d1; background: rgba(255,255,255,0.05);
+  border: 1rpx solid rgba(255,255,255,0.12); font-size: 20rpx; font-weight: 600;
+}
+.membership-badge.experience { color: #ffd7a1; border-color: rgba(240,165,75,0.45); background: rgba(240,165,75,0.12); }
+.membership-badge.partner { color: #bcd4ff; border-color: rgba(77,141,255,0.48); background: rgba(77,141,255,0.13); }
+.membership-badge.initiator { color: #ffd0e9; border-color: rgba(226,75,160,0.48); background: rgba(226,75,160,0.13); }
+.membership-badge.expired { color: #c6c1d1; }
+
+.membership-card {
+  position: relative; overflow: hidden;
+  border-color: rgba(255,255,255,0.12);
+}
+.membership-card.experience { border-color: rgba(240,165,75,0.34); }
+.membership-card.partner { border-color: rgba(77,141,255,0.38); }
+.membership-card.initiator { border-color: rgba(226,75,160,0.38); }
+.membership-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24rpx; }
+.membership-eyebrow { color: var(--text-muted); font-size: 22rpx; }
+.membership-name { margin-top: 8rpx; color: var(--text); font-size: 34rpx; font-weight: 600; }
+.membership-status {
+  min-width: 92rpx; padding: 8rpx 14rpx; box-sizing: border-box;
+  border-radius: 10rpx; text-align: center; font-size: 21rpx;
+  color: var(--text-muted); background: rgba(255,255,255,0.05);
+}
+.membership-status.active { color: #91efb7; background: rgba(43,213,118,0.12); }
+.membership-status.expired { color: #ffc2d2; background: rgba(255,92,138,0.12); }
+.membership-details { margin-top: 26rpx; border-top: 1rpx solid var(--line); }
+.membership-row {
+  min-height: 74rpx; display: flex; align-items: center; justify-content: space-between; gap: 24rpx;
+  border-bottom: 1rpx solid var(--line);
+}
+.membership-row:last-child { border-bottom: 0; }
+.membership-label { color: var(--text-muted); font-size: 24rpx; }
+.membership-value { color: var(--text); font-size: 25rpx; font-weight: 500; text-align: right; }
+.membership-notice {
+  margin-top: 18rpx; padding: 18rpx 20rpx; border-radius: 12rpx;
+  color: #c9c3d6; background: rgba(255,255,255,0.035);
+  font-size: 22rpx; line-height: 1.6;
 }
 
 .points-card { text-align: center; padding: 40rpx 28rpx; }

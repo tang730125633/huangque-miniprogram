@@ -1,10 +1,12 @@
 const api = require('../../utils/api.js');
+const membership = require('../../utils/membership.js');
 
 Page({
   data: {
     user: {},
     initial: '黄',
-    isAdmin: false
+    isAdmin: false,
+    membership: membership.buildMembershipView({})
   },
 
   onShow() {
@@ -20,7 +22,8 @@ Page({
         this.setData({
           user,
           initial: label.charAt(0).toUpperCase(),
-          isAdmin: user.role === 'admin'
+          isAdmin: user.role === 'admin',
+          membership: membership.buildMembershipView(user)
         });
       }
     }).catch(() => {});
@@ -29,6 +32,13 @@ Page({
   goAssets() { wx.switchTab({ url: '/pages/assets/assets' }); },
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); },
   goClone() { wx.navigateTo({ url: '/pages/clone/clone' }); },
+  goInvite() {
+    if (this.data.membership.status !== 'active') {
+      api.showMembershipRequired();
+      return;
+    }
+    wx.navigateTo({ url: '/pages/invite/invite' });
+  },
   goAdmin() {
     if (!this.data.isAdmin) return;
     wx.navigateTo({ url: '/pages/admin/admin' });
