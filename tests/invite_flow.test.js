@@ -14,6 +14,11 @@ assert.strictEqual(
   invite.extractLaunchInvite({ query: { scene: encodeURIComponent('invite=ABCD23') } }),
   'ABCD23'
 );
+assert.strictEqual(
+  invite.registrationSharePath('abcd23'),
+  '/pages/login/login?invite=ABCD23'
+);
+assert.strictEqual(invite.registrationSharePath('invalid'), '/pages/login/login');
 
 const root = path.resolve(__dirname, '..');
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
@@ -21,6 +26,7 @@ const loginJs = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.j
 const loginWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.wxml'), 'utf8');
 const profileWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/profile.wxml'), 'utf8');
 const inviteJs = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.js'), 'utf8');
+const inviteWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.wxml'), 'utf8');
 
 assert.ok(appJson.pages.includes('pages/invite/invite'));
 assert.match(loginJs, /payload\.invite_code = inviteCode/);
@@ -30,5 +36,11 @@ assert.match(profileWxml, /邀请中心/);
 assert.match(inviteJs, /\/api\/auth\/invite\/dashboard/);
 assert.match(inviteJs, /\/api\/auth\/invite\/reward-points/);
 assert.match(inviteJs, /\/api\/auth\/invite\/referrer/);
+assert.match(inviteJs, /onShareAppMessage\(\)/);
+assert.match(inviteJs, /invite\.registrationSharePath\(this\.data\.code\)/);
+assert.match(inviteJs, /imageUrl:\s*'\/assets\/share\/invite-card\.jpg'/);
+assert.match(inviteWxml, /open-type="share"/);
+assert.doesNotMatch(inviteWxml, /bindtap="copyLink"/);
+assert.ok(fs.existsSync(path.join(root, 'miniprogram/assets/share/invite-card.jpg')));
 
 console.log('invite flow tests passed');

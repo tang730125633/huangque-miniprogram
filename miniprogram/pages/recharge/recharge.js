@@ -13,20 +13,6 @@ function wxLogin() {
   });
 }
 
-function requestPayment(params) {
-  return new Promise(function (resolve, reject) {
-    wx.requestPayment({
-      timeStamp: params.timeStamp,
-      nonceStr: params.nonceStr,
-      package: params.package,
-      signType: params.signType || 'RSA',
-      paySign: params.paySign,
-      success: resolve,
-      fail: reject
-    });
-  });
-}
-
 function requestVirtualPayment(params) {
   return new Promise(function (resolve, reject) {
     if (!wx.requestVirtualPayment) {
@@ -44,7 +30,8 @@ function requestVirtualPayment(params) {
   });
 }
 
-const MEMBERSHIP_PACKAGE = { id: 'membership_experience', title: '开通一年体验官', benefit: '赠 1000 点', price_yuan: '499.00', amount: 499, points: 1000 };
+const MEMBERSHIP_PACKAGE = { id: 'membership_experience', product_id: 'hq_member_exp_1y', title: '开通一年体验官', benefit: '赠 1000 点', price_yuan: '499.00', amount: 499, points: 1000 };
+const MEMBERSHIP_NAMES = { experience: '体验官', partner: '合伙人', initiator: '发起人' };
 
 function isMembershipActive(user) {
   return !!(user && user.membership_status === 'active' && user.membership_active);
@@ -53,23 +40,36 @@ function isMembershipActive(user) {
 function buildRechargeConfig(user, virtualConfig) {
   const membershipActive = isMembershipActive(user);
   const config = virtualConfig || {};
+  const discountBps = membershipActive ? Number(config.discount_bps || user.points_purchase_discount_bps || 10000) : 10000;
+  const membershipName = membershipActive
+    ? (user.membership_name || MEMBERSHIP_NAMES[config.membership_tier] || '会员')
+    : '';
+  const discountLabel = membershipActive
+    ? (user.points_purchase_discount_label || ({ 7500: '7.5折', 5500: '5.5折' }[discountBps]) || '原价')
+    : '';
+  const packages = membershipActive ? (config.items || []).map(function (item) {
+    const listPriceFen = Number(item.list_price_fen === undefined ? item.price_fen : item.list_price_fen);
+    const priceFen = Number(item.price_fen === undefined ? listPriceFen : item.price_fen);
+    return Object.assign({}, item, {
+      list_price_yuan: (listPriceFen / 100).toFixed(2),
+      price_yuan: item.price_yuan || (priceFen / 100).toFixed(2),
+      show_discount: priceFen < listPriceFen
+    });
+  }) : [MEMBERSHIP_PACKAGE];
   return {
     membershipActive,
-    packages: membershipActive ? (config.items || []) : [MEMBERSHIP_PACKAGE],
+    membershipName,
+    discountLabel,
+    hasDiscount: discountBps < 10000,
+    packages,
     custom: membershipActive ? (config.custom || null) : null,
     configured: membershipActive ? !!config.configured : true,
     environment: config.environment || 'production'
   };
 }
 
-function paymentPayload(packageId, amount, code) {
-  const data = { amount, js_code: code };
-  if (packageId === MEMBERSHIP_PACKAGE.id) data.product_type = 'membership_experience';
-  return data;
-}
-
 function paymentMode(packageId) {
-  return packageId === MEMBERSHIP_PACKAGE.id ? 'jsapi' : 'virtual';
+  return 'virtual';
 }
 
 function virtualPaymentPayload(packageId, amount, code) {
@@ -91,6 +91,7 @@ const pageDefinition = {
     membershipActive: false,
     customAmount: '',
     customPoints: 0,
+    customPayAmount: '',
     customValid: false,
     orders: [],
     configured: true,
@@ -208,7 +209,10 @@ const pageDefinition = {
     this.setData({
       customAmount: raw,
       customValid: valid,
-      customPoints: valid ? amount * Number(config.points_per_yuan) : 0
+      customPoints: valid ? amount * Number(config.points_per_yuan) : 0,
+      customPayAmount: valid
+        ? (amount * Number(config.price_fen_per_list_yuan || 100) / 100).toFixed(2)
+        : ''
     });
   },
 
@@ -222,10 +226,7 @@ const pageDefinition = {
   },
 
   beginPayment(packageId, amount) {
-    if (paymentMode(packageId) === 'virtual') {
-      return this.beginVirtualPayment(packageId, amount);
-    }
-    return this.beginJsapiPayment(packageId, amount);
+    return this.beginVirtualPayment(packageId, amount);
   },
 
   beginVirtualPayment(packageId, amount) {
@@ -261,14 +262,16 @@ const pageDefinition = {
         return this.pollVirtualPaid(orderId, 8);
       })
       .then((result) => {
+        const membershipPurchase = packageId === MEMBERSHIP_PACKAGE.id;
         this.setData({
           payingId: '',
           points: result.points === null || result.points === undefined ? this.data.points : result.points,
-          statusText: '充值成功，点数已到账'
+          statusText: membershipPurchase ? '体验官开通成功，赠送点数已到账' : '充值成功，点数已到账'
         });
         this.paymentInFlight = false;
-        wx.showToast({ title: '点数已到账', icon: 'success' });
-        this.refreshOrders(false);
+        wx.showToast({ title: membershipPurchase ? '体验官已开通' : '点数已到账', icon: 'success' });
+        if (membershipPurchase) this.refresh();
+        else this.refreshOrders(false);
       })
       .catch((err) => {
         this.paymentInFlight = false;
@@ -277,52 +280,6 @@ const pageDefinition = {
         this.setData({ payingId: '', statusText: cancelled ? '已取消支付' : message });
         if (!cancelled) this.showPaymentError(message);
         if (orderId) this.refreshOrders(true);
-      });
-  },
-
-  beginJsapiPayment(packageId, amount) {
-    if (!this.data.configured || this.data.payingId || this.paymentInFlight) return;
-    this.paymentInFlight = true;
-    const membershipPurchase = packageId === MEMBERSHIP_PACKAGE.id;
-    this.setData({ payingId: packageId, statusText: '正在创建微信订单…' });
-    let orderId = '';
-    wxLogin()
-      .then((code) => {
-        return api.request('/api/auth/wxpay/jsapi', {
-          method: 'POST',
-          data: paymentPayload(packageId, amount, code),
-          timeout: 30000
-        });
-      })
-      .then((res) => {
-        if (res.statusCode !== 200 || !res.data || !res.data.pay) {
-          throw new Error((res.data && res.data.detail) || '微信订单创建失败');
-        }
-        orderId = res.data.order && res.data.order.order_id;
-        if (!orderId) throw new Error('微信订单创建失败');
-        this.setData({ statusText: '请在微信收银台完成支付…' });
-        return requestPayment(res.data.pay);
-      })
-      .then(() => {
-        this.setData({ statusText: '支付完成，正在核对到账…' });
-        return this.pollPaid(orderId, 8);
-      })
-      .then((result) => {
-        this.setData({
-          payingId: '',
-          statusText: membershipPurchase ? '会员开通成功，赠送点数已到账' : '充值成功，点数已到账'
-        });
-        this.paymentInFlight = false;
-        wx.showToast({ title: membershipPurchase ? '会员已开通' : '点数已到账', icon: 'success' });
-        this.refresh();
-      })
-      .catch((err) => {
-        this.paymentInFlight = false;
-        const message = (err && (err.errMsg || err.message)) || '支付未完成';
-        const cancelled = /cancel/i.test(message);
-        this.setData({ payingId: '', statusText: cancelled ? '已取消支付' : message });
-        if (!cancelled) this.showPaymentError(message);
-        if (orderId) this.refreshOrders();
       });
   },
 
@@ -392,6 +349,6 @@ const pageDefinition = {
 Page(pageDefinition);
 
 if (typeof module !== 'undefined') module.exports = {
-  buildRechargeConfig, paymentPayload, paymentMode, virtualPaymentPayload, isMiniProgramWxPayOrder,
+  buildRechargeConfig, paymentMode, virtualPaymentPayload, isMiniProgramWxPayOrder,
   MEMBERSHIP_PACKAGE, pageDefinition
 };
