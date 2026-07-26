@@ -7,7 +7,10 @@
 
   <view wx:if="{{statusText}}" class="status-tip">{{statusText}}</view>
 
-  <view class="section-title">{{membershipActive ? '选择充值档位' : '开通会员'}}</view>
+  <view class="section-heading">
+    <view class="section-title">{{membershipActive ? '选择充值档位' : '开通会员'}}</view>
+    <view wx:if="{{membershipActive}}" class="discount-chip">{{membershipName}} · {{discountLabel}}</view>
+  </view>
   <view wx:if="{{loading}}" class="card empty-state">正在加载充值配置…</view>
   <view wx:elif="{{!configured}}" class="card empty-state">
     <view class="empty-title">充值功能配置中</view>
@@ -20,9 +23,12 @@
         <view class="package-points">{{item.points}}<text> 点</text></view>
         <view class="package-title">{{item.title}}{{item.benefit ? (' · ' + item.benefit) : ''}}</view>
       </view>
-      <view class="pay-button {{payingId ? 'disabled' : ''}}" data-id="{{item.id}}" data-amount="{{item.amount}}" bindtap="startPay">
-        <text wx:if="{{payingId === item.id}}">处理中…</text>
-        <text wx:else>¥{{item.price_yuan}}</text>
+      <view class="package-price">
+        <view wx:if="{{item.show_discount}}" class="original-price">原价 ¥{{item.list_price_yuan}}</view>
+        <view class="pay-button {{payingId ? 'disabled' : ''}}" data-id="{{item.id}}" data-amount="{{item.amount}}" bindtap="startPay">
+          <text wx:if="{{payingId === item.id}}">处理中…</text>
+          <text wx:else>实付 ¥{{item.price_yuan}}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -32,7 +38,7 @@
     <view class="custom-card">
       <view class="custom-copy">
         <view class="custom-title">按实际需要充值</view>
-        <view class="muted small">1 元 = {{custom.points_per_yuan}} 点，仅支持 {{custom.min_amount_yuan}}~{{custom.max_amount_yuan}} 元整数</view>
+        <view class="muted small">输入原价额度，按{{discountLabel}}结算 · 1 元额度 = {{custom.points_per_yuan}} 点</view>
       </view>
       <view class="custom-row">
         <view class="amount-input-wrap">
@@ -55,7 +61,10 @@
         </view>
       </view>
       <view class="custom-preview {{customValid ? 'active' : ''}}">
-        {{customValid ? ('预计到账 ' + customPoints + ' 点') : '输入金额后自动计算到账点数'}}
+        <block wx:if="{{customValid}}">
+          预计到账 {{customPoints}} 点 · <text wx:if="{{hasDiscount}}">原价 ¥{{customAmount}} · </text>实付 ¥{{customPayAmount}}
+        </block>
+        <block wx:else>输入额度后自动计算折后实付金额</block>
       </view>
     </view>
   </block>
