@@ -31,6 +31,7 @@ const CINE_NEED_AVATARS = { motion: 1, duo: 2 };   // 后端 CINEMATIC_MODE_AVAT
 const CINE_MAX_AVATARS = 3;                        // open 上限（后端 CINEMATIC_MAX_AVATARS）
 const CINE_PROMPT_MAX = 2000;                      // 后端 CINEMATIC_PROMPT_MAX
 const CINE_MAX_REF_VIDEOS = 3;                     // 后端 CINEMATIC_MAX_MEDIA_VIDEOS（仅 open 可多个）
+const SUBSCRIPTION_EVENT = 'work_complete';
 const CINE_MAX_MEDIA_IMAGES = 9;                   // 后端：形象数+参考图 ≤ 9
 const AVATAR_COST = 2;                     // 建形象 2 点（后端 AVATAR_COST，失败自动退点）
 const CINE_DURATIONS = [                   // motion/duo：后端仅支持 自适应 / 10 / 15
@@ -255,6 +256,9 @@ Page({
     // 存到普通实例属性 this._b64，只有小数据（预览路径/名称/时长/成本）进 setData。
     this._resetB64();
     this._batchBid = 0; // 批量照片 base64 的稳定自增键（this._b64['batch_'+bid]）
+    this._subscriptionPending = false;
+    this._subscriptionLoadPromise = null;
+    this._workCompleteTemplateId = '';
     this._setMode(mode);
   },
 
@@ -263,8 +267,74 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    this._preloadSubscriptionTemplate();
     this.refreshPoints();
     this.refreshVideoChannels();
+  },
+
+  _preloadSubscriptionTemplate() {
+    if (this._workCompleteTemplateId || this._subscriptionLoadPromise) return;
+    this._subscriptionLoadPromise = api.request('/api/auth/subscription/status', { method: 'GET' })
+      .then((res) => {
+        const events = res && res.data && Array.isArray(res.data.events) ? res.data.events : [];
+        const item = events.find((event) => event && event.event_type === SUBSCRIPTION_EVENT);
+        this._workCompleteTemplateId = item && item.template_id ? String(item.template_id) : '';
+      })
+      .catch(() => {})
+      .then(() => { this._subscriptionLoadPromise = null; });
+  },
+
+  _recordSubscriptionChoice(choice) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      // 订阅记录不是生成前提；网络卡住时最多等 3.5 秒。
+      const timer = setTimeout(finish, 3500);
+      try {
+        wx.login({
+          success: (login) => {
+            const code = login && login.code;
+            if (!code) { finish(); return; }
+            try {
+              api.request('/api/auth/subscription/choices', {
+                method: 'POST',
+                data: { choices: { [SUBSCRIPTION_EVENT]: choice }, wx_code: code }
+              }).then(finish).catch(finish);
+            } catch (err) {
+              finish();
+            }
+          },
+          fail: finish
+        });
+      } catch (err) {
+        finish();
+      }
+    });
+  },
+
+  _requestWorkCompleteSubscription() {
+    const templateId = this._workCompleteTemplateId;
+    if (!templateId || !wx.requestSubscribeMessage) return Promise.resolve();
+    return new Promise((resolve) => {
+      const finish = (choice) => {
+        if (['accept', 'reject', 'ban', 'filter'].indexOf(choice) < 0) { resolve(); return; }
+        this._recordSubscriptionChoice(choice).then(resolve).catch(resolve);
+      };
+      try {
+        wx.requestSubscribeMessage({
+          tmplIds: [templateId],
+          success: (result) => finish(result && result[templateId]),
+          fail: resolve
+        });
+      } catch (err) {
+        resolve();
+      }
+    });
   },
 
   onUnload() {
@@ -773,7 +843,7 @@ Page({
     this._setBatchItems(items);
   },
   submitTalkingBatch() {
-    if (this.data.busy) return;
+    if (this.data.busy || this._subscriptionPending) return;
     const items = this.data.batchItems;
     if (items.length < 2) { this.setNote('批量出片请至少选择 2 个形象（同一形象不能重复）', C_ERR); return; }
     const text = (this.data.talkText || '').trim();
@@ -792,6 +862,15 @@ Page({
         ? { avatar_id: String(x.id), label: x.label }
         : { image_data: this._b64['batch_' + x.bid], label: x.label })
     };
+    this._subscriptionPending = true;
+    this._requestWorkCompleteSubscription()
+      .catch(() => {})
+      .then(() => {
+        this._subscriptionPending = false;
+        this._submitTalkingBatchRequest(body, need);
+      });
+  },
+  _submitTalkingBatchRequest(body, need) {
     const token = ++this._pollToken;
     const t0 = Date.now();
     this.setData({ busy: true, videoUrl: '', batchJobs: [], cost: need });
@@ -1168,6 +1247,22 @@ Page({
   setNote(t, c) { this.setData({ note: t, noteColor: c || C_MUTED }); },
 
   submitJob(endpoint, body, cost) {
+    if (this.data.busy || this._subscriptionPending) return;
+    const need = (typeof cost === 'number') ? cost : this.data.cost;
+    if (this.data.points !== null && this.data.points < need) {
+      this.setNote('点数不足（需 ' + need + ' 点，当前 ' + this.data.points + ' 点）', C_ERR);
+      return;
+    }
+    this._subscriptionPending = true;
+    this._requestWorkCompleteSubscription()
+      .catch(() => {})
+      .then(() => {
+        this._subscriptionPending = false;
+        this._submitJobRequest(endpoint, body, cost);
+      });
+  },
+
+  _submitJobRequest(endpoint, body, cost) {
     if (this.data.busy) return;
     const need = (typeof cost === 'number') ? cost : this.data.cost;
     if (this.data.points !== null && this.data.points < need) {
