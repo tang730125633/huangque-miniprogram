@@ -2,7 +2,7 @@
   <view class="balance-card">
     <view class="balance-label">当前点数</view>
     <view class="balance-value">{{points === null ? '—' : points}}</view>
-    <view class="balance-note">微信支付 V3 · 到账后可用于所有生成任务</view>
+    <view class="balance-note">微信官方虚拟支付 · 到账后可用于所有生成任务</view>
   </view>
 
   <view wx:if="{{statusText}}" class="status-tip">{{statusText}}</view>
@@ -61,8 +61,8 @@
   </block>
 
   <view class="safe-note">
-    <view>支付由微信支付 V3 JSAPI 提供</view>
-    <view>支付完成后由服务器验签回调，再自动发放点数</view>
+    <view>点数充值由微信官方虚拟支付提供</view>
+    <view>支付完成后由服务器核验订单并自动发放点数</view>
   </view>
 
   <view wx:if="{{orders.length}}" class="history-wrap">
