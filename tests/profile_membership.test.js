@@ -47,9 +47,11 @@ const profileJs = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/pro
 const profileWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/profile.wxml'), 'utf8');
 assert.match(profileJs, /membership\.buildMembershipView\(user\)/);
 assert.match(profileWxml, /membership\.discountText/);
-assert.match(profileWxml, /当前小程序不提供充值入口/);
+assert.match(profileJs, /goRecharge\(\) \{ wx\.navigateTo\(\{ url: '\/pages\/recharge\/recharge' \}\); \}/);
+assert.match(profileWxml, /wx:if="\{\{membership\.status !== 'active'\}\}"/);
+assert.match(profileWxml, /¥499 · 赠 1000 点/);
 assert.doesNotMatch(profileJs, /7\.5折|5\.5折|7500|5500/);
 assert.doesNotMatch(profileJs, /setStorageSync|membership_expires_at\s*[<>]/);
-assert.doesNotMatch(profileWxml, /bindtap="goRecharge"|立即开通|立即充值/);
+assert.match(profileWxml, /bindtap="goRecharge"/);
 
 console.log('profile membership tests passed');

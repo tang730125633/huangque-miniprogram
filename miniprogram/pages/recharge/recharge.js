@@ -33,22 +33,41 @@ const PACKAGES = [
   { id: 'points_5000', title: '5000 点', price_yuan: '500.00', amount: 500, points: 5000, recommended: true }
 ];
 
-const TEST_PACKAGE = {
-  id: 'jsapi_test_010',
-  title: '真机支付测试',
-  price_yuan: '0.10',
-  amount: 0.1,
-  points: 1,
-  testOnly: true
-};
+const MEMBERSHIP_PACKAGE = { id: 'membership_experience', title: '开通一年体验官', benefit: '赠 1000 点', price_yuan: '499.00', amount: 499, points: 1000 };
 
 const CUSTOM = { package_id: 'custom_points', min_amount_yuan: 10, max_amount_yuan: 5000, points_per_yuan: 10 };
 
-Page({
+function isMembershipActive(user) {
+  return !!(user && user.membership_status === 'active' && user.membership_active);
+}
+
+function buildRechargeConfig(user) {
+  const membershipActive = isMembershipActive(user);
+  return {
+    membershipActive,
+    packages: membershipActive ? PACKAGES : [MEMBERSHIP_PACKAGE],
+    custom: membershipActive ? CUSTOM : null,
+    configured: true
+  };
+}
+
+function paymentPayload(packageId, amount, code) {
+  const data = { amount, js_code: code };
+  if (packageId === MEMBERSHIP_PACKAGE.id) data.product_type = 'membership_experience';
+  return data;
+}
+
+function isMiniProgramWxPayOrder(order) {
+  return !!(order && order.status === 'pending' &&
+    (order.note === '微信小程序充值' || order.note === '微信小程序开通体验官'));
+}
+
+const pageDefinition = {
   data: {
     points: null,
     packages: [],
     custom: null,
+    membershipActive: false,
     customAmount: '',
     customPoints: 0,
     customValid: false,
@@ -75,21 +94,44 @@ Page({
     this.setData({ loading: true, statusText: '' });
     api.request('/api/auth/me', { method: 'GET' }).then((me) => {
       const user = me.statusCode === 200 && me.data && me.data.user;
-      const next = { loading: false, packages: [TEST_PACKAGE].concat(PACKAGES), custom: CUSTOM, configured: true };
+      const next = Object.assign({ loading: false }, buildRechargeConfig(user));
       if (user) next.points = user.points;
       this.setData(next);
-      this.refreshOrders();
+      this.refreshOrders(true);
     }).catch(() => {
       this.setData({ loading: false, statusText: '网络异常，请稍后重试' });
     });
   },
 
-  refreshOrders() {
-    api.request('/api/auth/recharge/orders?limit=20', { method: 'GET' }).then((res) => {
+  refreshOrders(reconcilePending) {
+    return api.request('/api/auth/recharge/orders?limit=20', { method: 'GET' }).then((res) => {
       if (res.statusCode !== 200 || !res.data) return;
       const items = (res.data.items || []).map(this.formatOrder);
       this.setData({ orders: items });
+      if (!reconcilePending) return items;
+      const pending = items.filter(isMiniProgramWxPayOrder);
+      return Promise.all(pending.map((item) => this.reconcileOrder(item.order_id).catch(() => null))).then((results) => {
+        return results.some((result) => result && result.statusCode === 200) ? this.refreshOrders(false) : items;
+      });
     }).catch(() => {});
+  },
+
+  reconcileOrder(orderId) {
+    this.reconcilingOrderIds = this.reconcilingOrderIds || {};
+    if (!orderId || this.reconcilingOrderIds[orderId]) return Promise.resolve(null);
+    this.reconcilingOrderIds[orderId] = true;
+    const done = (result) => {
+      delete this.reconcilingOrderIds[orderId];
+      return result;
+    };
+    return api.request('/api/auth/wxpay/reconcile', {
+      method: 'POST',
+      data: { order_id: orderId },
+      timeout: 30000
+    }).then(done, (error) => {
+      delete this.reconcilingOrderIds[orderId];
+      throw error;
+    });
   },
 
   formatOrder(item) {
@@ -131,14 +173,16 @@ Page({
   },
 
   beginPayment(packageId, amount) {
-    if (!this.data.configured || this.data.payingId) return;
+    if (!this.data.configured || this.data.payingId || this.paymentInFlight) return;
+    this.paymentInFlight = true;
+    const membershipPurchase = packageId === MEMBERSHIP_PACKAGE.id;
     this.setData({ payingId: packageId, statusText: '正在创建微信订单…' });
     let orderId = '';
     wxLogin()
       .then((code) => {
         return api.request('/api/auth/wxpay/jsapi', {
           method: 'POST',
-          data: { amount, js_code: code },
+          data: paymentPayload(packageId, amount, code),
           timeout: 30000
         });
       })
@@ -146,7 +190,8 @@ Page({
         if (res.statusCode !== 200 || !res.data || !res.data.pay) {
           throw new Error((res.data && res.data.detail) || '微信订单创建失败');
         }
-        orderId = res.data.order.order_id;
+        orderId = res.data.order && res.data.order.order_id;
+        if (!orderId) throw new Error('微信订单创建失败');
         this.setData({ statusText: '请在微信收银台完成支付…' });
         return requestPayment(res.data.pay);
       })
@@ -157,18 +202,31 @@ Page({
       .then((result) => {
         this.setData({
           payingId: '',
-          statusText: '充值成功，点数已到账'
+          statusText: membershipPurchase ? '会员开通成功，赠送点数已到账' : '充值成功，点数已到账'
         });
-        wx.showToast({ title: '点数已到账', icon: 'success' });
+        this.paymentInFlight = false;
+        wx.showToast({ title: membershipPurchase ? '会员已开通' : '点数已到账', icon: 'success' });
         this.refresh();
       })
       .catch((err) => {
+        this.paymentInFlight = false;
         const message = (err && (err.errMsg || err.message)) || '支付未完成';
         const cancelled = /cancel/i.test(message);
         this.setData({ payingId: '', statusText: cancelled ? '已取消支付' : message });
-        if (!cancelled) wx.showModal({ title: '支付未完成', content: message, showCancel: false });
+        if (!cancelled) this.showPaymentError(message);
         if (orderId) this.refreshOrders();
       });
+  },
+
+  showPaymentError(message) {
+    if (this.paymentErrorOpen) return;
+    this.paymentErrorOpen = true;
+    wx.showModal({
+      title: '支付未完成',
+      content: message,
+      showCancel: false,
+      complete: () => { this.paymentErrorOpen = false; }
+    });
   },
 
   pollPaid(orderId, attempts) {
@@ -176,10 +234,22 @@ Page({
       const items = (res.data && res.data.items) || [];
       const order = items.find((item) => item.order_id === orderId);
       if (order && order.status === 'approved') return order;
-      if (attempts <= 1) throw new Error('微信正在确认订单，稍后进入本页会自动补查到账');
+      if (attempts <= 1) {
+        return this.reconcileOrder(orderId).then((result) => {
+          if (result && result.statusCode === 200) return (result.data && result.data.order) || order;
+          throw new Error('微信正在确认订单，稍后进入本页会自动补查到账');
+        });
+      }
       return new Promise((resolve) => {
         setTimeout(() => resolve(this.pollPaid(orderId, attempts - 1)), 1500);
       });
     });
   }
-});
+};
+
+Page(pageDefinition);
+
+if (typeof module !== 'undefined') module.exports = {
+  buildRechargeConfig, paymentPayload, isMiniProgramWxPayOrder,
+  MEMBERSHIP_PACKAGE, pageDefinition
+};

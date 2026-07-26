@@ -7,7 +7,7 @@
 
   <view wx:if="{{statusText}}" class="status-tip">{{statusText}}</view>
 
-  <view class="section-title">选择充值档位</view>
+  <view class="section-title">{{membershipActive ? '选择充值档位' : '开通会员'}}</view>
   <view wx:if="{{loading}}" class="card empty-state">正在加载充值配置…</view>
   <view wx:elif="{{!configured}}" class="card empty-state">
     <view class="empty-title">充值功能配置中</view>
@@ -16,10 +16,9 @@
   <view wx:else class="package-list">
     <view wx:for="{{packages}}" wx:key="id" class="package-card {{item.recommended ? 'recommended' : ''}}">
       <view wx:if="{{item.recommended}}" class="recommend-badge">推荐</view>
-      <view wx:if="{{item.testOnly}}" class="recommend-badge">支付测试</view>
       <view class="package-main">
         <view class="package-points">{{item.points}}<text> 点</text></view>
-        <view class="package-title">{{item.title}}</view>
+        <view class="package-title">{{item.title}}{{item.benefit ? (' · ' + item.benefit) : ''}}</view>
       </view>
       <view class="pay-button {{payingId ? 'disabled' : ''}}" data-id="{{item.id}}" data-amount="{{item.amount}}" bindtap="startPay">
         <text wx:if="{{payingId === item.id}}">处理中…</text>
@@ -28,7 +27,7 @@
     </view>
   </view>
 
-  <block wx:if="{{configured && custom}}">
+  <block wx:if="{{configured && membershipActive && custom}}">
     <view class="section-title">自定义充值</view>
     <view class="custom-card">
       <view class="custom-copy">
