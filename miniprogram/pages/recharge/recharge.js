@@ -45,6 +45,7 @@ function requestVirtualPayment(params) {
 }
 
 const MEMBERSHIP_PACKAGE = { id: 'membership_experience', title: '开通一年体验官', benefit: '赠 1000 点', price_yuan: '499.00', amount: 499, points: 1000 };
+const MEMBERSHIP_NAMES = { experience: '体验官', partner: '合伙人', initiator: '发起人' };
 
 function isMembershipActive(user) {
   return !!(user && user.membership_status === 'active' && user.membership_active);
@@ -53,9 +54,28 @@ function isMembershipActive(user) {
 function buildRechargeConfig(user, virtualConfig) {
   const membershipActive = isMembershipActive(user);
   const config = virtualConfig || {};
+  const discountBps = membershipActive ? Number(config.discount_bps || user.points_purchase_discount_bps || 10000) : 10000;
+  const membershipName = membershipActive
+    ? (user.membership_name || MEMBERSHIP_NAMES[config.membership_tier] || '会员')
+    : '';
+  const discountLabel = membershipActive
+    ? (user.points_purchase_discount_label || ({ 7500: '7.5折', 5500: '5.5折' }[discountBps]) || '原价')
+    : '';
+  const packages = membershipActive ? (config.items || []).map(function (item) {
+    const listPriceFen = Number(item.list_price_fen === undefined ? item.price_fen : item.list_price_fen);
+    const priceFen = Number(item.price_fen === undefined ? listPriceFen : item.price_fen);
+    return Object.assign({}, item, {
+      list_price_yuan: (listPriceFen / 100).toFixed(2),
+      price_yuan: item.price_yuan || (priceFen / 100).toFixed(2),
+      show_discount: priceFen < listPriceFen
+    });
+  }) : [MEMBERSHIP_PACKAGE];
   return {
     membershipActive,
-    packages: membershipActive ? (config.items || []) : [MEMBERSHIP_PACKAGE],
+    membershipName,
+    discountLabel,
+    hasDiscount: discountBps < 10000,
+    packages,
     custom: membershipActive ? (config.custom || null) : null,
     configured: membershipActive ? !!config.configured : true,
     environment: config.environment || 'production'
@@ -91,6 +111,7 @@ const pageDefinition = {
     membershipActive: false,
     customAmount: '',
     customPoints: 0,
+    customPayAmount: '',
     customValid: false,
     orders: [],
     configured: true,
@@ -208,7 +229,10 @@ const pageDefinition = {
     this.setData({
       customAmount: raw,
       customValid: valid,
-      customPoints: valid ? amount * Number(config.points_per_yuan) : 0
+      customPoints: valid ? amount * Number(config.points_per_yuan) : 0,
+      customPayAmount: valid
+        ? (amount * Number(config.price_fen_per_list_yuan || 100) / 100).toFixed(2)
+        : ''
     });
   },
 
