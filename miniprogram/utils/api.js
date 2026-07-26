@@ -47,6 +47,7 @@ function request(path, options) {
     const header = { 'Content-Type': 'application/json' };
     const token = getToken();
     if (token) header['Authorization'] = 'Bearer ' + token;
+    if (options.idempotencyKey) header['Idempotency-Key'] = String(options.idempotencyKey);
 
     wx.request({
       url: getBase() + path,

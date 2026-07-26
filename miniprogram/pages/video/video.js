@@ -44,12 +44,28 @@ const RATIOS_CINE = ['9:16', '16:9', '1:1'];  // 后端 _HEYGEN_CINEMATIC_RATIOS
 const RES_CINE = ['720p', '1080p'];
 
 // ===== AI 视频生成引擎（走 /api/gen/xiaole_video）=====
-const ENGINES = [
-  // 欧米连续多轮不可用，体验版先只开放当前稳定的果肉官方线。
-  { key: 'grok', name: '果肉视频', desc: '文生/图生·写实', ref: true }
+// 官方通道只在 /api/gen/health 明确开启后展示；健康请求失败时保守保留果肉线。
+const ENGINES_ALL = [
+  { key: 'grok', name: '果肉视频', desc: '文生/图生·写实', ref: true, maxRef: 7 },
+  { key: 'micro', name: 'Seedance 视频', desc: '官方有声·4–15 秒', ref: true, maxRef: 9 },
+  { key: 'omni', name: 'Omni 视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 3 }
 ];
-// 价格集中配置（后端返回 points_left/cost 为准，不散落魔法数字）
-const ENGINE_COST = { micro: 30, omni: 30 }; // 豆姐/欧米固定 30；果肉走 xAI 动态计价见 _grokEstimate
+const ENGINES = [ENGINES_ALL[0]];
+const OFFICIAL_VIDEO = {
+  micro: {
+    name: 'Seedance 视频', model: 'doubao-seedance-2-0-260128',
+    durations: [5, 8, 10, 15], ratios: ['9:16', '16:9', '1:1', '4:3', '3:4'],
+    resolutions: ['720p', '1080p'], defaultRatio: '9:16', maxRef: 9
+  },
+  omni: {
+    name: 'Omni 视频', model: 'gemini-omni-flash-preview',
+    durations: [3, 5, 8, 10], ratios: ['9:16', '16:9'],
+    resolutions: ['720p'], defaultRatio: '16:9', maxRef: 3
+  }
+};
+function officialVideoRequestKey() {
+  return 'mp-video-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
 // 果肉官方线：模型 × 分辨率 × 时长动态计价；参考图不额外收点。
 const GROK_MODELS = [
   { k: 'grok-imagine-video', name: '标准 1.0', desc: '480p/720p' },
@@ -135,6 +151,12 @@ Page({
     engines: ENGINES,
     engine: 'grok',
     engineRef: true,
+    engineRefMax: 7,
+    engineRefHint: '（可选 · 最多 7 张）',
+    officialDurations: [],
+    officialDuration: 5,
+    officialResolutions: [],
+    officialResolution: '720p',
     videoPromptTemplates: promptTemplates.VIDEO_TEMPLATES,
     videoPromptTemplateKey: 'product',
     videoTplSubject: '黄雀 AI 视觉服务',
@@ -213,6 +235,7 @@ Page({
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     this.refreshPoints();
+    this.refreshVideoChannels();
   },
 
   onUnload() {
@@ -303,7 +326,10 @@ Page({
   _genPricingHint() {
     const d = this.data;
     if (d.engine !== 'grok') {
-      return 'AI 视频 ' + (ENGINE_COST[d.engine] || 30) + ' 点/次 · 失败自动退点';
+      const cfg = OFFICIAL_VIDEO[d.engine];
+      const seconds = Number(d.officialDuration) || 5;
+      return 'AI 视频 ' + cfg.name + ' · 30 点/秒 × ' + seconds + ' 秒 = '
+        + (seconds * 30) + ' 点 · 失败自动退点';
     }
     const perSec = (GROK_PRICE[d.grokModel] || {})[d.grokRes] || 0;
     const modelName = d.grokModel === 'grok-imagine-video-1.5' ? '高清 1.5' : '标准 1.0';
@@ -321,14 +347,49 @@ Page({
   },
   _genCost() {
     const d = this.data;
-    if (d.engine !== 'grok') return ENGINE_COST[d.engine] || 30;
+    if (d.engine !== 'grok') return (Number(d.officialDuration) || 5) * 30;
     return this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0);
+  },
+  _engineState(engine) {
+    const eng = ENGINES_ALL.find((x) => x.key === engine) || ENGINES_ALL[0];
+    const cfg = OFFICIAL_VIDEO[eng.key];
+    const maxRef = cfg ? cfg.maxRef : (this.data.grokModel === 'grok-imagine-video-1.5' ? 1 : 7);
+    return {
+      engine: eng.key,
+      engineRef: eng.ref,
+      engineRefMax: maxRef,
+      engineRefHint: maxRef === 1 ? '（必选 · 仅 1 张首帧图）' : '（可选 · 最多 ' + maxRef + ' 张）',
+      ratios: cfg ? cfg.ratios : RATIOS_GEN,
+      ratio: cfg ? cfg.defaultRatio : '9:16',
+      officialDurations: cfg ? cfg.durations : [],
+      officialDuration: cfg ? cfg.durations[0] : 5,
+      officialResolutions: cfg ? cfg.resolutions : [],
+      officialResolution: cfg ? cfg.resolutions[0] : '720p'
+    };
+  },
+  refreshVideoChannels() {
+    api.request('/api/gen/health', { method: 'GET' }).then((res) => {
+      if (res.statusCode !== 200) return;
+      const health = res.data || {};
+      const engines = ENGINES_ALL.filter((item) => item.key === 'grok'
+        || (item.key === 'micro' && health.seedance_video_enabled === true)
+        || (item.key === 'omni' && health.omni_video_enabled === true));
+      this.setData({ engines });
+      if (!engines.some((item) => item.key === this.data.engine)) {
+        this._b64.refImgs = [];
+        this.setData(Object.assign(this._engineState('grok'), { refPreviews: [] }));
+        this._syncGenPricing();
+      }
+    }).catch(() => {});
   },
   selectEngine(e) {
     const engine = e.currentTarget.dataset.k;
-    const eng = ENGINES.find((x) => x.key === engine) || ENGINES[0];
-    const patch = { engine, engineRef: eng.ref };
-    if (!eng.ref) { this._b64.refImgs = []; patch.refPreviews = []; }
+    const patch = this._engineState(engine);
+    if (this.data.refPreviews.length > patch.engineRefMax) {
+      this._b64.refImgs = this._b64.refImgs.slice(0, patch.engineRefMax);
+      patch.refPreviews = this.data.refPreviews.slice(0, patch.engineRefMax);
+      wx.showToast({ title: '该渠道最多保留 ' + patch.engineRefMax + ' 张参考图', icon: 'none' });
+    }
     this.setData(patch);
     this._syncGenPricing();
   },
@@ -336,7 +397,11 @@ Page({
     const model = e.currentTarget.dataset.k;
     const is15 = model === 'grok-imagine-video-1.5';
     const resList = is15 ? ['480p', '720p', '1080p'] : ['480p', '720p'];
-    const patch = { grokModel: model, grokResList: resList };
+    const patch = {
+      grokModel: model, grokResList: resList,
+      engineRefMax: is15 ? 1 : 7,
+      engineRefHint: is15 ? '（必选 · 仅 1 张首帧图）' : '（可选 · 最多 7 张）'
+    };
     // 1080p 只有 1.5 支持，切回 1.0 时收敛到 720p，避免 400
     if (resList.indexOf(this.data.grokRes) < 0) patch.grokRes = '720p';
     if (is15 && this.data.refPreviews.length > 1) {
@@ -354,6 +419,13 @@ Page({
   selectGrokDur(e) {
     this.setData({ grokDur: +e.currentTarget.dataset.v });
     this._syncGenPricing();
+  },
+  selectOfficialDuration(e) {
+    this.setData({ officialDuration: +e.currentTarget.dataset.v });
+    this._syncGenPricing();
+  },
+  selectOfficialResolution(e) {
+    this.setData({ officialResolution: e.currentTarget.dataset.v });
   },
   onPrompt(e) { this.setData({ prompt: e.detail.value }); },
   selectVideoPromptTemplate(e) { this.setData({ videoPromptTemplateKey: e.currentTarget.dataset.k }); },
@@ -388,7 +460,9 @@ Page({
   chooseRef() {
     // 标准版最多 7 张参考图；高清 1.5 只接受 1 张首帧图。
     // reference_images 要「字符串数组」（dataURL/URL），服务端转存 COS 后喂上游
-    const maxRef = this.data.grokModel === 'grok-imagine-video-1.5' ? 1 : GEN_MAX_REF;
+    const maxRef = this.data.engine === 'grok'
+      ? (this.data.grokModel === 'grok-imagine-video-1.5' ? 1 : GEN_MAX_REF)
+      : this.data.engineRefMax;
     const left = maxRef - this.data.refPreviews.length;
     if (left <= 0) {
       this.setNote(maxRef === 1 ? '果肉高清 1.5 仅支持 1 张首帧图' : '参考图最多 ' + maxRef + ' 张', C_ERR);
@@ -482,6 +556,12 @@ Page({
       body.model = this.data.grokModel;
       body.resolution = this.data.grokRes;
       body.duration = this.data.grokDur;
+    } else {
+      const cfg = OFFICIAL_VIDEO[this.data.engine];
+      body.model = cfg.model;
+      body.duration = this.data.officialDuration;
+      body.resolution = this.data.officialResolution;
+      if (this.data.engine === 'micro') body.generate_audio = true;
     }
     if (this.data.engineRef && this.data.refPreviews.length) {
       // 后端期望字符串数组：dataURL / https URL（不要 {type,value} 对象），果肉最多 7 张
@@ -1018,7 +1098,12 @@ Page({
     this.setData({ busy: true, videoUrl: '', cost: need });
     this.setNote('提交中…', C_INFO);
 
-    api.request(endpoint, { method: 'POST', data: body, timeout: 60000 })
+    const official = endpoint === '/api/gen/xiaole_video'
+      && (body.channel === 'micro' || body.channel === 'omni');
+    api.request(endpoint, {
+      method: 'POST', data: body, timeout: 60000,
+      idempotencyKey: official ? officialVideoRequestKey() : ''
+    })
       .then((res) => {
         if (token !== this._pollToken) return; // 已切模式
         const d = res.data || {};
