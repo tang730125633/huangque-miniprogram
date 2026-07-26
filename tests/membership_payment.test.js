@@ -37,14 +37,15 @@ assert.strictEqual(member.custom.max_amount_yuan, 5000);
 assert.strictEqual(member.configured, true);
 assert.strictEqual(member.environment, 'production');
 
-assert.deepStrictEqual(recharge.paymentPayload('membership_experience', 499, 'code'), {
-  amount: 499,
-  js_code: 'code',
-  product_type: 'membership_experience'
-});
-assert.strictEqual(recharge.paymentMode('membership_experience'), 'jsapi');
+assert.strictEqual(recharge.MEMBERSHIP_PACKAGE.id, 'membership_experience');
+assert.strictEqual(recharge.MEMBERSHIP_PACKAGE.product_id, 'hq_member_exp_1y');
+assert.strictEqual(recharge.paymentMode('membership_experience'), 'virtual');
 assert.strictEqual(recharge.paymentMode('points_1000'), 'virtual');
 assert.strictEqual(recharge.paymentMode('custom_points'), 'virtual');
+assert.deepStrictEqual(recharge.virtualPaymentPayload('membership_experience', 499, 'code'), {
+  package_id: 'membership_experience',
+  wx_code: 'code'
+});
 assert.deepStrictEqual(recharge.virtualPaymentPayload('points_1000', null, 'code'), {
   package_id: 'points_1000',
   wx_code: 'code'
@@ -61,6 +62,12 @@ const rechargeWxml = fs.readFileSync(
 );
 assert.ok(rechargeWxml.includes('微信官方虚拟支付'));
 assert.ok(!rechargeWxml.includes('微信支付 V3'));
+const rechargeJs = fs.readFileSync(
+  path.join(__dirname, '..', 'miniprogram', 'pages', 'recharge', 'recharge.js'),
+  'utf8'
+);
+assert.ok(!rechargeJs.includes('wx.requestPayment'));
+assert.ok(!rechargeJs.includes('/api/auth/wxpay/jsapi'));
 assert.strictEqual(recharge.isMiniProgramWxPayOrder({ status: 'pending', note: '微信小程序开通体验官' }), true);
 assert.strictEqual(recharge.isMiniProgramWxPayOrder({ status: 'pending', note: '人工充值申请' }), false);
 
