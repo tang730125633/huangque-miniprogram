@@ -8,15 +8,19 @@ const videoWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/video/video
 
 assert.match(videoJs, /key: 'micro', name: '黄豆视频'/);
 assert.match(videoJs, /key: 'omni', name: '欧米视频'/);
+assert.match(videoJs, /key: 'sora', name: 'Sora 2'/);
 assert.match(videoWxml, /黄豆视频官方标准模型/);
 assert.match(videoWxml, /欧米视频官方通道/);
 assert.match(videoJs, /health\.seedance_video_enabled === true/);
 assert.match(videoJs, /health\.omni_video_enabled === true/);
+assert.match(videoJs, /health\.sora_video_enabled === true/);
 assert.match(videoJs, /body\.model = cfg\.model/);
 assert.match(videoJs, /body\.generate_audio = true/);
 assert.match(videoJs, /idempotencyKey: official \? officialVideoRequestKey\(\) : ''/);
 assert.match(videoWxml, /bindtap="selectOfficialDuration"/);
 assert.match(videoWxml, /bindtap="selectOfficialResolution"/);
+assert.match(videoWxml, /bindtap="selectSoraModel"/);
+assert.match(videoWxml, /仅支持 4、8、12 秒/);
 
 let requestOptions;
 let videoPage;
@@ -24,7 +28,7 @@ global.getApp = () => ({ globalData: { apiBase: 'https://example.test' } });
 global.getCurrentPages = () => [];
 global.wx = {
   getStorageSync: () => 'token',
-  request: (options) => { requestOptions = options; options.success({ statusCode: 200, data: {} }); }
+  request: (options) => { requestOptions = options; options.success({ statusCode: 200, data: { job_id: 91, cost: 1200, points_left: 0 } }); }
 };
 global.Page = (definition) => { videoPage = definition; };
 const api = require('../miniprogram/utils/api.js');
@@ -54,9 +58,30 @@ function pageFor(engine) {
   });
   assert.strictEqual(submitted.cost, 150);
 
-  await api.request('/api/gen/xiaole_video', {
-    method: 'POST', data: {}, idempotencyKey: 'mp-video-test-1234'
+  const sora = pageFor('sora');
+  sora.data.prompt = '一艘发光的飞船掠过没有人物的未来城市';
+  sora.data.soraModel = 'sora-2-pro';
+  sora.data.soraResolution = '1024p';
+  sora.data.soraDuration = 8;
+  sora.submitJob = (endpoint, body, cost) => { submitted = { endpoint, body, cost }; };
+  sora.submitGenerate();
+  assert.strictEqual(submitted.endpoint, '/api/gen/sora_video');
+  assert.deepStrictEqual(submitted.body, {
+    model: 'sora-2-pro', prompt: '一艘发光的飞船掠过没有人物的未来城市',
+    seconds: 8, ratio: '9:16', resolution: '1024p'
   });
-  assert.strictEqual(requestOptions.header['Idempotency-Key'], 'mp-video-test-1234');
+  assert.strictEqual(submitted.cost, 1200);
+
+  sora.submitJob = videoPage.submitJob;
+  sora._pollToken = 0;
+  sora.startPolling = () => {};
+  sora.submitJob('/api/gen/sora_video', submitted.body, submitted.cost);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(requestOptions.header['Idempotency-Key'], /^mp-video-/);
+
+  await api.request('/api/gen/sora_video', {
+    method: 'POST', data: {}, idempotencyKey: 'mp-video-sora-test-1234'
+  });
+  assert.strictEqual(requestOptions.header['Idempotency-Key'], 'mp-video-sora-test-1234');
   console.log('video channel tests passed');
 })().catch((error) => { console.error(error); process.exit(1); });

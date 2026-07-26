@@ -43,12 +43,13 @@ const CINE_DURATIONS_OPEN = [              // open：后端 4~15 秒任意整数
 const RATIOS_CINE = ['9:16', '16:9', '1:1'];  // 后端 _HEYGEN_CINEMATIC_RATIOS
 const RES_CINE = ['720p', '1080p'];
 
-// ===== AI 视频生成引擎（走 /api/gen/xiaole_video）=====
+// ===== AI 视频生成引擎 =====
 // 官方通道只在 /api/gen/health 明确开启后展示；健康请求失败时保守保留果肉线。
 const ENGINES_ALL = [
   { key: 'grok', name: '果肉视频', desc: '文生/图生·写实', ref: true, maxRef: 7 },
   { key: 'micro', name: '黄豆视频', desc: '官方有声·4–15 秒', ref: true, maxRef: 9 },
-  { key: 'omni', name: '欧米视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 3 }
+  { key: 'omni', name: '欧米视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 3 },
+  { key: 'sora', name: 'Sora 2', desc: '限时测试·非真人', ref: false, maxRef: 0 }
 ];
 const ENGINES = [ENGINES_ALL[0]];
 const OFFICIAL_VIDEO = {
@@ -63,6 +64,25 @@ const OFFICIAL_VIDEO = {
     resolutions: ['720p'], defaultRatio: '16:9', maxRef: 3
   }
 };
+const SORA_VIDEO = {
+  models: [
+    { k: 'sora-2', name: 'Sora 2', desc: '720p · 30 点/秒' },
+    { k: 'sora-2-pro', name: 'Sora 2 Pro', desc: '最高 1080p' }
+  ],
+  durations: [4, 8, 12],
+  ratios: ['9:16', '16:9'],
+  resolutions: {
+    'sora-2': ['720p'],
+    'sora-2-pro': ['720p', '1024p', '1080p']
+  },
+  rates: {
+    'sora-2:720p': 30,
+    'sora-2-pro:720p': 90,
+    'sora-2-pro:1024p': 150,
+    'sora-2-pro:1080p': 210
+  }
+};
+function soraResolutions(model) { return SORA_VIDEO.resolutions[model] || SORA_VIDEO.resolutions['sora-2']; }
 function officialVideoRequestKey() {
   return 'mp-video-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
@@ -105,7 +125,10 @@ const POLL_INTERVAL = 4000;
 const POLL_TIMEOUT_SEC = 480; // 8 分钟：仅表示前端停止等待，不代表任务失败
 const PHASE_LABEL = {
   queued: '排队中', xiaole_running: '生成中', running: '生成中', downloading: '下载中',
-  files_saved: '已上传·排队中', motion_parameters_ready: '生成中', burning_subtitle: '合成字幕中', done: '完成'
+  files_saved: '已上传·排队中', motion_parameters_ready: '生成中', burning_subtitle: '合成字幕中', done: '完成',
+  sora_submitting: '提交 Sora', sora_queued: 'Sora 排队中', sora_in_progress: 'Sora 生成中',
+  sora_retrying: 'Sora 状态重试', sora_completed: 'Sora 已完成', sora_downloading: '下载 Sora 成品',
+  sora_recovery_required: '需要人工核对，请勿重复提交'
 };
 
 // 语义色（深色主题）
@@ -157,6 +180,12 @@ Page({
     officialDuration: 5,
     officialResolutions: [],
     officialResolution: '720p',
+    soraModels: SORA_VIDEO.models,
+    soraModel: 'sora-2',
+    soraDurations: SORA_VIDEO.durations,
+    soraDuration: 4,
+    soraResolutions: SORA_VIDEO.resolutions['sora-2'],
+    soraResolution: '720p',
     videoPromptTemplates: promptTemplates.VIDEO_TEMPLATES,
     videoPromptTemplateKey: 'product',
     videoTplSubject: '黄雀 AI 视觉服务',
@@ -325,6 +354,11 @@ Page({
   },
   _genPricingHint() {
     const d = this.data;
+    if (d.engine === 'sora') {
+      const rate = this._soraRate();
+      return 'Sora 2 · ' + d.soraModel + ' · ' + d.soraResolution + ' · '
+        + rate + ' 点/秒 × ' + d.soraDuration + ' 秒 = ' + (rate * d.soraDuration) + ' 点 · 失败自动退点';
+    }
     if (d.engine !== 'grok') {
       const cfg = OFFICIAL_VIDEO[d.engine];
       const seconds = Number(d.officialDuration) || 5;
@@ -347,11 +381,24 @@ Page({
   },
   _genCost() {
     const d = this.data;
+    if (d.engine === 'sora') return this._soraRate() * d.soraDuration;
     if (d.engine !== 'grok') return (Number(d.officialDuration) || 5) * 30;
     return this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0);
   },
+  _soraRate() { return SORA_VIDEO.rates[this.data.soraModel + ':' + this.data.soraResolution] || 0; },
   _engineState(engine) {
     const eng = ENGINES_ALL.find((x) => x.key === engine) || ENGINES_ALL[0];
+    if (eng.key === 'sora') {
+      const model = this.data.soraModel === 'sora-2-pro' ? 'sora-2-pro' : 'sora-2';
+      const resolutions = soraResolutions(model);
+      return {
+        engine: 'sora', engineRef: false, engineRefMax: 0, engineRefHint: '',
+        ratios: SORA_VIDEO.ratios, ratio: '9:16',
+        soraModels: SORA_VIDEO.models, soraModel: model,
+        soraDurations: SORA_VIDEO.durations, soraDuration: 4,
+        soraResolutions: resolutions, soraResolution: resolutions[0]
+      };
+    }
     const cfg = OFFICIAL_VIDEO[eng.key];
     const maxRef = cfg ? cfg.maxRef : (this.data.grokModel === 'grok-imagine-video-1.5' ? 1 : 7);
     return {
@@ -373,7 +420,8 @@ Page({
       const health = res.data || {};
       const engines = ENGINES_ALL.filter((item) => item.key === 'grok'
         || (item.key === 'micro' && health.seedance_video_enabled === true)
-        || (item.key === 'omni' && health.omni_video_enabled === true));
+        || (item.key === 'omni' && health.omni_video_enabled === true)
+        || (item.key === 'sora' && health.sora_video_enabled === true));
       this.setData({ engines });
       if (!engines.some((item) => item.key === this.data.engine)) {
         this._b64.refImgs = [];
@@ -426,6 +474,24 @@ Page({
   },
   selectOfficialResolution(e) {
     this.setData({ officialResolution: e.currentTarget.dataset.v });
+  },
+  selectSoraModel(e) {
+    const model = e.currentTarget.dataset.k === 'sora-2-pro' ? 'sora-2-pro' : 'sora-2';
+    const resolutions = soraResolutions(model);
+    this.setData({ soraModel: model, soraResolutions: resolutions, soraResolution: resolutions[0] });
+    this._syncGenPricing();
+  },
+  selectSoraDuration(e) {
+    const seconds = +e.currentTarget.dataset.v;
+    if (SORA_VIDEO.durations.indexOf(seconds) < 0) return;
+    this.setData({ soraDuration: seconds });
+    this._syncGenPricing();
+  },
+  selectSoraResolution(e) {
+    const resolution = e.currentTarget.dataset.v;
+    if (soraResolutions(this.data.soraModel).indexOf(resolution) < 0) return;
+    this.setData({ soraResolution: resolution });
+    this._syncGenPricing();
   },
   onPrompt(e) { this.setData({ prompt: e.detail.value }); },
   selectVideoPromptTemplate(e) { this.setData({ videoPromptTemplateKey: e.currentTarget.dataset.k }); },
@@ -540,6 +606,21 @@ Page({
         reference_video_data: this._b64.editVideo, source_duration: this.data.editDuration
       };
       this.submitJob('/api/gen/xiaole_video', editBody, this.data.editCost || 1);
+      return;
+    }
+    if (this.data.engine === 'sora') {
+      const model = this.data.soraModel;
+      const seconds = this.data.soraDuration;
+      const resolution = this.data.soraResolution;
+      if (!SORA_VIDEO.rates[model + ':' + resolution]
+        || SORA_VIDEO.durations.indexOf(seconds) < 0
+        || SORA_VIDEO.ratios.indexOf(this.data.ratio) < 0) {
+        this.setNote('Sora 参数不支持，请重新选择模型、时长、清晰度和比例', C_ERR);
+        return;
+      }
+      this.submitJob('/api/gen/sora_video', {
+        model: model, prompt: prompt, seconds: seconds, ratio: this.data.ratio, resolution: resolution
+      }, this._genCost());
       return;
     }
     const body = { channel: this.data.engine, prompt: prompt, ratio: this.data.ratio };
@@ -1098,8 +1179,8 @@ Page({
     this.setData({ busy: true, videoUrl: '', cost: need });
     this.setNote('提交中…', C_INFO);
 
-    const official = endpoint === '/api/gen/xiaole_video'
-      && (body.channel === 'micro' || body.channel === 'omni');
+    const official = endpoint === '/api/gen/sora_video'
+      || (endpoint === '/api/gen/xiaole_video' && (body.channel === 'micro' || body.channel === 'omni'));
     api.request(endpoint, {
       method: 'POST', data: body, timeout: 60000,
       idempotencyKey: official ? officialVideoRequestKey() : ''
