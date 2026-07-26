@@ -27,33 +27,54 @@ function requestPayment(params) {
   });
 }
 
-const PACKAGES = [
-  { id: 'points_1000', title: '1000 点', price_yuan: '100.00', amount: 100, points: 1000 },
-  { id: 'points_2000', title: '2000 点', price_yuan: '200.00', amount: 200, points: 2000 },
-  { id: 'points_5000', title: '5000 点', price_yuan: '500.00', amount: 500, points: 5000, recommended: true }
-];
+function requestVirtualPayment(params) {
+  return new Promise(function (resolve, reject) {
+    if (!wx.requestVirtualPayment) {
+      reject(new Error('当前微信版本不支持小程序虚拟支付，请升级微信后在真机重试'));
+      return;
+    }
+    wx.requestVirtualPayment({
+      mode: params.mode,
+      signData: params.signData,
+      paySig: params.paySig,
+      signature: params.signature,
+      success: resolve,
+      fail: reject
+    });
+  });
+}
 
 const MEMBERSHIP_PACKAGE = { id: 'membership_experience', title: '开通一年体验官', benefit: '赠 1000 点', price_yuan: '499.00', amount: 499, points: 1000 };
-
-const CUSTOM = { package_id: 'custom_points', min_amount_yuan: 10, max_amount_yuan: 5000, points_per_yuan: 10 };
 
 function isMembershipActive(user) {
   return !!(user && user.membership_status === 'active' && user.membership_active);
 }
 
-function buildRechargeConfig(user) {
+function buildRechargeConfig(user, virtualConfig) {
   const membershipActive = isMembershipActive(user);
+  const config = virtualConfig || {};
   return {
     membershipActive,
-    packages: membershipActive ? PACKAGES : [MEMBERSHIP_PACKAGE],
-    custom: membershipActive ? CUSTOM : null,
-    configured: true
+    packages: membershipActive ? (config.items || []) : [MEMBERSHIP_PACKAGE],
+    custom: membershipActive ? (config.custom || null) : null,
+    configured: membershipActive ? !!config.configured : true,
+    environment: config.environment || 'production'
   };
 }
 
 function paymentPayload(packageId, amount, code) {
   const data = { amount, js_code: code };
   if (packageId === MEMBERSHIP_PACKAGE.id) data.product_type = 'membership_experience';
+  return data;
+}
+
+function paymentMode(packageId) {
+  return packageId === MEMBERSHIP_PACKAGE.id ? 'jsapi' : 'virtual';
+}
+
+function virtualPaymentPayload(packageId, amount, code) {
+  const data = { package_id: packageId, wx_code: code };
+  if (packageId === 'custom_points') data.custom_amount_yuan = amount;
   return data;
 }
 
@@ -73,6 +94,7 @@ const pageDefinition = {
     customValid: false,
     orders: [],
     configured: true,
+    environment: 'production',
     loading: true,
     payingId: '',
     statusText: ''
@@ -92,23 +114,41 @@ const pageDefinition = {
 
   refresh() {
     this.setData({ loading: true, statusText: '' });
-    api.request('/api/auth/me', { method: 'GET' }).then((me) => {
+    return api.request('/api/auth/me', { method: 'GET' }).then((me) => {
       const user = me.statusCode === 200 && me.data && me.data.user;
-      const next = Object.assign({ loading: false }, buildRechargeConfig(user));
-      if (user) next.points = user.points;
-      this.setData(next);
-      this.refreshOrders(true);
+      if (!isMembershipActive(user)) {
+        const next = Object.assign({ loading: false }, buildRechargeConfig(user));
+        if (user) next.points = user.points;
+        this.setData(next);
+        return this.refreshOrders(true);
+      }
+      return api.request('/api/auth/virtual-pay/packages', { method: 'GET' }).then((packs) => {
+        const virtualConfig = packs.statusCode === 200 && packs.data ? packs.data : {};
+        const next = Object.assign({ loading: false }, buildRechargeConfig(user, virtualConfig));
+        next.points = user.points;
+        if (!next.configured) {
+          next.statusText = (packs.data && packs.data.detail) || '微信虚拟支付配置中，请稍后重试';
+        }
+        this.setData(next);
+        return this.refreshOrders(true);
+      });
     }).catch(() => {
       this.setData({ loading: false, statusText: '网络异常，请稍后重试' });
     });
   },
 
   refreshOrders(reconcilePending) {
-    return api.request('/api/auth/recharge/orders?limit=20', { method: 'GET' }).then((res) => {
+    const virtual = this.data.membershipActive;
+    const path = virtual ? '/api/auth/virtual-pay/orders?limit=20' : '/api/auth/recharge/orders?limit=20';
+    return api.request(path, { method: 'GET' }).then((res) => {
       if (res.statusCode !== 200 || !res.data) return;
       const items = (res.data.items || []).map(this.formatOrder);
       this.setData({ orders: items });
       if (!reconcilePending) return items;
+      if (virtual) {
+        const pendingVirtual = items.filter((item) => item.status === 'created').slice(0, 3);
+        return Promise.all(pendingVirtual.map((item) => this.confirmVirtualOrder(item.order_id, true))).then(() => items);
+      }
       const pending = items.filter(isMiniProgramWxPayOrder);
       return Promise.all(pending.map((item) => this.reconcileOrder(item.order_id).catch(() => null))).then((results) => {
         return results.some((result) => result && result.statusCode === 200) ? this.refreshOrders(false) : items;
@@ -137,9 +177,18 @@ const pageDefinition = {
   formatOrder(item) {
     const date = new Date(Number(item.created_at || 0) * 1000);
     const pad = (n) => (n < 10 ? '0' + n : '' + n);
-    const labels = { pending: '待支付', approved: '已到账', rejected: '已关闭' };
+    const labels = {
+      pending: '待支付',
+      approved: '已到账',
+      rejected: '已关闭',
+      created: '待支付确认',
+      credited: '已到账',
+      failed: '未完成'
+    };
     return Object.assign({}, item, {
-      amount_yuan: Number(item.amount || 0).toFixed(2),
+      amount_yuan: item.amount_fen === undefined
+        ? Number(item.amount || 0).toFixed(2)
+        : (Number(item.amount_fen || 0) / 100).toFixed(2),
       time_label: date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()),
       status_label: labels[item.status] || item.status
     });
@@ -173,6 +222,65 @@ const pageDefinition = {
   },
 
   beginPayment(packageId, amount) {
+    if (paymentMode(packageId) === 'virtual') {
+      return this.beginVirtualPayment(packageId, amount);
+    }
+    return this.beginJsapiPayment(packageId, amount);
+  },
+
+  beginVirtualPayment(packageId, amount) {
+    if (!this.data.configured || this.data.payingId || this.paymentInFlight) return;
+    if (wx.canIUse && !wx.canIUse('requestVirtualPayment')) {
+      wx.showModal({
+        title: '请升级微信',
+        content: '当前微信版本不支持小程序虚拟支付，请升级后在手机微信中重试。',
+        showCancel: false
+      });
+      return;
+    }
+    this.paymentInFlight = true;
+    this.setData({ payingId: packageId, statusText: '正在创建微信虚拟支付订单…' });
+    let orderId = '';
+    wxLogin()
+      .then((code) => api.request('/api/auth/virtual-pay/order', {
+        method: 'POST',
+        data: virtualPaymentPayload(packageId, amount, code),
+        timeout: 30000
+      }))
+      .then((res) => {
+        if (res.statusCode !== 200 || !res.data || !res.data.payment) {
+          throw new Error((res.data && res.data.detail) || '微信虚拟支付订单创建失败');
+        }
+        orderId = res.data.order && res.data.order.order_id;
+        if (!orderId) throw new Error('微信虚拟支付订单创建失败');
+        this.setData({ statusText: '请在微信收银台完成支付…' });
+        return requestVirtualPayment(res.data.payment);
+      })
+      .then(() => {
+        this.setData({ statusText: '支付完成，正在核对到账…' });
+        return this.pollVirtualPaid(orderId, 8);
+      })
+      .then((result) => {
+        this.setData({
+          payingId: '',
+          points: result.points === null || result.points === undefined ? this.data.points : result.points,
+          statusText: '充值成功，点数已到账'
+        });
+        this.paymentInFlight = false;
+        wx.showToast({ title: '点数已到账', icon: 'success' });
+        this.refreshOrders(false);
+      })
+      .catch((err) => {
+        this.paymentInFlight = false;
+        const message = (err && (err.errMsg || err.message)) || '支付未完成';
+        const cancelled = /cancel/i.test(message);
+        this.setData({ payingId: '', statusText: cancelled ? '已取消支付' : message });
+        if (!cancelled) this.showPaymentError(message);
+        if (orderId) this.refreshOrders(true);
+      });
+  },
+
+  beginJsapiPayment(packageId, amount) {
     if (!this.data.configured || this.data.payingId || this.paymentInFlight) return;
     this.paymentInFlight = true;
     const membershipPurchase = packageId === MEMBERSHIP_PACKAGE.id;
@@ -218,6 +326,40 @@ const pageDefinition = {
       });
   },
 
+  pollVirtualPaid(orderId, attempts) {
+    return this.confirmVirtualOrder(orderId, false).then((result) => {
+      if (result && result.ok) return result;
+      if (attempts <= 1) throw new Error('微信正在确认订单，稍后进入本页会自动补查到账');
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(this.pollVirtualPaid(orderId, attempts - 1)), 1500);
+      });
+    });
+  },
+
+  confirmVirtualOrder(orderId, silent) {
+    return api.request('/api/auth/virtual-pay/confirm', {
+      method: 'POST',
+      data: { order_id: orderId },
+      timeout: 30000
+    }).then((res) => {
+      if (res.statusCode === 200 && res.data && res.data.ok) {
+        if (silent) {
+          this.setData({ points: res.data.points, statusText: '已自动补齐一笔充值到账' });
+          this.refreshOrders(false);
+        }
+        return res.data;
+      }
+      if (res.statusCode === 202) return { ok: false, pending: true };
+      if (!silent && res.statusCode >= 400) {
+        throw new Error((res.data && res.data.detail) || '支付结果确认失败');
+      }
+      return { ok: false };
+    }).catch((err) => {
+      if (!silent) throw err;
+      return { ok: false };
+    });
+  },
+
   showPaymentError(message) {
     if (this.paymentErrorOpen) return;
     this.paymentErrorOpen = true;
@@ -250,6 +392,6 @@ const pageDefinition = {
 Page(pageDefinition);
 
 if (typeof module !== 'undefined') module.exports = {
-  buildRechargeConfig, paymentPayload, isMiniProgramWxPayOrder,
+  buildRechargeConfig, paymentPayload, paymentMode, virtualPaymentPayload, isMiniProgramWxPayOrder,
   MEMBERSHIP_PACKAGE, pageDefinition
 };
