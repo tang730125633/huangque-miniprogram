@@ -29,8 +29,19 @@
         <text class="membership-value">{{membership.discountText}}</text>
       </view>
     </view>
-    <view wx:if="{{membership.showNonmemberNotice}}" class="membership-notice">
-      体验官会员由平台统一开通，当前小程序不提供充值入口。
+    <view wx:if="{{membership.status !== 'active'}}" class="membership-action" bindtap="goRecharge">
+      <view>
+        <view class="membership-action-title">开通一年体验官</view>
+        <view class="muted small">¥499 · 赠 1000 点</view>
+      </view>
+      <view class="membership-action-button">立即开通</view>
+    </view>
+    <view wx:else class="membership-action" bindtap="goRecharge">
+      <view>
+        <view class="membership-action-title">会员专享点数充值</view>
+        <view class="muted small">固定点数包或自定义充值</view>
+      </view>
+      <view class="membership-action-button">去充值</view>
     </view>
   </view>
 

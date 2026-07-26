@@ -56,11 +56,9 @@
 .membership-row:last-child { border-bottom: 0; }
 .membership-label { color: var(--text-muted); font-size: 24rpx; }
 .membership-value { color: var(--text); font-size: 25rpx; font-weight: 500; text-align: right; }
-.membership-notice {
-  margin-top: 18rpx; padding: 18rpx 20rpx; border-radius: 12rpx;
-  color: #c9c3d6; background: rgba(255,255,255,0.035);
-  font-size: 22rpx; line-height: 1.6;
-}
+.membership-action { margin-top: 18rpx; padding: 18rpx 20rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: space-between; gap: 20rpx; background: rgba(255,255,255,0.035); }
+.membership-action-title { color: var(--text); font-size: 24rpx; font-weight: 600; }
+.membership-action-button { padding: 12rpx 18rpx; border-radius: 999rpx; color: #fff; background: var(--grad); font-size: 22rpx; white-space: nowrap; }
 
 .points-card { text-align: center; padding: 40rpx 28rpx; }
 .points-card .points-num { display: block; font-size: 72rpx; font-weight: 500; margin: 12rpx 0; color: var(--secondary); }
