@@ -189,6 +189,31 @@
       </view>
     </block>
 
+    <block wx:if="{{engine==='sora'}}">
+      <view class="card">
+        <view class="label">模型</view>
+        <view class="seg">
+          <view wx:for="{{soraModels}}" wx:key="k" class="seg-item {{soraModel===item.k?'on':''}}"
+            data-k="{{item.k}}" bindtap="selectSoraModel">{{item.name}} · {{item.desc}}</view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">时长 <text class="muted small">（仅支持 4、8、12 秒）</text></view>
+        <view class="ratio-grid">
+          <view wx:for="{{soraDurations}}" wx:key="*this" class="chip {{soraDuration===item?'active':''}}"
+            data-v="{{item}}" bindtap="selectSoraDuration">{{item}} 秒</view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="label">清晰度 <text class="muted small">（Sora 2 仅 720p，Pro 最高 1080p）</text></view>
+        <view class="ratio-grid">
+          <view wx:for="{{soraResolutions}}" wx:key="*this" class="chip {{soraResolution===item?'active':''}}"
+            data-v="{{item}}" bindtap="selectSoraResolution">{{item}}</view>
+        </view>
+        <view class="muted small">限时测试仅支持非真人文生视频，不支持参考图</view>
+      </view>
+    </block>
+
     <view wx:if="{{engine==='grok' && grokOp==='edit'}}" class="card">
       <view class="label">参考视频 <text class="muted small">（MP4 · 最长 8.7 秒 · 输出继承原时长和比例）</text></view>
       <view wx:if="{{!editVideoName}}" class="upbox" bindtap="chooseEditVideo">
@@ -228,7 +253,7 @@
     <view class="card">
       <view class="label">画面描述 <text wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="muted small">（润色后仍可编辑）</text></view>
       <textarea class="prompt" placeholder="{{engine==='grok' && grokOp==='edit' ? '描述想怎么改这段视频，例如：把背景换成海边日落' : '描述你想要的视频画面，例如：秋天枫叶飘落，慢镜头，暖色调'}}"
-        placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="1000" auto-height show-confirm-bar="{{false}}"></textarea>
+        placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="{{engine==='sora' ? 2000 : 1000}}" auto-height show-confirm-bar="{{false}}"></textarea>
     </view>
 
     <view wx:if="{{engineRef && !(engine==='grok' && grokOp==='edit')}}" class="card">
