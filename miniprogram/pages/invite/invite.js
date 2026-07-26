@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const invite = require('../../utils/invite.js');
 
 function formatReward(record) {
   return Object.assign({}, record, {
@@ -13,7 +14,6 @@ Page({
     loading: true,
     error: '',
     code: '',
-    inviteLink: '',
     stats: {
       total_bound: 0,
       today_new: 0,
@@ -61,7 +61,6 @@ Page({
       this.setData({
         loading: false,
         code: code.code || '',
-        inviteLink: code.invite_link || '',
         stats: dashboard,
         rewardTotal: Number(rewards.total_reward_points || 0),
         rewards: (rewards.records || []).map(formatReward),
@@ -77,8 +76,10 @@ Page({
     wx.setClipboardData({ data: this.data.code });
   },
 
-  copyLink() {
-    if (!this.data.inviteLink) return;
-    wx.setClipboardData({ data: this.data.inviteLink });
+  onShareAppMessage() {
+    return {
+      title: '黄雀AI邀请你注册',
+      path: invite.registrationSharePath(this.data.code)
+    };
   }
 });

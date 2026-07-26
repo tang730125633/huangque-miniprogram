@@ -24,4 +24,11 @@ function extractLaunchInvite(options) {
   return validInviteCode(candidate) ? candidate : '';
 }
 
-module.exports = { normalizeInviteCode, validInviteCode, extractLaunchInvite };
+function registrationSharePath(code) {
+  const normalized = normalizeInviteCode(code);
+  return validInviteCode(normalized)
+    ? '/pages/login/login?invite=' + encodeURIComponent(normalized)
+    : '/pages/login/login';
+}
+
+module.exports = { normalizeInviteCode, validInviteCode, extractLaunchInvite, registrationSharePath };

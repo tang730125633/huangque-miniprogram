@@ -8,7 +8,7 @@
       <view class="invite-code">{{code}}</view>
       <view class="invite-actions">
         <button class="action-button" bindtap="copyCode">复制邀请码</button>
-        <button class="action-button primary" bindtap="copyLink">复制邀请链接</button>
+        <button class="action-button primary" open-type="share">邀请好友</button>
       </view>
     </view>
 
