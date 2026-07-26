@@ -185,7 +185,7 @@
           <view wx:for="{{officialResolutions}}" wx:key="*this" class="chip {{officialResolution===item?'active':''}}"
             data-v="{{item}}" bindtap="selectOfficialResolution">{{item}}</view>
         </view>
-        <view class="muted small">{{engine==='micro' ? 'Seedance 官方标准模型 · 自动生成声音' : 'Omni 官方通道 · 720p 有声视频'}}</view>
+        <view class="muted small">{{engine==='micro' ? '黄豆视频官方标准模型 · 自动生成声音' : '欧米视频官方通道 · 720p 有声视频'}}</view>
       </view>
     </block>
 

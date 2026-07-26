@@ -47,18 +47,18 @@ const RES_CINE = ['720p', '1080p'];
 // 官方通道只在 /api/gen/health 明确开启后展示；健康请求失败时保守保留果肉线。
 const ENGINES_ALL = [
   { key: 'grok', name: '果肉视频', desc: '文生/图生·写实', ref: true, maxRef: 7 },
-  { key: 'micro', name: 'Seedance 视频', desc: '官方有声·4–15 秒', ref: true, maxRef: 9 },
-  { key: 'omni', name: 'Omni 视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 3 }
+  { key: 'micro', name: '黄豆视频', desc: '官方有声·4–15 秒', ref: true, maxRef: 9 },
+  { key: 'omni', name: '欧米视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 3 }
 ];
 const ENGINES = [ENGINES_ALL[0]];
 const OFFICIAL_VIDEO = {
   micro: {
-    name: 'Seedance 视频', model: 'doubao-seedance-2-0-260128',
+    name: '黄豆视频', model: 'doubao-seedance-2-0-260128',
     durations: [5, 8, 10, 15], ratios: ['9:16', '16:9', '1:1', '4:3', '3:4'],
     resolutions: ['720p', '1080p'], defaultRatio: '9:16', maxRef: 9
   },
   omni: {
-    name: 'Omni 视频', model: 'gemini-omni-flash-preview',
+    name: '欧米视频', model: 'gemini-omni-flash-preview',
     durations: [3, 5, 8, 10], ratios: ['9:16', '16:9'],
     resolutions: ['720p'], defaultRatio: '16:9', maxRef: 3
   }
