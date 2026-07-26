@@ -49,7 +49,7 @@ Expected: FAIL because video lacks the structured error branch and invite partia
 
 - [ ] **Step 1: Handle the structured video error**
 
-Insert a membership-required branch after `401` and before generic `403`; clear `busy` and return without setting another note.
+Insert a membership-required branch after `401` and before generic `403`; clear `busy` and the pending note, then return without setting another error.
 
 - [ ] **Step 2: Validate every invite response**
 
@@ -81,4 +81,3 @@ Run `node --check` for every JavaScript file under `miniprogram` and parse every
 - [ ] **Step 3: Commit and push**
 
 Commit the focused changes, push `agent/miniprogram-membership-error-fixes`, and create a draft PR against `main`.
-
