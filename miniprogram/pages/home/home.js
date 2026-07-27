@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const ip12 = require('../../utils/ip12.js');
 
 Page({
   data: {
@@ -6,6 +7,8 @@ Page({
     membershipActive: false,
     membershipEnforced: false,
     membershipReady: false,
+    videoEntryChecking: false,
+    videoIp12PromptVisible: false,
     bannerCurrent: 0,
     bannerAutoplay: true,
 
@@ -51,22 +54,63 @@ Page({
   },
 
   onHide() {
+    this._videoEntryCheckId = Number(this._videoEntryCheckId || 0) + 1;
+    this.setData({ videoEntryChecking: false, videoIp12PromptVisible: false });
     if (this.data.bannerAutoplay) this.setData({ bannerAutoplay: false });
   },
 
   // 受保护功能：未登录先去登录
-  _guardNav(path) {
-    if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(path) }); return; }
-    if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return; }
+  _guardNav(path, onAllowed) {
+    if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(path) }); return null; }
+    if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return null; }
     if (this.data.membershipEnforced && !this.data.membershipActive) {
       api.showMembershipRequired();
-      return;
+      return null;
     }
-    wx.navigateTo({ url: path });
+    if (typeof onAllowed === 'function') return onAllowed();
+    return wx.navigateTo({ url: path });
   },
 
   // 最大卡 = 视频创作（核心业务）→ 视频生成模式
-  onTapPrimaryCreation() { this._guardNav('/pages/video/video?mode=generate'); },
+  onTapPrimaryCreation() {
+    return this._guardNav('/pages/video/video?mode=generate', () => this.checkIp12BeforeVideo());
+  },
+
+  checkIp12BeforeVideo() {
+    if (this.data.videoEntryChecking) return Promise.resolve(null);
+    const checkId = Number(this._videoEntryCheckId || 0) + 1;
+    this._videoEntryCheckId = checkId;
+    this.setData({ videoEntryChecking: true });
+    return api.request('/api/gen/digital-ip/projects', { method: 'GET' }).then((res) => {
+      if (this._videoEntryCheckId !== checkId) return null;
+      if (res.statusCode === 401) return null;
+      if (res.statusCode !== 200) { this.continueToVideo(); return null; }
+      const project = ip12.projectList(res.data)[0];
+      const questionnaire = project && project.state && project.state.questionnaire_state;
+      if (project && ip12.progress(questionnaire).unresolved === 0) this.continueToVideo();
+      else this.setData({ videoIp12PromptVisible: true });
+      return project || null;
+    }).catch(() => {
+      if (this._videoEntryCheckId !== checkId) return null;
+      this.continueToVideo();
+      return null;
+    }).finally(() => {
+      if (this._videoEntryCheckId === checkId) this.setData({ videoEntryChecking: false });
+    });
+  },
+
+  continueToVideo() {
+    this.setData({ videoIp12PromptVisible: false });
+    wx.navigateTo({ url: '/pages/video/video?mode=generate' });
+  },
+
+  createIp12BeforeVideo() {
+    this.setData({ videoIp12PromptVisible: false });
+    wx.navigateTo({ url: '/pages/ip12/ip12' });
+  },
+
+  skipVideoIp12Prompt() { this.setData({ videoIp12PromptVisible: false }); },
+  keepVideoIp12Prompt() {},
   // 右上卡 = 智能生图/改图 → 作图页
   onTapImageCreation() { this._guardNav('/pages/banana/banana'); },
 

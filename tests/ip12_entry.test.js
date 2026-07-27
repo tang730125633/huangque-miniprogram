@@ -13,7 +13,7 @@ assert.match(home, /onTapDigitalHuman\(\) \{ this\._guardNav\('\/pages\/ip12\/ip
 assert.match(home, /item\.path === '\/pages\/ip12\/ip12'.*this\._guardNav\(item\.path\)/);
 assert.match(home, /wx\.navigateTo\(\{ url: api\.loginUrl\(path\) \}\)/);
 assert.match(home, /membershipReady/);
-assert.match(homeView, /版本 v0\.047/);
+assert.match(homeView, /版本 v0\.048/);
 assert.match(video, /name: '数字人口播'/);
 assert.match(ip12Page, /type: 'all'/);
 assert.match(ip12Page, /timeout: 150000/);
