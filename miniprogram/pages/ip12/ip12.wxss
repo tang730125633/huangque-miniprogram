@@ -1,0 +1,20 @@
+.hero { background: linear-gradient(135deg, rgba(139,69,224,.28), rgba(226,75,160,.18)); }
+.hero-title { color: var(--text); font-size: 36rpx; font-weight: 700; margin-bottom: 12rpx; }
+.progress { height: 16rpx; overflow: hidden; margin-top: 24rpx; background: var(--surface-muted); border-radius: 20rpx; }
+.progress-fill { height: 100%; min-width: 0; background: var(--grad); border-radius: inherit; }
+.progress-copy, .note { margin-top: 12rpx; color: var(--text-muted); font-size: 23rpx; }
+.module-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; }
+.module { padding: 16rpx; border: 1rpx solid var(--line); border-radius: 12rpx; color: var(--text-muted); font-size: 23rpx; background: var(--surface-muted); }
+.module.done { color: var(--success); border-color: var(--success); }
+.answer { width: 100%; min-height: 180rpx; box-sizing: border-box; margin-top: 18rpx; padding: 20rpx; border: 1rpx solid var(--line); border-radius: 14rpx; background: var(--surface-muted); color: var(--text); font-size: 27rpx; }
+.ph { color: #6f6980; }
+.save-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 18rpx; }
+.btn-secondary { display: inline-block; margin-top: 16rpx; padding: 15rpx 20rpx; color: var(--primary-ink); border: 1rpx solid var(--primary); border-radius: 12rpx; font-size: 24rpx; }
+.upload { margin-top: 16rpx; padding: 28rpx 18rpx; border: 2rpx dashed var(--line); border-radius: 14rpx; text-align: center; color: var(--text-muted); font-size: 24rpx; }
+.file { display: flex; justify-content: space-between; gap: 12rpx; padding: 12rpx 0; color: var(--text-muted); font-size: 22rpx; border-bottom: 1rpx solid var(--line); }
+.file text:last-child { color: var(--primary); flex: none; }
+.consent { display: flex; align-items: center; gap: 8rpx; margin: 20rpx 0 12rpx; color: var(--text); font-size: 24rpx; }
+.sub-label { margin-top: 20rpx; color: var(--primary-ink); font-size: 25rpx; font-weight: 600; }
+.bullet { margin-top: 10rpx; color: var(--text-muted); font-size: 24rpx; line-height: 1.6; }
+.candidate { margin-top: 18rpx; padding: 20rpx; border-radius: 14rpx; background: var(--surface-muted); }
+.candidate-title { color: var(--text); font-size: 27rpx; font-weight: 600; margin-bottom: 8rpx; }

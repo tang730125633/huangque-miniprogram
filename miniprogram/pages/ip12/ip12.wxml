@@ -1,0 +1,55 @@
+<view class="container">
+  <view class="hero card">
+    <view class="hero-title">数字化 IP / IP12 成长档案</view>
+    <view class="muted">先沉淀定位，再生成视觉和视频方案；不会自动扣点或生成。</view>
+    <view class="progress"><view class="progress-fill" style="width:{{progressPercent}}%"></view></view>
+    <view class="progress-copy">12 个模块 · {{completedSteps}} / 54 步 · {{status || '草稿'}}</view>
+  </view>
+
+  <view class="card">
+    <view class="label">IP12 全程</view>
+    <view class="module-grid"><view wx:for="{{modules}}" wx:key="index" class="module {{item.done===item.steps?'done':''}}">{{item.index}}. {{item.name}} {{item.done}}/{{item.steps}}</view></view>
+  </view>
+
+  <view class="card">
+    <view class="label">模块 1 · 定位诊断 / 第 1 步：采集门店经营底图</view>
+    <view class="muted small">请写下门店领域、客群、现有产品、成交方式和经营目标。</view>
+    <textarea class="answer" value="{{answer}}" bindinput="onAnswer" maxlength="1200" auto-height placeholder="例如：美业门店，服务本地轻熟客群，主推皮肤管理，靠团购和私域复购成交" placeholder-class="ph"></textarea>
+    <view class="save-row"><view class="btn-secondary" bindtap="saveDraft">{{busy ? '处理中…' : '保存草稿'}}</view><view class="muted small">云端保存，重新打开会恢复</view></view>
+  </view>
+
+  <view class="card">
+    <view class="label">补充资料 <text class="muted small">可选，最多 6 份 / 每份 8 MiB / 共 20 MiB</text></view>
+    <view wx:for="{{selectedFiles}}" wx:key="index" class="file"><text>{{item.name}} · {{item.sizeText}}</text><text data-index="{{index}}" bindtap="removeFile">移除</text></view>
+    <view class="upload" bindtap="chooseFiles">选择 PPT、Word、PDF、表格、文本或图片</view>
+    <checkbox-group bindchange="onConsent"><label class="consent"><checkbox value="accepted" checked="{{consent}}" color="#e24ba0"/>我同意将当前回答及以上资料发送给 AI 分析</label></checkbox-group>
+    <view class="muted small">黄雀项目库不保存原文件；资料会发送给 AI 服务商并按其政策处理。PPT/Word 中的视觉内容建议可导出为 PDF 后上传。</view>
+  </view>
+
+  <view class="btn-primary {{busy?'disabled':''}}" bindtap="analyze">{{busy ? '分析中…' : 'AI 分析并生成 3 个 IP 候选'}}</view>
+  <view wx:if="{{note}}" class="note">{{note}}</view>
+
+  <view wx:if="{{sourceEvidence.length || gaps.length || conflicts.length}}" class="card">
+    <view class="label">分析依据与待补充</view>
+    <view wx:if="{{sourceEvidence.length}}" class="sub-label">来源证据</view><view wx:for="{{sourceEvidence}}" wx:key="index" class="bullet">• {{item}}</view>
+    <view wx:if="{{gaps.length}}" class="sub-label">缺口</view><view wx:for="{{gaps}}" wx:key="index" class="bullet">• {{item}}</view>
+    <view wx:if="{{conflicts.length}}" class="sub-label">冲突提示</view><view wx:for="{{conflicts}}" wx:key="index" class="bullet">• {{item}}</view>
+  </view>
+
+  <view wx:if="{{candidates.length}}" class="card">
+    <view class="label">从 3 个候选中确认一个</view>
+    <view wx:for="{{candidates}}" wx:key="index" class="candidate">
+      <view class="candidate-title">方案 {{index + 1}} · {{item.name || item.title || 'IP 候选'}}</view>
+      <view class="muted">{{item.copy}}</view>
+      <view class="btn-secondary" data-index="{{index}}" bindtap="confirmCandidate">确认这个方案</view>
+    </view>
+  </view>
+
+  <view wx:if="{{confirmed}}" class="card"><view class="label">已确认 IP 档案</view><view class="muted">{{confirmed.name || confirmed.title || confirmed.summary || '已保存'}}</view></view>
+  <view wx:if="{{imagePlan.length || videoPlan.length || nextSteps.length}}" class="card">
+    <view class="label">下一步行动计划</view>
+    <view wx:if="{{imagePlan.length}}" class="sub-label">图片计划</view><view wx:for="{{imagePlan}}" wx:key="index" class="bullet">• {{item}}</view><view wx:if="{{canPrefill && imagePlan.length}}" class="btn-secondary" bindtap="goImage">带入现有生图工具</view>
+    <view wx:if="{{videoPlan.length}}" class="sub-label">视频计划</view><view wx:for="{{videoPlan}}" wx:key="index" class="bullet">• {{item}}</view><view wx:if="{{canPrefill && videoPlan.length}}" class="btn-secondary" bindtap="goVideo">带入现有视频工具</view>
+    <view wx:if="{{nextSteps.length}}" class="sub-label">建议步骤</view><view wx:for="{{nextSteps}}" wx:key="index" class="bullet">• {{item}}</view>
+  </view>
+</view>

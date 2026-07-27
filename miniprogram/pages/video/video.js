@@ -9,7 +9,7 @@ const SHOW_UNSTABLE = false;
 const MODES_ALL = [
   { key: 'cinematic', name: '电影化身', desc: '动作模仿 / 开放式生成', ready: true, stable: true },
   { key: 'generate', name: 'AI 视频生成', desc: '文生 / 图生视频', ready: true, stable: true },
-  { key: 'talking', name: '数字化 IP', desc: '形象 + 文案 + 音色', ready: true, stable: true },
+  { key: 'talking', name: '数字人口播', desc: '形象 + 文案 + 音色', ready: true, stable: true },
   { key: 'tryon', name: '换装 / 换背景', desc: '图片 / 视频换装换背景', ready: true, stable: false }
 ];
 const MODES = SHOW_UNSTABLE ? MODES_ALL : MODES_ALL.filter((m) => m.stable);
@@ -119,7 +119,7 @@ const TRYON_TYPES = [
 const HINTS = {
   cinematic: '动作模仿、开放式生成均为 10 点/秒 · 失败自动退点',
   generate: 'AI 视频价格随模型、清晰度与时长变化 · 失败自动退点',
-  talking: '数字化 IP 30 点/30 秒 · 不足 30 秒按 30 秒计 · 失败自动退点',
+  talking: '数字人口播 30 点/30 秒 · 不足 30 秒按 30 秒计 · 失败自动退点',
   tryon: '换装 / 换背景，耗时约数分钟 · 点数以服务端返回为准，失败任务按服务端规则处理'
 };
 
@@ -272,6 +272,13 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    const ip12Prefill = wx.getStorageSync('hq_ip12_prefill_video');
+    if (ip12Prefill && ip12Prefill.prompt) {
+      wx.removeStorageSync('hq_ip12_prefill_video');
+      if (this.data.mode !== 'generate') this._setMode('generate');
+      this.setData({ prompt: ip12Prefill.prompt });
+      wx.showToast({ title: '已带入 IP12 视频计划', icon: 'none' });
+    }
     this._preloadSubscriptionTemplate();
     this.refreshPoints();
     this.refreshVideoChannels();

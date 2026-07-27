@@ -5,6 +5,7 @@ Page({
     points: null,
     membershipActive: false,
     membershipEnforced: false,
+    membershipReady: false,
     bannerCurrent: 0,
     bannerAutoplay: true,
 
@@ -38,15 +39,15 @@ Page({
     tutorials: [
       { id: 't1', title: 'AI 灵感作图入门', image: '/assets/home/tutorial-image-creation.jpg', path: '/pages/banana/banana' },
       { id: 't2', title: '创作灵感案例', image: '/assets/home/tutorial-video-analysis.jpg', path: '/pages/inspiration/inspiration', tab: true },
-      { id: 't3', title: '数字化 IP 制作', image: '/assets/home/tutorial-digital-human.jpg', path: '/pages/video/video?mode=talking' }
+      { id: 't3', title: '数字化 IP 制作', image: '/assets/home/tutorial-digital-human.jpg', path: '/pages/ip12/ip12' }
     ]
   },
 
   onShow() {
     // swiper 只在首页可见时运行，避免切到其它 tab 后后台定时切页造成卡顿。
     if (!this.data.bannerAutoplay) this.setData({ bannerAutoplay: true });
-    if (api.getToken()) this.refreshPoints();
-    else this.setData({ points: null });
+    if (api.getToken()) { this.setData({ membershipReady: false }); this.refreshPoints(); }
+    else this.setData({ points: null, membershipReady: false });
   },
 
   onHide() {
@@ -56,6 +57,7 @@ Page({
   // 受保护功能：未登录先去登录
   _guardNav(path) {
     if (!api.getToken()) { wx.navigateTo({ url: '/pages/login/login' }); return; }
+    if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return; }
     if (this.data.membershipEnforced && !this.data.membershipActive) {
       api.showMembershipRequired();
       return;
@@ -71,8 +73,8 @@ Page({
   // 现有可体验的一键跟创页；未完成的视频拆解能力不再对外占位。
   onTapVideoAnalysis() { wx.switchTab({ url: '/pages/inspiration/inspiration' }); },
 
-  // 数字化 IP → 视频页 talking 模式
-  onTapDigitalHuman() { this._guardNav('/pages/video/video?mode=talking'); },
+  // IP12 成长档案；旧口播功能仍在视频页，以“数字人口播”明确区分。
+  onTapDigitalHuman() { this._guardNav('/pages/ip12/ip12'); },
 
   onBannerChange(e) {
     const current = Number(e.detail.current) || 0;
@@ -87,6 +89,7 @@ Page({
     const item = this.data.tutorials.find((x) => x.id === id);
     if (!item || !item.path) return;
     if (!api.getToken()) { wx.navigateTo({ url: '/pages/login/login' }); return; }
+    if (item.path === '/pages/ip12/ip12') { this._guardNav(item.path); return; }
     if (item.tab) wx.switchTab({ url: item.path });
     else wx.navigateTo({ url: item.path });
   },
@@ -102,7 +105,8 @@ Page({
         this.setData({
           points: res.data.user.points,
           membershipActive: !!res.data.user.membership_active,
-          membershipEnforced: !!res.data.membership_enforcement_enabled
+          membershipEnforced: !!res.data.membership_enforcement_enabled,
+          membershipReady: true
         });
       }
     }).catch(() => {});

@@ -59,6 +59,12 @@ Page({
       this.setData({ prompt: fc.prompt, engine, maxCount, count: Math.min(this.data.count, maxCount) });
       wx.showToast({ title: '已带入灵感提示词', icon: 'none' });
     }
+    const ip12Prefill = wx.getStorageSync('hq_ip12_prefill_image');
+    if (ip12Prefill && ip12Prefill.prompt) {
+      wx.removeStorageSync('hq_ip12_prefill_image');
+      this.setData({ prompt: ip12Prefill.prompt });
+      wx.showToast({ title: '已带入 IP12 图片计划', icon: 'none' });
+    }
     this.updateCost();
     this.refreshPoints();
     this.loadHistory();
