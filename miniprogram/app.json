@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/home/home",
+    "pages/ip12/ip12",
     "pages/inspiration/inspiration",
     "pages/assets/assets",
     "pages/profile/profile",
