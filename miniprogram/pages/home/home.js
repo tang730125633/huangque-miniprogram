@@ -37,7 +37,7 @@ Page({
     // 教程与创作案例
     tutorials: [
       { id: 't1', title: 'AI 灵感作图入门', image: '/assets/home/tutorial-image-creation.jpg', path: '/pages/banana/banana' },
-      { id: 't2', title: '短视频创意拆解', image: '/assets/home/tutorial-video-analysis.jpg', path: '/pages/inspiration/inspiration', tab: true },
+      { id: 't2', title: '创作灵感案例', image: '/assets/home/tutorial-video-analysis.jpg', path: '/pages/inspiration/inspiration', tab: true },
       { id: 't3', title: '数字化 IP 制作', image: '/assets/home/tutorial-digital-human.jpg', path: '/pages/video/video?mode=talking' }
     ]
   },
@@ -68,8 +68,8 @@ Page({
   // 右上卡 = 智能生图/改图 → 作图页
   onTapImageCreation() { this._guardNav('/pages/banana/banana'); },
 
-  // 暂无独立"视频拆解"页 → 提示即将上线（不误接视频生成页）
-  onTapVideoAnalysis() { wx.showToast({ title: '功能即将上线', icon: 'none' }); },
+  // 现有可体验的一键跟创页；未完成的视频拆解能力不再对外占位。
+  onTapVideoAnalysis() { wx.switchTab({ url: '/pages/inspiration/inspiration' }); },
 
   // 数字化 IP → 视频页 talking 模式
   onTapDigitalHuman() { this._guardNav('/pages/video/video?mode=talking'); },

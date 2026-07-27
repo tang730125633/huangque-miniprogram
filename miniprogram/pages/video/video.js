@@ -32,6 +32,7 @@ const CINE_MAX_AVATARS = 3;                        // open 上限（后端 CINEM
 const CINE_PROMPT_MAX = 2000;                      // 后端 CINEMATIC_PROMPT_MAX
 const CINE_MAX_REF_VIDEOS = 3;                     // 后端 CINEMATIC_MAX_MEDIA_VIDEOS（仅 open 可多个）
 const SUBSCRIPTION_EVENT = 'work_complete';
+const TALK_AUDIO_CONSENT_VERSION = '2026-07-27-v1';
 const CINE_MAX_MEDIA_IMAGES = 9;                   // 后端：形象数+参考图 ≤ 9
 const AVATAR_COST = 2;                     // 建形象 2 点（后端 AVATAR_COST，失败自动退点）
 const CINE_DURATIONS = [                   // motion/duo：后端仅支持 自适应 / 10 / 15
@@ -226,6 +227,10 @@ Page({
     voiceName: '',
     talkAudio: '',           // data URL 音频（audio 模式）
     talkAudioName: '',
+    talkAudioConsentVisible: false,
+    talkAudioConsentChecked: false,
+    talkAudioConsent: false,
+    talkAudioConsentAt: '',
     resList: RES_FULL,
     talkRes: '1080p',
 
@@ -760,6 +765,32 @@ Page({
   },
   selectTalkRes(e) { this.setData({ talkRes: e.currentTarget.dataset.v }); },
   chooseTalkAudio() {
+    if (!this.data.talkAudioConsent) {
+      this.setData({ talkAudioConsentVisible: true, talkAudioConsentChecked: false });
+      return;
+    }
+    this._chooseTalkAudioFile();
+  },
+  onTalkAudioConsentChange(e) {
+    const values = (e && e.detail && e.detail.value) || [];
+    this.setData({ talkAudioConsentChecked: values.indexOf('agreed') >= 0 });
+  },
+  cancelTalkAudioConsent() {
+    this.setData({ talkAudioConsentVisible: false, talkAudioConsentChecked: false });
+  },
+  confirmTalkAudioConsent() {
+    if (!this.data.talkAudioConsentChecked) {
+      wx.showToast({ title: '请先阅读并同意声纹授权协议', icon: 'none' });
+      return;
+    }
+    this.setData({
+      talkAudioConsentVisible: false,
+      talkAudioConsentChecked: false,
+      talkAudioConsent: true,
+      talkAudioConsentAt: new Date().toISOString()
+    }, () => this._chooseTalkAudioFile());
+  },
+  _chooseTalkAudioFile() {
     wx.chooseMessageFile({
       count: 1, type: 'file', extension: ['mp3', 'wav', 'm4a'],
       success: (res) => {
@@ -788,8 +819,17 @@ Page({
       if (!this.data.voiceKey) { this.setNote('请先选择音色', C_ERR); return; }
       body.text = text; body.voice = this.data.voiceKey;
     } else {
+      if (!this.data.talkAudioConsent) {
+        this.setData({ talkAudioConsentVisible: true, talkAudioConsentChecked: false });
+        this.setNote('请先阅读并单独同意《声纹授权协议》', C_ERR);
+        return;
+      }
       if (!this._b64.talkAudio) { this.setNote('请先选择口播音频', C_ERR); return; }
       body.audio_data = this._b64.talkAudio;
+      body.voice_consent = true;
+      body.voice_consent_scope = 'talking_audio';
+      body.voice_consent_version = TALK_AUDIO_CONSENT_VERSION;
+      body.voice_consent_at = this.data.talkAudioConsentAt;
     }
     this.submitJob('/api/gen/video', body, VIDEO_COST);
   },

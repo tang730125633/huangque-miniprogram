@@ -48,8 +48,8 @@
 
         <view class="mini-card mc-video" bindtap="onTapVideoAnalysis">
           <view class="mc-body">
-            <view class="mc-title">视频灵感拆解</view>
-            <view class="tag tag-orange">提取结构与文案</view>
+            <view class="mc-title">一键跟创</view>
+            <view class="tag tag-orange">灵感案例快速生成</view>
           </view>
           <image class="mc-icon" src="{{assets.videoAnalysisIcon}}" mode="aspectFit"></image>
         </view>

@@ -177,3 +177,32 @@
 
 .ai-disclosure { margin: 12rpx 8rpx 4rpx; text-align: center; color: var(--text-muted); font-size: 21rpx; line-height: 1.6; }
 .ai-badge { margin-left: 10rpx; padding: 3rpx 10rpx; border-radius: 999rpx; background: rgba(226,75,160,.16); color: #ff8dca; font-size: 19rpx; font-weight: 500; }
+
+/* 数字人口播音频：文件选择前的独立声纹授权 */
+.audio-consent-mask {
+  position: fixed; inset: 0; z-index: 1000; box-sizing: border-box;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(0,0,0,.76);
+}
+.audio-consent-dialog {
+  width: 100%; box-sizing: border-box;
+  padding: 40rpx 38rpx calc(40rpx + env(safe-area-inset-bottom));
+  border-radius: 34rpx 34rpx 0 0; background: #29282b;
+}
+.audio-consent-app { display: flex; align-items: center; gap: 16rpx; color: #fff; font-size: 28rpx; font-weight: 600; }
+.audio-consent-icon { width: 52rpx; height: 52rpx; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
+.audio-consent-icon image { width: 34rpx; height: 34rpx; }
+.audio-consent-title { margin-top: 36rpx; color: #fff; font-size: 38rpx; font-weight: 700; }
+.audio-consent-scope { display: flex; align-items: center; justify-content: space-between; margin-top: 30rpx; padding: 28rpx 0; border-top: 1rpx solid rgba(255,255,255,.09); border-bottom: 1rpx solid rgba(255,255,255,.09); color: #f5f3f7; font-size: 29rpx; }
+.audio-consent-scope-ok { width: 42rpx; height: 42rpx; border-radius: 50%; text-align: center; line-height: 42rpx; color: #fff; background: #08c96b; }
+.audio-consent-copy { margin-top: 24rpx; color: #b9b5bd; font-size: 25rpx; line-height: 1.7; }
+.audio-consent-link { display: inline-block; margin: 22rpx 0; color: #ff70c5; font-size: 25rpx; }
+.audio-consent-check { display: flex; align-items: flex-start; gap: 12rpx; color: #eee9f5; font-size: 25rpx; line-height: 1.55; }
+.audio-consent-check checkbox { flex: none; transform: scale(.88); }
+.audio-consent-actions { display: flex; gap: 18rpx; margin-top: 32rpx; }
+.audio-consent-cancel, .audio-consent-confirm {
+  flex: 1; padding: 23rpx 10rpx; border-radius: 14rpx; text-align: center; font-size: 28rpx; font-weight: 600;
+}
+.audio-consent-cancel { color: #fff; background: #444346; }
+.audio-consent-confirm { color: #fff; background: #08c96b; }
+.audio-consent-confirm.disabled { opacity: .42; }

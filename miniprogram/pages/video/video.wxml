@@ -484,3 +484,29 @@
 
   <view class="bottom-safe"></view>
 </view>
+
+<view wx:if="{{talkAudioConsentVisible}}" class="audio-consent-mask">
+  <view class="audio-consent-dialog" aria-role="dialog" aria-label="口播音频声纹授权申请">
+    <view class="audio-consent-app">
+      <view class="audio-consent-icon"><image src="../../assets/icons/mic.svg"></image></view>
+      <text>黄雀智创 申请</text>
+    </view>
+    <view class="audio-consent-title">使用以下声音信息</view>
+    <view class="audio-consent-scope">
+      <text>口播音频与必要声音特征</text>
+      <text class="audio-consent-scope-ok">✓</text>
+    </view>
+    <view class="audio-consent-copy">你选择的口播音频将被上传，用于分析必要的声音特征、驱动人物口型并生成数字化 IP 视频。拒绝授权不影响其他功能。</view>
+    <navigator class="audio-consent-link" url="/pages/legal/legal?type=voiceprint">查看完整《声纹授权协议》</navigator>
+    <checkbox-group bindchange="onTalkAudioConsentChange">
+      <label class="audio-consent-check">
+        <checkbox value="agreed" checked="{{talkAudioConsentChecked}}" color="#e24ba0"></checkbox>
+        <text>我已阅读并单独同意《声纹授权协议》</text>
+      </label>
+    </checkbox-group>
+    <view class="audio-consent-actions">
+      <view class="audio-consent-cancel" bindtap="cancelTalkAudioConsent">不同意</view>
+      <view class="audio-consent-confirm {{talkAudioConsentChecked?'':'disabled'}}" bindtap="confirmTalkAudioConsent">同意并选择音频</view>
+    </view>
+  </view>
+</view>
