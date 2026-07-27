@@ -58,8 +58,11 @@
   <view wx:if="{{note}}" class="note card">{{note}}</view>
 
   <view class="card guide-card">
-    <view class="label">小黄雀 · IP 成长教练 <text class="muted small">一次只问一题</text></view>
-    <view class="muted small">先像聊天一样说说你的经历或卡点。AI 只在你主动发送后提供当前步骤的一个问题或建议，不会自动确认答案。</view>
+    <view class="guide-head">
+      <view class="label">小黄雀 · IP 成长教练 <text class="muted small">一次只问一题</text></view>
+      <view class="btn-link {{busy||guideBusy?'disabled':''}}" bindtap="resetGuideMemory">重置教练记忆</view>
+    </view>
+    <view class="muted small">先像聊天一样说说你的经历或卡点。AI 只在你主动发送后提供当前步骤的一个问题或建议，不会自动确认答案。教练记忆保存在账号档案中，主站与小程序同步。</view>
     <view wx:if="{{!guideTurns.length}}" class="guide-welcome">勾选同意后，点击“让 AI 问第一题”开始。</view>
     <view wx:for="{{guideTurns}}" wx:key="index" class="guide-turn {{item.role === 'assistant' ? 'assistant' : 'user'}}">{{item.content}}</view>
     <view wx:if="{{guideSuggestedAnswer && isText}}" class="guide-draft">

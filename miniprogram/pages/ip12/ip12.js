@@ -38,13 +38,23 @@ function emptyAnalysisView() {
   return { analysis: null, candidates: [], sourceEvidence: [], gaps: [], conflicts: [], analysisNote: '' };
 }
 
+function normalizedGuideTurns(questionnaire) {
+  return (Array.isArray(questionnaire.guideTurns) ? questionnaire.guideTurns : []).filter(Boolean).map((turn) => {
+    const normalized = Object.assign({}, turn, {
+      suggested_answer: String(turn.suggested_answer || turn.suggestedAnswer || '')
+    });
+    delete normalized.suggestedAnswer;
+    return normalized;
+  });
+}
+
 function guideView(questionnaire, moduleIndex, stepIndex) {
   const stepKey = ip12.keyFor(moduleIndex, stepIndex);
-  const turns = (Array.isArray(questionnaire.guideTurns) ? questionnaire.guideTurns : [])
+  const turns = normalizedGuideTurns(questionnaire)
     .filter((turn) => turn && turn.stepKey === stepKey)
     .slice(-6)
     .map((turn) => ({ role: turn.role === 'assistant' ? 'assistant' : 'user', content: neutralMessage(turn.content),
-      suggestedAnswer: String(turn.suggestedAnswer || '') }));
+      suggestedAnswer: turn.suggested_answer }));
   const latest = turns.slice().reverse().find((turn) => turn.role === 'assistant') || {};
   return { guideTurns: turns, guideSuggestedAnswer: latest.suggestedAnswer || '' };
 }
@@ -461,6 +471,40 @@ Page({
     this.setData({ guideInput: String(e.detail && e.detail.value || '') });
   },
 
+  resetGuideMemory() {
+    if (!this._project || this.data.busy || this.data.guideBusy) return Promise.resolve(null);
+    const turns = Array.isArray(this._questionnaire.guideTurns) ? this._questionnaire.guideTurns : [];
+    if (!turns.length && !this.data.guideInput && !this.data.guideSuggestedAnswer) {
+      this.setData({ note: '当前没有可清除的教练记忆。' });
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => {
+      wx.showModal({
+        title: '重置教练记忆？',
+        content: '将清除本项目中小黄雀保存的全部对话和建议草稿，并同步到主站；不会删除已确认答案、IP 档案或报告。此前已发送的 AI 请求无法撤回。',
+        confirmText: '确认清除',
+        cancelText: '保留',
+        success: (result) => {
+          if (!result.confirm) { resolve(null); return; }
+          const questionnaire = Object.assign({}, this._questionnaire, { guideTurns: [] });
+          this.setData({ busy: true, guideBusy: true, note: '正在清除教练记忆…' });
+          this.patchQuestionnaire(questionnaire).then((project) => {
+            this.applyProject(project);
+            this.setData({
+              guideInput: '', guideConsent: false, guideSuggestedAnswer: '',
+              note: '教练记忆已清除；已确认答案、IP 档案和报告均已保留。'
+            });
+            return project;
+          }).catch((error) => {
+            this.setData({ note: neutralMessage(error.message, '教练记忆清除失败，请重试') });
+            return null;
+          }).finally(() => this.setData({ busy: false, guideBusy: false })).then(resolve);
+        },
+        fail: () => resolve(null)
+      });
+    });
+  },
+
   askGuide(e) {
     if (!this._project || this.data.busy || this.data.guideBusy) return Promise.resolve(null);
     const message = String(e && e.currentTarget && e.currentTarget.dataset.message || this.data.guideInput || '').trim();
@@ -473,7 +517,8 @@ Page({
     const step = ip12.stepAt(moduleIndex, stepIndex);
     const answer = this._questionnaire.answers[ip12.keyFor(moduleIndex, stepIndex)] || {};
     const stepKey = ip12.keyFor(moduleIndex, stepIndex);
-    const recentTurns = (Array.isArray(this._questionnaire.guideTurns) ? this._questionnaire.guideTurns : [])
+    const storedTurns = normalizedGuideTurns(this._questionnaire);
+    const recentTurns = storedTurns
       .filter((turn) => turn && turn.stepKey === stepKey)
       .slice(-6).map((turn) => ({ role: turn.role, content: String(turn.content || '') }));
     this.setData({ busy: true, guideBusy: true, note: '小黄雀正在理解当前步骤…' });
@@ -496,10 +541,10 @@ Page({
         throw new Error(neutralMessage(res.data && res.data.detail, '小黄雀暂时无法回复'));
       }
       const guide = res.data.guide || {};
-      const turns = (Array.isArray(this._questionnaire.guideTurns) ? this._questionnaire.guideTurns : []).concat([
+      const turns = storedTurns.concat([
         { role: 'user', content: message, stepKey },
         { role: 'assistant', content: String(guide.reply || '我们继续完成当前步骤。'),
-          suggestedAnswer: String(guide.suggested_answer || ''), stepKey }
+          suggested_answer: String(guide.suggested_answer || ''), stepKey }
       ]).slice(-72);
       const questionnaire = Object.assign({}, this._questionnaire, { guideTurns: turns });
       return this.patchQuestionnaire(questionnaire).then((project) => {

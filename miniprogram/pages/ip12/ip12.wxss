@@ -48,6 +48,8 @@
 .resume-item { margin-top: 12rpx; padding: 15rpx; border-radius: 11rpx; color: var(--primary-ink); background: var(--surface-muted); font-size: 23rpx; line-height: 1.5; }
 .action-boundary { margin-top: 20rpx; }
 .guide-card { border-color: rgba(139,69,224,.35); }
+.guide-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.guide-head .btn-link { margin-top: 0; flex: none; }
 .guide-welcome, .guide-turn { margin-top: 16rpx; padding: 16rpx; border-radius: 12rpx; color: var(--text-muted); background: var(--surface-muted); font-size: 24rpx; line-height: 1.6; }
 .guide-turn.user { margin-left: 44rpx; color: var(--text); background: var(--primary-soft); }
 .guide-turn.assistant { margin-right: 44rpx; }
