@@ -9,14 +9,17 @@ Page({
     password: '',
     inviteCode: '',
     inviteHint: '',
+    redirect: '',
     agreed: false,
     loading: false,
     err: ''
   },
   onLoad(options) {
+    const redirect = api.loginRedirect(options && options.redirect);
+    this.setData({ redirect });
     // 已登录直接进主页
     if (api.getToken()) {
-      wx.switchTab({ url: '/pages/home/home' });
+      api.navigateAfterLogin(redirect);
       return;
     }
     const app = getApp();
@@ -131,11 +134,11 @@ Page({
               showCancel: false,
               confirmText: '开始作图',
               confirmColor: '#b048c8',
-              success: () => { wx.switchTab({ url: '/pages/home/home' }); }
+              success: () => { api.navigateAfterLogin(this.data.redirect, '/pages/banana/banana'); }
             });
           } else {
             // 管理员仍复用同一登录入口；登录成功后去「我的」展示管理中心入口。
-            wx.switchTab({ url: isAdmin ? '/pages/profile/profile' : '/pages/home/home' });
+            api.navigateAfterLogin(this.data.redirect, isAdmin ? '/pages/profile/profile' : '/pages/home/home');
           }
         } else {
           this.setData({ err: d.detail || ('请求失败（' + res.statusCode + '）') });

@@ -38,7 +38,7 @@ Page({
 
   onLoad() { this._files = []; },
   onShow() {
-    if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    if (!api.getToken()) { wx.reLaunch({ url: api.loginUrl('/pages/ip12/ip12') }); return; }
     api.request('/api/auth/me', { method: 'GET' }).then((res) => {
       if (res.statusCode !== 200 || !res.data || !res.data.user) { this.setData({ note: '暂时无法核验账号权益，请稍后重试' }); return; }
       if (res.data.membership_enforcement_enabled && !res.data.user.membership_active) {
