@@ -115,6 +115,10 @@
       <view class="report-meta">{{reportProgressText}}</view>
       <view wx:if="{{reportStale}}" class="state-note warning">项目答案已更新，此报告可能过期。</view>
       <view class="report-summary">{{reportSummary}}</view>
+      <view wx:if="{{reportPdfUrl}}" class="report-download">
+        <view class="btn-primary {{pdfBusy?'disabled':''}}" bindtap="downloadReport">{{pdfBusy ? '正在准备 PDF…' : '预览并保存 PDF'}}</view>
+        <view class="muted small">打开后可从微信右上角菜单保存或转发。</view>
+      </view>
     </view>
 
     <view class="card">

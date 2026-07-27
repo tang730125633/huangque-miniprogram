@@ -60,7 +60,7 @@ assert.strictEqual(calls[4][2].prompt, '成交短片；确认视频脚本');
 
 const report = page.reportView({
   stale: false,
-  report: { report_id: 'r1', progress: { total: 54, confirmed: 53, skipped: 1 }, content: {
+  report: { report_id: 'r1', pdf_url: '/api/gen/digital-ip/projects/ip12-1/report.pdf', progress: { total: 54, confirmed: 53, skipped: 1 }, content: {
     title: '门店 IP 产品方案', executive_summary: '先建立可信定位，再稳定生产内容。',
     evidence: [{ evidence_id: 'E1', claim: '复购下降', source_ref: 'answer:0-0', source_excerpt: '老客复购下降',
       source_name: '已确认问卷回答', source_location: '问卷步骤 0-0' }],
@@ -74,6 +74,7 @@ const report = page.reportView({
   } }
 });
 assert.strictEqual(report.reportVisible, true);
+assert.strictEqual(report.reportPdfUrl, '/api/gen/digital-ip/projects/ip12-1/report.pdf');
 assert.strictEqual(report.reportEvidence[0].source, '已确认问卷回答 · 问卷步骤 0-0');
 assert.strictEqual(report.reportPains[0].productMatches[0].actionType, 'image');
 assert.strictEqual(report.reportMetrics[0].reviewCycle, '每月');

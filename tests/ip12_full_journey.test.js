@@ -54,6 +54,8 @@ assert.match(page, /res\.statusCode === 409/);
 assert.match(page, /\/analyze'/);
 assert.match(page, /\/confirm'/);
 assert.match(page, /\/report'/);
+assert.match(page, /downloadProtected\(this\.data\.reportPdfUrl\)/);
+assert.match(page, /showMenu: true/);
 assert.match(page, /method: 'POST', timeout: 150000, data: \{ revision: this\._project\.revision, consent: true \}/);
 assert.match(view, /bindtap="previousStep"/);
 assert.match(view, /bindtap="skipCurrent"/);
@@ -63,6 +65,8 @@ assert.match(view, /行业痛点与黄雀产品匹配/);
 assert.match(view, /行动阶段/);
 assert.match(view, /复盘指标/);
 assert.match(view, /资料缺口/);
+assert.match(view, /bindtap="downloadReport"/);
+assert.match(view, /预览并保存 PDF/);
 assert.doesNotMatch(view, /<rich-text/);
 
 assert.strictEqual(ip12.productAction('image_studio').type, 'image');
