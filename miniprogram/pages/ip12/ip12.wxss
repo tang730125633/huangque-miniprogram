@@ -51,6 +51,8 @@
 .report-hero { background: linear-gradient(145deg, rgba(77,141,255,.16), rgba(226,75,160,.14)); }
 .report-meta { color: var(--primary-ink); font-size: 22rpx; }
 .report-summary { margin-top: 20rpx; color: var(--text); font-size: 26rpx; line-height: 1.7; }
+.report-download { margin-top: 22rpx; }
+.report-download .small { margin-top: 10rpx; text-align: center; }
 .report-item { margin-top: 18rpx; padding: 19rpx; border-radius: 14rpx; background: var(--surface-muted); }
 .report-item-title { margin: 8rpx 0; color: var(--text); font-size: 27rpx; font-weight: 650; line-height: 1.5; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 10rpx; }

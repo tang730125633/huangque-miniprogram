@@ -114,7 +114,8 @@ function absUrl(u) {
 const _dlCache = {};
 function downloadProtected(url) {
   url = absUrl(url);
-  if (_dlCache[url]) return Promise.resolve(_dlCache[url]);
+  const cacheable = !/\.pdf(?:[?#]|$)/i.test(url);
+  if (cacheable && _dlCache[url]) return Promise.resolve(_dlCache[url]);
   return new Promise(function (resolve, reject) {
     const header = {};
     const token = getToken();
@@ -123,10 +124,12 @@ function downloadProtected(url) {
       url: url, header: header,
       success: function (res) {
         if (res.statusCode === 200 && res.tempFilePath) {
-          _dlCache[url] = res.tempFilePath;
+          if (cacheable) _dlCache[url] = res.tempFilePath;
           resolve(res.tempFilePath);
         } else {
-          reject(new Error('download ' + res.statusCode));
+          const error = new Error('download ' + res.statusCode);
+          error.statusCode = res.statusCode;
+          reject(error);
         }
       },
       fail: reject

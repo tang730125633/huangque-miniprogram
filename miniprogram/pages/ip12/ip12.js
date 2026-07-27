@@ -106,6 +106,7 @@ function reportView(payload) {
   const content = envelope.content || {};
   return {
     reportVisible: !!(envelope.report_id || content.title),
+    reportPdfUrl: String(envelope.pdf_url || ''),
     reportStale: !!(payload && payload.stale),
     reportTitle: neutralMessage(content.title, 'IP12 产品方案报告'),
     reportSummary: neutralMessage(content.executive_summary),
@@ -170,6 +171,8 @@ Page({
     imagePrompt: '',
     videoPrompt: '',
     reportVisible: false,
+    reportPdfUrl: '',
+    pdfBusy: false,
     reportStale: false,
     reportTitle: '',
     reportSummary: '',
@@ -535,6 +538,36 @@ Page({
       this.setData(Object.assign({}, reportView(payload), { note: '报告已保存到当前项目，可跨端恢复。' }));
     }).catch((error) => this.setData({ note: neutralMessage(error.message, '报告生成失败，请稍后重试') }))
       .finally(() => this.setData({ busy: false, reportConsent: false }));
+  },
+
+  downloadReport() {
+    if (!this.data.reportPdfUrl || this.data.pdfBusy) return Promise.resolve(null);
+    this.setData({ pdfBusy: true, note: '正在准备 PDF…' });
+    return api.downloadProtected(this.data.reportPdfUrl).then((filePath) => new Promise((resolve, reject) => {
+      wx.openDocument({
+        filePath,
+        fileType: 'pdf',
+        showMenu: true,
+        success: resolve,
+        fail(error) {
+          const reason = error instanceof Error ? error : new Error('open document failed');
+          reason.pdfOpenFailed = true;
+          reject(reason);
+        }
+      });
+    })).then(() => this.setData({ note: 'PDF 已打开，可从右上角菜单保存或转发。' }))
+      .catch((error) => {
+        if (error && error.statusCode === 401) {
+          api.clearToken();
+          wx.reLaunch({ url: api.loginUrl('/pages/ip12/ip12') });
+          return;
+        }
+        const note = error && error.pdfOpenFailed ? '当前微信无法打开该 PDF，请稍后重试。'
+          : error && error.statusCode === 403 ? '当前账号无权下载这份 PDF。'
+            : error && error.statusCode === 429 ? '正在生成另一份 PDF，请稍后再试。'
+              : 'PDF 下载失败，请稍后重试。';
+        this.setData({ note });
+      }).finally(() => this.setData({ pdfBusy: false }));
   },
 
   openReportProduct(e) {
