@@ -244,4 +244,39 @@
   letter-spacing: 1rpx;
 }
 
+.ip12-prompt-mask {
+  position: fixed; z-index: 1000; left: 0; top: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 48rpx; box-sizing: border-box;
+  background: rgba(4, 3, 9, 0.72);
+}
+.ip12-prompt {
+  position: relative; width: 100%; max-width: 620rpx; box-sizing: border-box;
+  padding: 54rpx 42rpx 38rpx; border-radius: 34rpx;
+  background: linear-gradient(155deg, #241335, #110c1c 72%);
+  border: 1rpx solid rgba(255,255,255,0.13);
+  box-shadow: 0 28rpx 80rpx rgba(0,0,0,0.46);
+}
+.ip12-prompt-skip {
+  position: absolute; top: 18rpx; right: 20rpx; min-width: 96rpx;
+  margin: 0; padding: 0 12rpx; border: 0; background: transparent;
+  color: rgba(255,255,255,0.52); font-size: 23rpx; line-height: 54rpx;
+}
+.ip12-prompt-skip::after { border: 0; }
+.ip12-prompt-kicker { color: #f5a5d4; font-size: 22rpx; letter-spacing: 2rpx; }
+.ip12-prompt-title { margin-top: 14rpx; color: #fff; font-size: 38rpx; font-weight: 700; }
+.ip12-prompt-copy { margin-top: 20rpx; color: rgba(255,255,255,0.68); font-size: 25rpx; line-height: 1.7; }
+.ip12-prompt-primary,
+.ip12-prompt-secondary {
+  width: 100%; margin: 28rpx 0 0; border-radius: 999rpx;
+  font-size: 28rpx; font-weight: 650; line-height: 88rpx;
+}
+.ip12-prompt-primary { color: #fff; background: linear-gradient(135deg, #ff4d9d, #8a47e8); }
+.ip12-prompt-primary::after { border: 0; }
+.ip12-prompt-secondary {
+  margin-top: 16rpx; color: rgba(255,255,255,0.78);
+  background: rgba(255,255,255,0.07); border: 1rpx solid rgba(255,255,255,0.12);
+}
+.ip12-prompt-secondary::after { border: 0; }
+
 .bottom-safe { height: calc(40rpx + constant(safe-area-inset-bottom)); height: calc(40rpx + env(safe-area-inset-bottom)); }

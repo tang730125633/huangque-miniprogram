@@ -113,7 +113,18 @@
       <image src="/assets/home/tutorial-digital-human.jpg"></image>
     </view>
 
-    <view class="build-version">版本 v0.047</view>
+    <view class="build-version">版本 v0.048</view>
     <view class="bottom-safe"></view>
+  </view>
+
+  <view wx:if="{{videoIp12PromptVisible}}" class="ip12-prompt-mask" catchtap="skipVideoIp12Prompt">
+    <view class="ip12-prompt" catchtap="keepVideoIp12Prompt">
+      <button class="ip12-prompt-skip" bindtap="skipVideoIp12Prompt" aria-label="暂时跳过">跳过</button>
+      <view class="ip12-prompt-kicker">让每条视频更像你</view>
+      <view class="ip12-prompt-title">先建立数字化 IP 档案？</view>
+      <view class="ip12-prompt-copy">完成定位、受众与内容方向后，AI 能为后续视频创作提供更贴合你的建议。现在不方便，也可以直接继续。</view>
+      <button class="ip12-prompt-primary" bindtap="createIp12BeforeVideo">去创建档案</button>
+      <button class="ip12-prompt-secondary" bindtap="continueToVideo">继续创作</button>
+    </view>
   </view>
 </view>
