@@ -1,24 +1,25 @@
 <view class="container">
   <view class="hero card">
     <view class="hero-title">数字化 IP / IP12 成长档案</view>
-    <view class="muted">12 个模块共 54 步；回答、确认和跳过状态均保存到同一主站账号项目。</view>
+    <view class="muted">当前开放 8 个模块共 34 步；完整路线 12 个模块共 54 步，后续模块开发中。</view>
     <view class="progress"><view class="progress-fill" style="width:{{progressPercent}}%"></view></view>
-    <view class="progress-copy">总进度 {{completedSteps}} / 54 · 已确认 {{confirmedSteps}} · 待补 {{skippedSteps}}</view>
+    <view class="progress-copy">当前开放进度 {{completedSteps}} / 34 · 已确认 {{confirmedSteps}} · 待补 {{skippedSteps}}</view>
   </view>
 
   <view class="card">
     <view class="label">IP12 全程</view>
     <view class="module-grid">
       <view wx:for="{{modules}}" wx:key="id" data-index="{{item.index}}" bindtap="jumpModule"
-        class="module {{item.active?'active':''}} {{item.done?'done':''}}">
+        class="module {{item.active?'active':''}} {{item.done?'done':''}} {{item.comingSoon?'coming-soon':''}}">
         <view class="module-name">{{item.id}}. {{item.name}}</view>
-        <view class="module-state">{{item.progressed}} / {{item.steps}}<text wx:if="{{item.skipped}}"> · {{item.skipped}} 待补</text></view>
+        <view wx:if="{{item.comingSoon}}" class="module-state">开发中，敬请期待</view>
+        <view wx:else class="module-state">{{item.progressed}} / {{item.steps}}<text wx:if="{{item.skipped}}"> · {{item.skipped}} 待补</text></view>
       </view>
     </view>
   </view>
 
   <view class="card step-card">
-    <view class="step-kicker">{{modulePhase}} · 模块 {{moduleId}} / 12 · 本模块 {{currentStepText}}</view>
+    <view class="step-kicker">{{modulePhase}} · 模块 {{moduleId}} / 8 · 本模块 {{currentStepText}}</view>
     <view class="step-title">{{stepTitle}}</view>
     <view class="muted">{{stepInstruction}}</view>
     <view class="why">为什么要做：{{stepWhy}}</view>
@@ -26,9 +27,10 @@
     <view wx:if="{{answerConfirmed}}" class="state-note success">本题已确认；修改答案会自动撤销确认。</view>
 
     <view wx:if="{{isText}}">
-      <view class="answer-label">{{stepLabel}}</view>
+      <view class="answer-label">本步确认稿</view>
+      <view class="muted small">这里不是固定问卷：可先让小黄雀提问，也可直接编辑确认稿；只有你点击确认才会写入档案。</view>
       <textarea class="answer" value="{{answerText}}" bindinput="onTextInput" maxlength="1600" auto-height
-        placeholder="请填写可核对的真实信息" placeholder-class="ph"></textarea>
+        placeholder="写下你现在愿意确认的真实信息，不完整也没关系" placeholder-class="ph"></textarea>
     </view>
 
     <view wx:if="{{isSingle || isMulti}}">
@@ -48,12 +50,29 @@
     <view class="step-actions">
       <view class="btn-secondary compact {{previousDisabled||busy?'disabled':''}}" bindtap="previousStep">上一题</view>
       <view class="btn-secondary compact danger {{busy?'disabled':''}}" bindtap="skipCurrent">跳过待补</view>
-      <view class="btn-primary compact grow {{busy?'disabled':''}}" bindtap="confirmCurrent">{{finalStep ? '确认并完成 54 步' : '确认并下一题'}}</view>
+      <view class="btn-primary compact grow {{busy?'disabled':''}}" bindtap="confirmCurrent">{{finalStep ? '确认并完成当前开放的 34 步' : '确认并下一题'}}</view>
     </view>
     <view class="save-row"><view class="btn-link" bindtap="saveDraft">保存当前草稿</view><view class="muted small">revision {{revision}} · CAS 云端保存</view></view>
   </view>
 
   <view wx:if="{{note}}" class="note card">{{note}}</view>
+
+  <view class="card guide-card">
+    <view class="label">小黄雀 · IP 成长教练 <text class="muted small">一次只问一题</text></view>
+    <view class="muted small">先像聊天一样说说你的经历或卡点。AI 只在你主动发送后提供当前步骤的一个问题或建议，不会自动确认答案。</view>
+    <view wx:if="{{!guideTurns.length}}" class="guide-welcome">勾选同意后，点击“让 AI 问第一题”开始。</view>
+    <view wx:for="{{guideTurns}}" wx:key="index" class="guide-turn {{item.role === 'assistant' ? 'assistant' : 'user'}}">{{item.content}}</view>
+    <view wx:if="{{guideSuggestedAnswer && isText}}" class="guide-draft">
+      <view class="muted small">AI 给出的可编辑草稿不会自动写入或确认。</view>
+      <view class="btn-secondary" bindtap="useGuideDraft">带入当前回答并编辑</view>
+    </view>
+    <checkbox-group bindchange="onGuideConsent"><label class="consent"><checkbox value="accepted" checked="{{guideConsent}}" color="#e24ba0"/>我明确同意仅在主动发送时，将当前对话和回答发送给 AI 服务</label></checkbox-group>
+    <textarea class="answer guide-input" value="{{guideInput}}" bindinput="onGuideInput" maxlength="1200" auto-height placeholder="像聊天一样说说你的经历、想法或现在最卡的地方…" placeholder-class="ph"></textarea>
+    <view class="guide-actions">
+      <view class="btn-secondary compact {{busy||guideBusy?'disabled':''}}" bindtap="askGuide" data-message="请开始问我吧。一次只问一个问题。">让 AI 问第一题</view>
+      <view class="btn-primary compact grow {{busy||guideBusy?'disabled':''}}" bindtap="askGuide">{{guideBusy ? '小黄雀思考中…' : '发送给小黄雀'}}</view>
+    </view>
+  </view>
 
   <view class="card">
     <view class="label">待补步骤 <text class="muted small">{{skippedSteps}} 项</text></view>
@@ -101,7 +120,7 @@
 
   <view class="card report-gate">
     <view class="label">IP12 产品方案报告</view>
-    <view wx:if="{{!canGenerateReport}}" class="muted">还需确认或跳过 {{unresolvedSteps}} 步，完成首轮后才能生成报告。</view>
+    <view wx:if="{{!canGenerateReport}}" class="muted">还需确认或跳过当前开放的 {{unresolvedSteps}} 步，完成首轮后才能生成报告。</view>
     <view wx:if="{{canGenerateReport}}">
       <view class="muted small">报告只使用已确认回答；跳过项会列为资料缺口。不会自动生成素材或扣点。</view>
       <checkbox-group bindchange="onReportConsent"><label class="consent"><checkbox value="accepted" checked="{{reportConsent}}" color="#e24ba0"/>我明确同意将已保存回答发送给 AI 服务生成产品方案</label></checkbox-group>

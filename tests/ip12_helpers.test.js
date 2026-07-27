@@ -1,13 +1,19 @@
 const assert = require('assert');
 const ip12 = require('../miniprogram/utils/ip12.js');
 
-assert.strictEqual(ip12.MODULE_STEPS.reduce((a, b) => a + b, 0), 54);
-assert.deepStrictEqual(ip12.MODULE_STEPS, [5, 5, 5, 5, 4, 3, 3, 4, 5, 5, 5, 5]);
-assert.deepStrictEqual(ip12.MODULE_NAMES, ['定位诊断', '人设塑造', '价值主张', '故事资产', '内容选题', '文案口播', 'IP 形象设计', '脚本分镜', '私域矩阵', '朋友圈运营', '销售与反馈', '公众号商业化']);
+assert.strictEqual(ip12.MODULE_STEPS.reduce((a, b) => a + b, 0), 34);
+assert.deepStrictEqual(ip12.MODULE_STEPS, [5, 5, 5, 5, 4, 3, 3, 4, 0, 0, 0, 0]);
+assert.strictEqual(ip12.ACTIVE_MODULE_COUNT, 8);
+assert.strictEqual(ip12.TOTAL_STEPS, 34);
+assert.strictEqual(ip12.ROADMAP_STEPS, 54);
+assert.deepStrictEqual(ip12.MODULE_NAMES, ['定位诊断', '人设塑造', '价值主张', '故事资产', '内容选题', '文案口播', 'IP 形象设计', '脚本分镜', '私域矩阵', '朋友圈运营', '销售策略', '公众号变现']);
 assert.strictEqual(ip12.FIRST_MODULE_INDEX, 0);
 assert.strictEqual(ip12.FIRST_STEP_INDEX, 0);
+assert.strictEqual(ip12.MODULES[0].steps[0].title, '先聊聊你想打造的 IP');
+assert.strictEqual(ip12.MODULES[0].steps[0].conversation, true);
+assert.doesNotMatch(JSON.stringify(ip12.MODULES.slice(0, 8)), /门店类型与规模|美业老板/);
 assert.deepStrictEqual(ip12.analysisContext({ answers: { '0-0': { text: '门店底图', confirmed: true } } }), {
-  current_module: '定位诊断', current_step: '采集门店经营底图',
+  current_module: '定位诊断', current_step: '先聊聊你想打造的 IP',
   confirmed_context: [{ step: '0-0', answer: '门店底图' }]
 });
 assert.strictEqual(ip12.modules(6)[0].done, 5);
@@ -32,6 +38,12 @@ assert.strictEqual(merged.answers['1-0'].text, '保留');
 assert.deepStrictEqual(merged.answers['0-0'], { text: '模块一回答', confirmed: true, aiChoice: 2, skipped: false });
 assert.strictEqual(ip12.currentAnswer(merged), '模块一回答');
 assert.strictEqual(ip12.confirmedStepCount(merged, 'confirmed'), 2);
+const beforeClosedWrite = ip12.normalizeQuestionnaire({ answers: { '0-0': { text: '不能被覆盖', confirmed: true } } });
+for (const mutate of [ip12.editAnswer, ip12.setAiChoice, ip12.markConfirmed, ip12.markSkipped]) {
+  const afterClosedWrite = mutate(beforeClosedWrite, 8, 0, { text: '关闭模块' });
+  assert.deepStrictEqual(afterClosedWrite.answers, beforeClosedWrite.answers);
+  assert.strictEqual(afterClosedWrite.answers['8-0'], undefined);
+}
 assert.strictEqual(ip12.evidenceList([{ file_name: 'brief.docx', location: '未定位', claim: '客群是店主', evidence: '第 2 页' }])[0], 'brief.docx · 未定位：客群是店主（证据：第 2 页）');
 assert.deepStrictEqual(ip12.analysisFromProject({ last_analysis: { analysis: { positioning_candidates: [{ title: 'A' }] } } }), { positioning_candidates: [{ title: 'A' }] });
 assert.deepStrictEqual(ip12.planView({ goal: '建立信任', prompt: '品牌人像，暖光', references_needed: ['门店照'], steps: ['生成首帧'] }, 'image'), { lines: ['目标：建立信任', '提示词：品牌人像，暖光', '所需参考：门店照', '步骤：生成首帧'], prompt: '品牌人像，暖光' });

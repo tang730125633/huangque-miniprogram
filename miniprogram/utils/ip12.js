@@ -4,7 +4,11 @@ const { MODULES } = require('./ip12_questions.js');
 
 const MODULE_STEPS = MODULES.map((module) => module.steps.length);
 const MODULE_NAMES = MODULES.map((module) => module.name);
-const TOTAL_STEPS = MODULE_STEPS.reduce((sum, count) => sum + count, 0);
+const ACTIVE_MODULE_COUNT = 8;
+const ACTIVE_MODULES = MODULES.slice(0, ACTIVE_MODULE_COUNT);
+const ACTIVE_MODULE_STEPS = ACTIVE_MODULES.map((module) => module.steps.length);
+const TOTAL_STEPS = ACTIVE_MODULE_STEPS.reduce((sum, count) => sum + count, 0);
+const ROADMAP_STEPS = MODULES.reduce((sum, module) => sum + Number(module.plannedSteps || module.steps.length || 0), 0);
 const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'txt', 'md', 'png', 'jpg', 'jpeg', 'webp'];
 const MAX_FILES = 6;
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -41,10 +45,21 @@ function isWithinFileLimit(file) {
 
 function keyFor(moduleIndex, stepIndex) { return String(moduleIndex) + '-' + String(stepIndex); }
 
+function isOpenModuleIndex(moduleIndex) {
+  return Number.isInteger(Number(moduleIndex)) && Number(moduleIndex) >= 0 && Number(moduleIndex) < ACTIVE_MODULE_COUNT;
+}
+
+function writableCursor(moduleIndex, stepIndex) {
+  const mi = Number(moduleIndex);
+  const si = Number(stepIndex);
+  if (!isOpenModuleIndex(mi) || !Number.isInteger(si) || si < 0 || si >= MODULES[mi].steps.length) return null;
+  return { moduleIndex: mi, stepIndex: si };
+}
+
 function cursor(moduleIndex, stepIndex) {
   let mi = Number(moduleIndex);
   let si = Number(stepIndex);
-  if (!Number.isInteger(mi) || mi < 0 || mi >= MODULES.length) mi = 0;
+  if (!isOpenModuleIndex(mi)) mi = 0;
   if (!Number.isInteger(si) || si < 0 || si >= MODULES[mi].steps.length) si = 0;
   return { moduleIndex: mi, stepIndex: si };
 }
@@ -93,7 +108,9 @@ function syncDerived(questionnaireState) {
   const answers = questionnaire.answers || {};
   const profile = Object.assign({}, questionnaire.profile || {});
   const completedModules = [];
-  MODULES.forEach((module, moduleIndex) => {
+  const legacyCompleted = (Array.isArray(questionnaire.completedModules) ? questionnaire.completedModules : [])
+    .filter((id) => Number(id) > ACTIVE_MODULE_COUNT);
+  ACTIVE_MODULES.forEach((module, moduleIndex) => {
     const complete = module.steps.every((step, stepIndex) => {
       const answer = answers[keyFor(moduleIndex, stepIndex)] || {};
       return answer.confirmed === true || answer.skipped === true;
@@ -115,7 +132,7 @@ function syncDerived(questionnaireState) {
       delete profile[module.id];
     }
   });
-  questionnaire.completedModules = completedModules;
+  questionnaire.completedModules = completedModules.concat(legacyCompleted);
   questionnaire.profile = profile;
   return questionnaire;
 }
@@ -127,7 +144,9 @@ function comparableAnswer(answer) {
 
 function editAnswer(questionnaireState, moduleIndex, stepIndex, patch) {
   const questionnaire = normalizeQuestionnaire(questionnaireState);
-  const key = keyFor(moduleIndex, stepIndex);
+  const current = writableCursor(moduleIndex, stepIndex);
+  if (!current) return questionnaire;
+  const key = keyFor(current.moduleIndex, current.stepIndex);
   const previous = questionnaire.answers[key] && typeof questionnaire.answers[key] === 'object' ? questionnaire.answers[key] : {};
   const next = Object.assign({}, previous, patch || {});
   if (comparableAnswer(previous) !== comparableAnswer(next)) {
@@ -140,7 +159,9 @@ function editAnswer(questionnaireState, moduleIndex, stepIndex, patch) {
 
 function setAiChoice(questionnaireState, moduleIndex, stepIndex, candidateIndex) {
   const questionnaire = normalizeQuestionnaire(questionnaireState);
-  const key = keyFor(moduleIndex, stepIndex);
+  const current = writableCursor(moduleIndex, stepIndex);
+  if (!current) return questionnaire;
+  const key = keyFor(current.moduleIndex, current.stepIndex);
   const previous = questionnaire.answers[key] && typeof questionnaire.answers[key] === 'object' ? questionnaire.answers[key] : {};
   questionnaire.answers[key] = Object.assign({}, previous, {
     aiChoice: Number(candidateIndex), confirmed: false, skipped: false
@@ -150,7 +171,9 @@ function setAiChoice(questionnaireState, moduleIndex, stepIndex, candidateIndex)
 
 function markConfirmed(questionnaireState, moduleIndex, stepIndex) {
   const questionnaire = normalizeQuestionnaire(questionnaireState);
-  const key = keyFor(moduleIndex, stepIndex);
+  const current = writableCursor(moduleIndex, stepIndex);
+  if (!current) return questionnaire;
+  const key = keyFor(current.moduleIndex, current.stepIndex);
   const previous = questionnaire.answers[key] && typeof questionnaire.answers[key] === 'object' ? questionnaire.answers[key] : {};
   questionnaire.answers[key] = Object.assign({}, previous, { confirmed: true, skipped: false });
   return syncDerived(questionnaire);
@@ -158,7 +181,9 @@ function markConfirmed(questionnaireState, moduleIndex, stepIndex) {
 
 function markSkipped(questionnaireState, moduleIndex, stepIndex) {
   const questionnaire = normalizeQuestionnaire(questionnaireState);
-  const key = keyFor(moduleIndex, stepIndex);
+  const current = writableCursor(moduleIndex, stepIndex);
+  if (!current) return questionnaire;
+  const key = keyFor(current.moduleIndex, current.stepIndex);
   const previous = questionnaire.answers[key] && typeof questionnaire.answers[key] === 'object' ? questionnaire.answers[key] : {};
   const next = Object.assign({}, previous, { confirmed: false, skipped: true });
   delete next.aiChoice;
@@ -175,7 +200,7 @@ function nextCursor(moduleIndex, stepIndex) {
   if (current.stepIndex < MODULES[current.moduleIndex].steps.length - 1) {
     return { moduleIndex: current.moduleIndex, stepIndex: current.stepIndex + 1 };
   }
-  if (current.moduleIndex < MODULES.length - 1) return { moduleIndex: current.moduleIndex + 1, stepIndex: 0 };
+  if (current.moduleIndex < ACTIVE_MODULES.length - 1) return { moduleIndex: current.moduleIndex + 1, stepIndex: 0 };
   return current;
 }
 
@@ -194,7 +219,7 @@ function progress(questionnaireState) {
   let confirmed = 0;
   let skipped = 0;
   const skippedItems = [];
-  MODULES.forEach((module, moduleIndex) => module.steps.forEach((step, stepIndex) => {
+  ACTIVE_MODULES.forEach((module, moduleIndex) => module.steps.forEach((step, stepIndex) => {
     const answer = questionnaire.answers[keyFor(moduleIndex, stepIndex)] || {};
     if (answer.confirmed === true) confirmed += 1;
     else if (answer.skipped === true) {
@@ -211,14 +236,15 @@ function moduleCards(questionnaireState, activeModuleIndex) {
   return MODULES.map((module, moduleIndex) => {
     let confirmed = 0;
     let skipped = 0;
-    module.steps.forEach((step, stepIndex) => {
+    if (moduleIndex < ACTIVE_MODULE_COUNT) module.steps.forEach((step, stepIndex) => {
       const answer = questionnaire.answers[keyFor(moduleIndex, stepIndex)] || {};
       if (answer.confirmed === true) confirmed += 1;
       else if (answer.skipped === true) skipped += 1;
     });
-    return { index: moduleIndex, id: module.id, name: module.name, steps: module.steps.length,
+    const comingSoon = moduleIndex >= ACTIVE_MODULE_COUNT;
+    return { index: moduleIndex, id: module.id, name: module.name, steps: Number(module.plannedSteps || module.steps.length),
       confirmed, skipped, progressed: confirmed + skipped, active: moduleIndex === activeModuleIndex,
-      done: confirmed + skipped === module.steps.length };
+      done: !comingSoon && confirmed + skipped === module.steps.length, comingSoon };
   });
 }
 
@@ -227,7 +253,8 @@ function modules(completed) {
   return MODULES.map((module, index) => {
     const done = Math.min(module.steps.length, left);
     left -= done;
-    return { index: index + 1, name: module.name, steps: module.steps.length, done };
+    return { index: index + 1, name: module.name, steps: Number(module.plannedSteps || module.steps.length), done,
+      comingSoon: index >= ACTIVE_MODULE_COUNT };
   });
 }
 
@@ -256,7 +283,7 @@ function analysisContext(questionnaireState, moduleIndex, stepIndex) {
     const answer = questionnaire.answers[key];
     if (!answer || answer.confirmed !== true) return;
     const parts = key.split('-').map(Number);
-    const step = MODULES[parts[0]] && MODULES[parts[0]].steps[parts[1]];
+    const step = isOpenModuleIndex(parts[0]) && MODULES[parts[0]] && MODULES[parts[0]].steps[parts[1]];
     if (!step) return;
     const text = answerTextForStep(step, answer).slice(0, 1200);
     if (text) confirmed.push({ step: key, answer: text });
@@ -336,9 +363,10 @@ function productAction(productId) {
 }
 
 module.exports = {
-  MODULES, MODULE_STEPS, MODULE_NAMES, TOTAL_STEPS, ALLOWED_EXTENSIONS, MAX_FILES, MAX_BYTES, MAX_FILE_BYTES,
+  MODULES, MODULE_STEPS, MODULE_NAMES, ACTIVE_MODULE_COUNT, ACTIVE_MODULES, ACTIVE_MODULE_STEPS, TOTAL_STEPS, ROADMAP_STEPS,
+  ALLOWED_EXTENSIONS, MAX_FILES, MAX_BYTES, MAX_FILE_BYTES,
   FIRST_MODULE_INDEX, FIRST_STEP_INDEX, FIRST_MODULE_NAME, FIRST_STEP_NAME, MIME_TYPES,
-  extension, isAllowedFile, mimeType, isWithinFileLimit, keyFor, cursor, normalizeQuestionnaire, stepAt,
+  extension, isAllowedFile, mimeType, isWithinFileLimit, keyFor, isOpenModuleIndex, writableCursor, cursor, normalizeQuestionnaire, stepAt,
   answerText, answerTextForStep, answerReady, syncDerived, editAnswer, setAiChoice, markConfirmed, markSkipped, withCursor,
   nextCursor, previousCursor, progress, moduleCards, modules, currentAnswer, mergeQuestionnaire,
   confirmedStepCount, analysisContext, canGenerateReport, formatBytes, projectList, textList, evidenceList,
