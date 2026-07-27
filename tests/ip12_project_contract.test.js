@@ -62,7 +62,8 @@ const report = page.reportView({
   stale: false,
   report: { report_id: 'r1', progress: { total: 54, confirmed: 53, skipped: 1 }, content: {
     title: '门店 IP 产品方案', executive_summary: '先建立可信定位，再稳定生产内容。',
-    evidence: [{ evidence_id: 'E1', claim: '复购下降', source_ref: 'answer:0-0', source_excerpt: '老客复购下降' }],
+    evidence: [{ evidence_id: 'E1', claim: '复购下降', source_ref: 'answer:0-0', source_excerpt: '老客复购下降',
+      source_name: '已确认问卷回答', source_location: '问卷步骤 0-0' }],
     industry_pains: [{ pain: '复购不足', evidence_ids: ['E1'], why_it_matters: '影响长期增长', product_matches: [
       { product_id: 'image_studio', fit_reason: '建立统一视觉', execution_steps: ['先确认视觉提示词'] }
     ] }],
@@ -73,6 +74,7 @@ const report = page.reportView({
   } }
 });
 assert.strictEqual(report.reportVisible, true);
+assert.strictEqual(report.reportEvidence[0].source, '已确认问卷回答 · 问卷步骤 0-0');
 assert.strictEqual(report.reportPains[0].productMatches[0].actionType, 'image');
 assert.strictEqual(report.reportMetrics[0].reviewCycle, '每月');
 const neutralReport = page.reportView({ report: { report_id: 'r2', content: {

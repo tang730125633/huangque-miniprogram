@@ -113,7 +113,9 @@ function reportView(payload) {
       ' · 跳过 ' + Number(envelope.progress && envelope.progress.skipped || 0) +
       ' · 共 ' + Number(envelope.progress && envelope.progress.total || ip12.TOTAL_STEPS),
     reportEvidence: (content.evidence || []).map((item) => ({
-      id: item.evidence_id || '', claim: neutralMessage(item.claim), excerpt: neutralMessage(item.source_excerpt), source: neutralMessage(item.source_ref)
+      id: item.evidence_id || '', claim: neutralMessage(item.claim), excerpt: neutralMessage(item.source_excerpt),
+      source: neutralMessage(item.source_name && item.source_location
+        ? item.source_name + ' · ' + item.source_location : item.source_ref)
     })),
     reportPains: (content.industry_pains || []).map((item, painIndex) => ({
       painIndex, pain: neutralMessage(item.pain), why: neutralMessage(item.why_it_matters), evidenceIds: item.evidence_ids || [],
