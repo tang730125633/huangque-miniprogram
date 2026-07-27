@@ -47,4 +47,16 @@
 .agreement-check checkbox { transform: scale(.78); transform-origin: center; margin-right: -4rpx; }
 .agreement-link { color: var(--primary); text-decoration: underline; }
 .agreement-separator { color: var(--text-muted); }
+.voiceprint-agreement {
+  margin: -6rpx 0 26rpx;
+  padding: 20rpx 22rpx;
+  border: 2rpx solid rgba(255, 82, 181, .72);
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, rgba(255, 82, 181, .13), rgba(255, 173, 66, .08));
+  box-shadow: 0 0 24rpx rgba(255, 82, 181, .12);
+}
+.voiceprint-agreement-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.voiceprint-agreement-badge { color: #ffb24b; font-size: 24rpx; font-weight: 700; }
+.voiceprint-agreement-link { color: #ff69bd; font-size: 23rpx; font-weight: 600; text-decoration: underline; }
+.voiceprint-agreement-copy { margin-top: 12rpx; color: #c8c1d0; font-size: 21rpx; line-height: 1.65; }
 .foot { text-align: center; font-size: 23rpx; margin-top: 30rpx; color: var(--text-muted); }
