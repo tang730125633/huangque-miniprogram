@@ -38,6 +38,30 @@ function emptyAnalysisView() {
   return { analysis: null, candidates: [], sourceEvidence: [], gaps: [], conflicts: [], analysisNote: '' };
 }
 
+function guideView(questionnaire, moduleIndex, stepIndex) {
+  const stepKey = ip12.keyFor(moduleIndex, stepIndex);
+  const turns = (Array.isArray(questionnaire.guideTurns) ? questionnaire.guideTurns : [])
+    .filter((turn) => turn && turn.stepKey === stepKey)
+    .slice(-6)
+    .map((turn) => ({ role: turn.role === 'assistant' ? 'assistant' : 'user', content: neutralMessage(turn.content),
+      suggestedAnswer: String(turn.suggestedAnswer || '') }));
+  const latest = turns.slice().reverse().find((turn) => turn.role === 'assistant') || {};
+  return { guideTurns: turns, guideSuggestedAnswer: latest.suggestedAnswer || '' };
+}
+
+function profileSummary(questionnaire) {
+  return Object.keys(questionnaire.profile || {}).slice(0, 8).map((id) => {
+    const item = questionnaire.profile[id] || {};
+    return [item.title, item.summary].filter(Boolean).join('：');
+  }).filter(Boolean).join('\n').slice(0, 1800);
+}
+
+function nextStepTitle(moduleIndex, stepIndex) {
+  const next = ip12.nextCursor(moduleIndex, stepIndex);
+  const step = ip12.stepAt(next.moduleIndex, next.stepIndex);
+  return step && step.title || '完成当前开放模块并查看数字化 IP 方案';
+}
+
 function questionnaireView(questionnaire, project) {
   const current = ip12.cursor(questionnaire.moduleIndex, questionnaire.stepIndex);
   const module = ip12.MODULES[current.moduleIndex];
@@ -48,7 +72,7 @@ function questionnaireView(questionnaire, project) {
     index, label: option,
     selected: Array.isArray(answer.choice) ? answer.choice.indexOf(option) !== -1 : answer.choice === option
   }));
-  return {
+  return Object.assign({
     moduleIndex: current.moduleIndex,
     stepIndex: current.stepIndex,
     moduleId: module.id,
@@ -73,7 +97,7 @@ function questionnaireView(questionnaire, project) {
     hasExample: !!(step.sample || step.sampleChoice || step.type === 'review'),
     currentStepText: (current.stepIndex + 1) + ' / ' + module.steps.length,
     previousDisabled: current.moduleIndex === 0 && current.stepIndex === 0,
-    finalStep: current.moduleIndex === ip12.MODULES.length - 1 && current.stepIndex === module.steps.length - 1,
+    finalStep: current.moduleIndex === ip12.ACTIVE_MODULE_COUNT - 1 && current.stepIndex === module.steps.length - 1,
     modules: ip12.moduleCards(questionnaire, current.moduleIndex),
     completedSteps: progress.progressed,
     confirmedSteps: progress.confirmed,
@@ -82,7 +106,7 @@ function questionnaireView(questionnaire, project) {
     progressPercent: Math.round(progress.progressed * 100 / progress.total),
     skippedItems: progress.skippedItems,
     canGenerateReport: progress.unresolved === 0 && !!(project && project.id)
-  };
+  }, guideView(questionnaire, current.moduleIndex, current.stepIndex));
 }
 
 function analysisView(project, questionnaire) {
@@ -155,6 +179,9 @@ Page({
     stepIndex: 0,
     selectedFiles: [],
     analysisConsent: false,
+    guideConsent: false,
+    guideInput: '',
+    guideBusy: false,
     reportConsent: false,
     busy: false,
     note: '',
@@ -354,6 +381,10 @@ Page({
 
   jumpModule(e) {
     const moduleIndex = Number(e.currentTarget.dataset.index);
+    if (!ip12.isOpenModuleIndex(moduleIndex)) {
+      this.setData({ note: '该模块开发中，敬请期待。' });
+      return Promise.resolve(null);
+    }
     return this.moveTo({ moduleIndex, stepIndex: 0 }, '已切换模块；未确认草稿也已同步。');
   },
 
@@ -398,7 +429,7 @@ Page({
       : Promise.resolve();
     confirmRequest.then(() => this.patchQuestionnaire(questionnaire)).then((project) => {
       this.applyProject(project);
-      this.setData({ note: wasFinalStep ? '全部 54 步已处理，可生成产品方案报告。' : '当前答案已确认并进入下一题。' });
+      this.setData({ note: wasFinalStep ? '当前开放的 34 步已处理，可生成产品方案报告。' : '当前答案已确认并进入下一题。' });
     }).catch((error) => {
       if (/另一端/.test(error.message || '')) this.loadProject();
       this.setData({ note: neutralMessage(error.message, '确认失败，请重试') });
@@ -420,6 +451,77 @@ Page({
 
   onAnalysisConsent(e) {
     this.setData({ analysisConsent: ((e.detail && e.detail.value) || []).indexOf('accepted') !== -1 });
+  },
+
+  onGuideConsent(e) {
+    this.setData({ guideConsent: ((e.detail && e.detail.value) || []).indexOf('accepted') !== -1 });
+  },
+
+  onGuideInput(e) {
+    this.setData({ guideInput: String(e.detail && e.detail.value || '') });
+  },
+
+  askGuide(e) {
+    if (!this._project || this.data.busy || this.data.guideBusy) return Promise.resolve(null);
+    const message = String(e && e.currentTarget && e.currentTarget.dataset.message || this.data.guideInput || '').trim();
+    if (!message) { this.setData({ note: '请先告诉小黄雀你想从哪里开始。' }); return Promise.resolve(null); }
+    if (!this.data.guideConsent) { this.setData({ note: '请先明确同意将当前对话和回答发送给 AI。' }); return Promise.resolve(null); }
+    const moduleIndex = this.data.moduleIndex;
+    const stepIndex = this.data.stepIndex;
+    if (!ip12.isOpenModuleIndex(moduleIndex)) { this.setData({ note: '该模块开发中，敬请期待。' }); return Promise.resolve(null); }
+    const module = ip12.MODULES[moduleIndex];
+    const step = ip12.stepAt(moduleIndex, stepIndex);
+    const answer = this._questionnaire.answers[ip12.keyFor(moduleIndex, stepIndex)] || {};
+    const stepKey = ip12.keyFor(moduleIndex, stepIndex);
+    const recentTurns = (Array.isArray(this._questionnaire.guideTurns) ? this._questionnaire.guideTurns : [])
+      .filter((turn) => turn && turn.stepKey === stepKey)
+      .slice(-6).map((turn) => ({ role: turn.role, content: String(turn.content || '') }));
+    this.setData({ busy: true, guideBusy: true, note: '小黄雀正在理解当前步骤…' });
+    return api.request('/api/gen/digital-ip/guide', {
+      method: 'POST', timeout: 150000, data: {
+        module: module.name,
+        step: step.title,
+        step_instruction: step.instruction,
+        step_why: step.why,
+        current_answer: ip12.answerTextForStep(step, answer),
+        ip_summary: profileSummary(this._questionnaire),
+        next_step: nextStepTitle(moduleIndex, stepIndex),
+        message,
+        recent_turns: recentTurns,
+        consent: true
+      }
+    }).then((res) => {
+      if (!res || res.statusCode === 401) return null;
+      if (res.statusCode !== 200 || !res.data || res.data.ok === false) {
+        throw new Error(neutralMessage(res.data && res.data.detail, '小黄雀暂时无法回复'));
+      }
+      const guide = res.data.guide || {};
+      const turns = (Array.isArray(this._questionnaire.guideTurns) ? this._questionnaire.guideTurns : []).concat([
+        { role: 'user', content: message, stepKey },
+        { role: 'assistant', content: String(guide.reply || '我们继续完成当前步骤。'),
+          suggestedAnswer: String(guide.suggested_answer || ''), stepKey }
+      ]).slice(-72);
+      const questionnaire = Object.assign({}, this._questionnaire, { guideTurns: turns });
+      return this.patchQuestionnaire(questionnaire).then((project) => {
+        this.applyProject(project);
+        this.setData({ guideInput: '', note: '小黄雀每次只给一个问题或建议；是否确认仍由你决定。' });
+        return project;
+      });
+    }).catch((error) => {
+      this.setData({ note: neutralMessage(error.message, '小黄雀暂时无法回复，请稍后重试') });
+      return null;
+    }).finally(() => this.setData({ busy: false, guideBusy: false }));
+  },
+
+  useGuideDraft() {
+    if (!this.data.guideSuggestedAnswer || !this.data.isText) {
+      this.setData({ note: '当前题请按页面选项作答；AI 不会替你确认。' });
+      return;
+    }
+    const questionnaire = ip12.editAnswer(this._questionnaire, this.data.moduleIndex, this.data.stepIndex, {
+      text: this.data.guideSuggestedAnswer
+    });
+    this.refreshLocal(questionnaire, '已带入可编辑草稿；确认前仍可修改。');
   },
 
   chooseFiles() {
@@ -525,7 +627,7 @@ Page({
 
   generateReport() {
     if (!this._project || this.data.busy) return;
-    if (!this.data.canGenerateReport) { this.setData({ note: '请先确认或跳过全部 54 步。' }); return; }
+    if (!this.data.canGenerateReport) { this.setData({ note: '请先确认或跳过当前开放的 34 步。' }); return; }
     if (!this.data.reportConsent) { this.setData({ note: '请先明确同意将已保存回答发送给 AI 服务生成报告。' }); return; }
     this.setData({ busy: true, note: '正在生成产品方案报告，请不要重复提交。' });
     api.request('/api/gen/digital-ip/projects/' + encodeURIComponent(this._project.id) + '/report', {

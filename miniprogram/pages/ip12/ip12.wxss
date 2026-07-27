@@ -7,6 +7,7 @@
 .module { padding: 16rpx; border: 1rpx solid var(--line); border-radius: 12rpx; color: var(--text-muted); font-size: 23rpx; background: var(--surface-muted); }
 .module.active { color: var(--primary-ink); border-color: var(--primary); background: var(--primary-soft); }
 .module.done { color: var(--success); border-color: rgba(43,213,118,.5); }
+.module.coming-soon { opacity: .7; border-style: dashed; }
 .module-name { font-weight: 600; line-height: 1.4; }
 .module-state { margin-top: 7rpx; font-size: 20rpx; }
 .step-kicker { color: var(--primary-ink); font-size: 21rpx; letter-spacing: 1rpx; }
@@ -46,6 +47,13 @@
 .candidate-state { margin-top: 12rpx; color: var(--primary-ink); font-size: 22rpx; }
 .resume-item { margin-top: 12rpx; padding: 15rpx; border-radius: 11rpx; color: var(--primary-ink); background: var(--surface-muted); font-size: 23rpx; line-height: 1.5; }
 .action-boundary { margin-top: 20rpx; }
+.guide-card { border-color: rgba(139,69,224,.35); }
+.guide-welcome, .guide-turn { margin-top: 16rpx; padding: 16rpx; border-radius: 12rpx; color: var(--text-muted); background: var(--surface-muted); font-size: 24rpx; line-height: 1.6; }
+.guide-turn.user { margin-left: 44rpx; color: var(--text); background: var(--primary-soft); }
+.guide-turn.assistant { margin-right: 44rpx; }
+.guide-draft { margin-top: 16rpx; padding: 16rpx; border: 1rpx solid var(--primary); border-radius: 12rpx; }
+.guide-input { min-height: 120rpx; }
+.guide-actions { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .report-gate { border-color: rgba(226,75,160,.35); }
 .report-wrap { margin-top: 8rpx; }
 .report-hero { background: linear-gradient(145deg, rgba(77,141,255,.16), rgba(226,75,160,.14)); }
