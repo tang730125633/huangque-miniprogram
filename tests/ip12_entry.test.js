@@ -13,11 +13,11 @@ assert.match(home, /onTapDigitalHuman\(\) \{ this\._guardNav\('\/pages\/ip12\/ip
 assert.match(home, /item\.path === '\/pages\/ip12\/ip12'.*this\._guardNav\(item\.path\)/);
 assert.match(home, /wx\.navigateTo\(\{ url: api\.loginUrl\(path\) \}\)/);
 assert.match(home, /membershipReady/);
-assert.match(homeView, /版本 v0\.043/);
+assert.match(homeView, /版本 v0\.044/);
 assert.match(video, /name: '数字人口播'/);
 assert.match(ip12Page, /type: 'all'/);
 assert.match(ip12Page, /timeout: 150000/);
-assert.match(ip12Page, /this\.updateProject\(draftState\).*savedProject/s);
+assert.match(ip12Page, /patchQuestionnaire\(questionnaire\)/);
 assert.match(ip12Page, /api\.request\('\/api\/auth\/me'/);
 assert.match(ip12Page, /api\.showMembershipRequired/);
 assert.match(ip12Page, /wx\.reLaunch\(\{ url: api\.loginUrl\('\/pages\/ip12\/ip12'\) \}\)/);
