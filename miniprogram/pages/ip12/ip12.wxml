@@ -1,55 +1,164 @@
 <view class="container">
   <view class="hero card">
     <view class="hero-title">数字化 IP / IP12 成长档案</view>
-    <view class="muted">先沉淀定位，再生成视觉和视频方案；不会自动扣点或生成。</view>
+    <view class="muted">12 个模块共 54 步；回答、确认和跳过状态均保存到同一主站账号项目。</view>
     <view class="progress"><view class="progress-fill" style="width:{{progressPercent}}%"></view></view>
-    <view class="progress-copy">12 个模块 · {{completedSteps}} / 54 步 · {{status || '草稿'}}</view>
+    <view class="progress-copy">总进度 {{completedSteps}} / 54 · 已确认 {{confirmedSteps}} · 待补 {{skippedSteps}}</view>
   </view>
 
   <view class="card">
     <view class="label">IP12 全程</view>
-    <view class="module-grid"><view wx:for="{{modules}}" wx:key="index" class="module {{item.done===item.steps?'done':''}}">{{item.index}}. {{item.name}} {{item.done}}/{{item.steps}}</view></view>
-  </view>
-
-  <view class="card">
-    <view class="label">模块 1 · 定位诊断 / 第 1 步：采集门店经营底图</view>
-    <view class="muted small">请写下门店领域、客群、现有产品、成交方式和经营目标。</view>
-    <textarea class="answer" value="{{answer}}" bindinput="onAnswer" maxlength="1200" auto-height placeholder="例如：美业门店，服务本地轻熟客群，主推皮肤管理，靠团购和私域复购成交" placeholder-class="ph"></textarea>
-    <view class="save-row"><view class="btn-secondary" bindtap="saveDraft">{{busy ? '处理中…' : '保存草稿'}}</view><view class="muted small">云端保存，重新打开会恢复</view></view>
-  </view>
-
-  <view class="card">
-    <view class="label">补充资料 <text class="muted small">可选，最多 6 份 / 每份 8 MiB / 共 20 MiB</text></view>
-    <view wx:for="{{selectedFiles}}" wx:key="index" class="file"><text>{{item.name}} · {{item.sizeText}}</text><text data-index="{{index}}" bindtap="removeFile">移除</text></view>
-    <view class="upload" bindtap="chooseFiles">选择 PPT、Word、PDF、表格、文本或图片</view>
-    <checkbox-group bindchange="onConsent"><label class="consent"><checkbox value="accepted" checked="{{consent}}" color="#e24ba0"/>我同意将当前回答及以上资料发送给 AI 分析</label></checkbox-group>
-    <view class="muted small">黄雀项目库不保存原文件；资料会发送给 AI 服务商并按其政策处理。PPT/Word 中的视觉内容建议可导出为 PDF 后上传。</view>
-  </view>
-
-  <view class="btn-primary {{busy?'disabled':''}}" bindtap="analyze">{{busy ? '分析中…' : 'AI 分析并生成 3 个 IP 候选'}}</view>
-  <view wx:if="{{note}}" class="note">{{note}}</view>
-
-  <view wx:if="{{sourceEvidence.length || gaps.length || conflicts.length}}" class="card">
-    <view class="label">分析依据与待补充</view>
-    <view wx:if="{{sourceEvidence.length}}" class="sub-label">来源证据</view><view wx:for="{{sourceEvidence}}" wx:key="index" class="bullet">• {{item}}</view>
-    <view wx:if="{{gaps.length}}" class="sub-label">缺口</view><view wx:for="{{gaps}}" wx:key="index" class="bullet">• {{item}}</view>
-    <view wx:if="{{conflicts.length}}" class="sub-label">冲突提示</view><view wx:for="{{conflicts}}" wx:key="index" class="bullet">• {{item}}</view>
-  </view>
-
-  <view wx:if="{{candidates.length}}" class="card">
-    <view class="label">从 3 个候选中确认一个</view>
-    <view wx:for="{{candidates}}" wx:key="index" class="candidate">
-      <view class="candidate-title">方案 {{index + 1}} · {{item.name || item.title || 'IP 候选'}}</view>
-      <view class="muted">{{item.copy}}</view>
-      <view class="btn-secondary" data-index="{{index}}" bindtap="confirmCandidate">确认这个方案</view>
+    <view class="module-grid">
+      <view wx:for="{{modules}}" wx:key="id" data-index="{{item.index}}" bindtap="jumpModule"
+        class="module {{item.active?'active':''}} {{item.done?'done':''}}">
+        <view class="module-name">{{item.id}}. {{item.name}}</view>
+        <view class="module-state">{{item.progressed}} / {{item.steps}}<text wx:if="{{item.skipped}}"> · {{item.skipped}} 待补</text></view>
+      </view>
     </view>
   </view>
 
-  <view wx:if="{{confirmed}}" class="card"><view class="label">已确认 IP 档案</view><view class="muted">{{confirmed.name || confirmed.title || confirmed.summary || '已保存'}}</view></view>
-  <view wx:if="{{imagePlan.length || videoPlan.length || nextSteps.length}}" class="card">
-    <view class="label">下一步行动计划</view>
-    <view wx:if="{{imagePlan.length}}" class="sub-label">图片计划</view><view wx:for="{{imagePlan}}" wx:key="index" class="bullet">• {{item}}</view><view wx:if="{{canPrefill && imagePlan.length}}" class="btn-secondary" bindtap="goImage">带入现有生图工具</view>
-    <view wx:if="{{videoPlan.length}}" class="sub-label">视频计划</view><view wx:for="{{videoPlan}}" wx:key="index" class="bullet">• {{item}}</view><view wx:if="{{canPrefill && videoPlan.length}}" class="btn-secondary" bindtap="goVideo">带入现有视频工具</view>
+  <view class="card step-card">
+    <view class="step-kicker">{{modulePhase}} · 模块 {{moduleId}} / 12 · 本模块 {{currentStepText}}</view>
+    <view class="step-title">{{stepTitle}}</view>
+    <view class="muted">{{stepInstruction}}</view>
+    <view class="why">为什么要做：{{stepWhy}}</view>
+    <view wx:if="{{answerSkipped}}" class="state-note warning">本题已跳过，填写并确认后会自动回补。</view>
+    <view wx:if="{{answerConfirmed}}" class="state-note success">本题已确认；修改答案会自动撤销确认。</view>
+
+    <view wx:if="{{isText}}">
+      <view class="answer-label">{{stepLabel}}</view>
+      <textarea class="answer" value="{{answerText}}" bindinput="onTextInput" maxlength="1600" auto-height
+        placeholder="请填写可核对的真实信息" placeholder-class="ph"></textarea>
+    </view>
+
+    <view wx:if="{{isSingle || isMulti}}">
+      <view class="answer-label">{{isMulti ? '可选择多项' : '请选择一项'}}</view>
+      <view wx:for="{{options}}" wx:key="index" data-index="{{item.index}}" bindtap="onChoice"
+        class="choice {{item.selected?'selected':''}}">
+        <view class="choice-dot"></view><text>{{item.label}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{isReview}}">
+      <view class="answer-label">请逐条核对阶段建议</view>
+      <view wx:for="{{reviewItems}}" wx:key="index" class="review-item"><text class="review-no">{{index + 1}}</text><text>{{item}}</text></view>
+    </view>
+
+    <view wx:if="{{hasExample}}" class="btn-link" bindtap="useExample">{{isReview ? '标记已阅读并采用当前阶段建议' : '带入主站同一份示例'}}</view>
+    <view class="step-actions">
+      <view class="btn-secondary compact {{previousDisabled||busy?'disabled':''}}" bindtap="previousStep">上一题</view>
+      <view class="btn-secondary compact danger {{busy?'disabled':''}}" bindtap="skipCurrent">跳过待补</view>
+      <view class="btn-primary compact grow {{busy?'disabled':''}}" bindtap="confirmCurrent">{{finalStep ? '确认并完成 54 步' : '确认并下一题'}}</view>
+    </view>
+    <view class="save-row"><view class="btn-link" bindtap="saveDraft">保存当前草稿</view><view class="muted small">revision {{revision}} · CAS 云端保存</view></view>
+  </view>
+
+  <view wx:if="{{note}}" class="note card">{{note}}</view>
+
+  <view class="card">
+    <view class="label">待补步骤 <text class="muted small">{{skippedSteps}} 项</text></view>
+    <view wx:if="{{!skippedItems.length}}" class="muted small">暂无待补步骤。</view>
+    <view wx:for="{{skippedItems}}" wx:key="stepTitle" data-module="{{item.moduleIndex}}" data-step="{{item.stepIndex}}"
+      bindtap="resumeSkipped" class="resume-item">模块 {{item.moduleId}} · {{item.stepTitle}} · 去回补 ›</view>
+  </view>
+
+  <view class="card">
+    <view class="label">当前步骤 AI 分析 <text class="muted small">可选</text></view>
+    <view class="muted small">可在任意题保存回答后，主动发送当前题和最多 6 份资料，获得 3 个候选。不会自动确认。</view>
+    <view wx:for="{{selectedFiles}}" wx:key="index" class="file"><text>{{item.name}} · {{item.sizeText}}</text><text data-index="{{index}}" bindtap="removeFile">移除</text></view>
+    <view class="upload" bindtap="chooseFiles">选择 PDF、Word、PPT、表格、文本或图片</view>
+    <checkbox-group bindchange="onAnalysisConsent"><label class="consent"><checkbox value="accepted" checked="{{analysisConsent}}" color="#e24ba0"/>我明确同意将当前回答和所选资料发送给 AI 分析</label></checkbox-group>
+    <view class="btn-primary {{busy?'disabled':''}}" bindtap="analyzeCurrent">{{busy ? '处理中…' : 'AI 分析当前题'}}</view>
+    <view wx:if="{{analysisNote}}" class="analysis-note">{{analysisNote}}</view>
+
+    <view wx:if="{{sourceEvidence.length || gaps.length || conflicts.length}}" class="analysis-section">
+      <view wx:if="{{sourceEvidence.length}}" class="sub-label">来源证据</view><view wx:for="{{sourceEvidence}}" wx:key="index" class="bullet">• {{item}}</view>
+      <view wx:if="{{gaps.length}}" class="sub-label">资料缺口</view><view wx:for="{{gaps}}" wx:key="index" class="bullet">• {{item}}</view>
+      <view wx:if="{{conflicts.length}}" class="sub-label">冲突提示</view><view wx:for="{{conflicts}}" wx:key="index" class="bullet">• {{item}}</view>
+    </view>
+
+    <view wx:if="{{candidates.length}}" class="analysis-section">
+      <view class="sub-label">选择 3 个候选中的一个</view>
+      <view wx:for="{{candidates}}" wx:key="index" data-index="{{item.index}}" bindtap="selectCandidate"
+        class="candidate {{item.selected?'selected':''}}">
+        <view class="candidate-title">方案 {{index + 1}} · {{item.title}}</view>
+        <view class="muted">{{item.copy}}</view>
+        <view class="candidate-state">{{item.selected ? '已选择，等待确认当前题' : '点击选择'}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{confirmed || imagePlan.length || videoPlan.length || nextSteps.length}}" class="card">
+    <view class="label">已确认候选与行动计划</view>
+    <view wx:if="{{confirmed}}" class="muted">{{confirmed.name || confirmed.title || confirmed.summary || '已保存候选'}}</view>
+    <view wx:if="{{imagePlan.length}}" class="sub-label">图片计划</view><view wx:for="{{imagePlan}}" wx:key="index" class="bullet">• {{item}}</view>
+    <view wx:if="{{canPrefill && imagePrompt}}" class="btn-secondary" bindtap="goImage">带提示词到现有图片工具</view>
+    <view wx:if="{{videoPlan.length}}" class="sub-label">视频计划</view><view wx:for="{{videoPlan}}" wx:key="index" class="bullet">• {{item}}</view>
+    <view wx:if="{{canPrefill && videoPrompt}}" class="btn-secondary" bindtap="goVideo">带提示词到现有视频工具</view>
     <view wx:if="{{nextSteps.length}}" class="sub-label">建议步骤</view><view wx:for="{{nextSteps}}" wx:key="index" class="bullet">• {{item}}</view>
+    <view class="muted small action-boundary">只带入提示词，不自动生成、发布或扣点。</view>
+  </view>
+
+  <view class="card report-gate">
+    <view class="label">IP12 产品方案报告</view>
+    <view wx:if="{{!canGenerateReport}}" class="muted">还需确认或跳过 {{unresolvedSteps}} 步，完成首轮后才能生成报告。</view>
+    <view wx:if="{{canGenerateReport}}">
+      <view class="muted small">报告只使用已确认回答；跳过项会列为资料缺口。不会自动生成素材或扣点。</view>
+      <checkbox-group bindchange="onReportConsent"><label class="consent"><checkbox value="accepted" checked="{{reportConsent}}" color="#e24ba0"/>我明确同意将已保存回答发送给 AI 服务生成产品方案</label></checkbox-group>
+      <view class="btn-primary {{busy||!reportConsent?'disabled':''}}" bindtap="generateReport">{{busy ? '生成中…' : (reportVisible ? '重新生成产品方案' : '生成产品方案报告')}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{reportVisible}}" class="report-wrap">
+    <view class="card report-hero">
+      <view class="report-title">{{reportTitle}}</view>
+      <view class="report-meta">{{reportProgressText}}</view>
+      <view wx:if="{{reportStale}}" class="state-note warning">项目答案已更新，此报告可能过期。</view>
+      <view class="report-summary">{{reportSummary}}</view>
+    </view>
+
+    <view class="card">
+      <view class="label">01 · 事实依据</view>
+      <view wx:if="{{!reportEvidence.length}}" class="muted small">暂无可追溯证据。</view>
+      <view wx:for="{{reportEvidence}}" wx:key="id" class="report-item">
+        <view class="tag">{{item.id}}</view><view class="report-item-title">{{item.claim}}</view>
+        <view class="muted">“{{item.excerpt}}”</view><view class="source">来源：{{item.source}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">02 · 行业痛点与黄雀产品匹配</view>
+      <view wx:if="{{!reportPains.length}}" class="muted small">资料不足时不会为了推荐而推荐。</view>
+      <view wx:for="{{reportPains}}" wx:for-item="pain" wx:key="painIndex" class="report-item">
+        <view class="report-item-title">{{pain.pain}}</view><view class="muted">{{pain.why}}</view>
+        <view class="tag-row"><text wx:for="{{pain.evidenceIds}}" wx:key="*this" class="tag">{{item}}</text></view>
+        <view wx:for="{{pain.productMatches}}" wx:for-item="product" wx:key="matchIndex" class="product-match">
+          <view wx:if="{{product.canOpen}}" class="sub-label product-title-link" bindtap="openReportProduct" data-pain="{{product.painIndex}}" data-match="{{product.matchIndex}}">{{product.productName}} ›</view>
+          <view wx:else class="sub-label">{{product.productName}}</view><view class="muted">{{product.fitReason}}</view>
+          <view wx:for="{{product.steps}}" wx:for-item="actionStep" wx:key="*this" class="bullet">• {{actionStep}}</view>
+          <view wx:if="{{product.canOpen}}" class="btn-secondary" bindtap="openReportProduct" data-pain="{{product.painIndex}}" data-match="{{product.matchIndex}}">{{product.actionLabel}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">03 · 行动阶段</view>
+      <view wx:for="{{reportExecution}}" wx:key="phase" class="report-item"><view class="tag">{{item.phase}}</view><view class="report-item-title">{{item.goal}}</view><view wx:for="{{item.steps}}" wx:for-item="actionStep" wx:key="*this" class="bullet">• {{actionStep}}</view></view>
+    </view>
+
+    <view class="card">
+      <view class="label">04 · 复盘指标</view>
+      <view wx:for="{{reportMetrics}}" wx:key="name" class="report-item">
+        <view class="report-item-title">{{item.name}}</view><view class="metric-row">定义：{{item.definition}}</view><view class="metric-row">基线：{{item.baseline}}</view><view class="metric-row">规划目标：{{item.target}}</view><view class="metric-row">复盘周期：{{item.reviewCycle}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">05 · 资料缺口</view>
+      <view wx:if="{{!reportGaps.length}}" class="muted small">报告未识别到额外资料缺口。</view>
+      <view wx:for="{{reportGaps}}" wx:key="gap" class="report-item"><view class="tag">{{item.blocking ? '阻塞项' : '可后补'}}</view><view class="report-item-title">{{item.gap}}</view><view class="muted">{{item.why}}</view><view class="source">补充方式：{{item.collect}}</view></view>
+    </view>
+
+    <view class="card"><view class="label">06 · 使用边界</view><view class="muted">{{reportDisclaimer}}</view></view>
   </view>
 </view>

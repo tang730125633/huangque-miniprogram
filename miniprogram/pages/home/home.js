@@ -56,7 +56,7 @@ Page({
 
   // 受保护功能：未登录先去登录
   _guardNav(path) {
-    if (!api.getToken()) { wx.navigateTo({ url: '/pages/login/login' }); return; }
+    if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(path) }); return; }
     if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return; }
     if (this.data.membershipEnforced && !this.data.membershipActive) {
       api.showMembershipRequired();
@@ -88,7 +88,7 @@ Page({
     const id = e.currentTarget.dataset.id;
     const item = this.data.tutorials.find((x) => x.id === id);
     if (!item || !item.path) return;
-    if (!api.getToken()) { wx.navigateTo({ url: '/pages/login/login' }); return; }
+    if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(item.path) }); return; }
     if (item.path === '/pages/ip12/ip12') { this._guardNav(item.path); return; }
     if (item.tab) wx.switchTab({ url: item.path });
     else wx.navigateTo({ url: item.path });

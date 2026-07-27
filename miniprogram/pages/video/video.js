@@ -272,6 +272,13 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    const ip12Script = wx.getStorageSync('hq_ip12_prefill_script');
+    if (ip12Script && ip12Script.prompt) {
+      wx.removeStorageSync('hq_ip12_prefill_script');
+      if (this.data.mode !== 'talking') this._setMode('talking');
+      this.setData({ talkText: ip12Script.prompt });
+      wx.showToast({ title: '已带入 IP12 文案建议', icon: 'none' });
+    }
     const ip12Prefill = wx.getStorageSync('hq_ip12_prefill_video');
     if (ip12Prefill && ip12Prefill.prompt) {
       wx.removeStorageSync('hq_ip12_prefill_video');

@@ -29,7 +29,7 @@ assert.ok(!ip12.isWithinFileLimit({ size: ip12.MAX_FILE_BYTES + 1 }));
 assert.ok(!ip12.isWithinFileLimit({ size: 0 }));
 const merged = ip12.mergeQuestionnaire({ answers: { '1-0': { text: '保留', confirmed: true } } }, '模块一回答', true, 2);
 assert.strictEqual(merged.answers['1-0'].text, '保留');
-assert.deepStrictEqual(merged.answers['0-0'], { text: '模块一回答', confirmed: true, aiChoice: 2 });
+assert.deepStrictEqual(merged.answers['0-0'], { text: '模块一回答', confirmed: true, aiChoice: 2, skipped: false });
 assert.strictEqual(ip12.currentAnswer(merged), '模块一回答');
 assert.strictEqual(ip12.confirmedStepCount(merged, 'confirmed'), 2);
 assert.strictEqual(ip12.evidenceList([{ file_name: 'brief.docx', location: '未定位', claim: '客群是店主', evidence: '第 2 页' }])[0], 'brief.docx · 未定位：客群是店主（证据：第 2 页）');

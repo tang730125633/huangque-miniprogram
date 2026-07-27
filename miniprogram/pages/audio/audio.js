@@ -51,6 +51,12 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    const ip12Prefill = wx.getStorageSync('hq_ip12_prefill_audio');
+    if (ip12Prefill && ip12Prefill.text) {
+      wx.removeStorageSync('hq_ip12_prefill_audio');
+      this.setData({ text: ip12Prefill.text });
+      wx.showToast({ title: '已带入 IP12 音频文案', icon: 'none' });
+    }
     this.refreshPoints();
     this.loadVoices();
   },

@@ -1,5 +1,9 @@
 // 统一请求封装：拼接 API base、带上 Bearer token、401 自动跳登录
 const TOKEN_KEY = 'hq_token';
+const LOGIN_PAGE = '/pages/login/login';
+const LOGIN_REDIRECTS = {
+  ip12: '/pages/ip12/ip12'
+};
 let membershipPromptOpen = false;
 
 function getBase() {
@@ -14,6 +18,27 @@ function setToken(t) {
 }
 function clearToken() {
   wx.removeStorageSync(TOKEN_KEY);
+}
+
+// 登录回跳只接受明确登记的小程序内部页面，避免把启动参数当成任意导航地址。
+function loginRedirect(value) {
+  value = String(value || '');
+  if (value === 'ip12' || value === '/pages/ip12/ip12' || value === 'pages/ip12/ip12') return 'ip12';
+  return '';
+}
+
+function loginUrl(value) {
+  const redirect = loginRedirect(value);
+  return LOGIN_PAGE + (redirect ? '?redirect=' + redirect : '');
+}
+
+function navigateAfterLogin(value, fallback) {
+  const target = LOGIN_REDIRECTS[loginRedirect(value)];
+  if (target) {
+    wx.redirectTo({ url: target });
+    return;
+  }
+  wx.switchTab({ url: fallback || '/pages/home/home' });
 }
 
 function isMembershipRequired(res) {
@@ -61,7 +86,7 @@ function request(path, options) {
           const pages = getCurrentPages();
           const cur = pages.length ? pages[pages.length - 1].route : '';
           if (cur.indexOf('pages/login/login') === -1) {
-            wx.reLaunch({ url: '/pages/login/login' });
+            wx.reLaunch({ url: loginUrl(cur) });
           }
         }
         if (isMembershipRequired(res)) {
@@ -111,5 +136,5 @@ function downloadProtected(url) {
 
 module.exports = {
   request, getToken, setToken, clearToken, getBase, absUrl, downloadProtected,
-  isMembershipRequired, showMembershipRequired
+  isMembershipRequired, showMembershipRequired, loginRedirect, loginUrl, navigateAfterLogin
 };
