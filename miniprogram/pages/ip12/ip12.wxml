@@ -16,7 +16,7 @@
         <view class="bird">雀</view>
         <view>
           <view class="welcome-title">小黄雀 IP 教练</view>
-          <view class="welcome-copy">一次只聊一个问题。你自然回答，我来整理并继续。</view>
+          <view class="welcome-copy">一次只聊一个主题，问题后有参考例子；你可以直接选、改写或补充。</view>
         </view>
       </view>
 

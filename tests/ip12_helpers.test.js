@@ -10,6 +10,9 @@ assert.strictEqual(ip12.TOTAL_STEPS, 38);
 assert.deepStrictEqual(ip12.MODULE_NAMES, ['定位诊断', '人设塑造', '价值主张', '故事资产', '内容选题', '文案口播', 'IP 形象设计', '脚本分镜', '私域矩阵', '朋友圈运营', '销售策略', '公众号变现']);
 assert.strictEqual(ip12.MODULES[0].steps[0].title, '姓名或昵称');
 assert.strictEqual(ip12.MODULES[0].steps[0].conversation, true);
+assert.match(ip12.MODULES[0].steps[1].question, /你大概在哪个年龄段？比如 25–30、31–35、36–40/);
+assert.doesNotMatch(JSON.stringify(ip12.MODULES.slice(0, 6)), /你希望报告里如何呈现你的性别和年龄段/);
+assert.ok(ip12.ACTIVE_MODULES.every((module) => module.steps.every((step) => /咨询师/.test(step.instruction))));
 assert.ok(ip12.ACTIVE_MODULES.every((module) => module.steps.every((step) => step.type === 'text')));
 assert.doesNotMatch(JSON.stringify(ip12.MODULES.slice(0, 6)), /门店类型与规模|美业老板/);
 
