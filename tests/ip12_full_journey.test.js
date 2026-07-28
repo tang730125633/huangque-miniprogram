@@ -67,7 +67,7 @@ assert.match(view, /bindtap="previousStep"/);
 assert.match(view, /bindtap="skipCurrent"/);
 assert.match(view, /bindtap="askGuide"/);
 assert.match(view, /\{\{currentQuestion\}\}/);
-assert.match(view, /一次只聊一个问题/);
+assert.match(view, /一次只聊一个主题/);
 assert.match(view, /正在开发中，敬请期待/);
 assert.match(view, /确认模块 1–4 报告后解锁/);
 assert.match(view, /bindtap="confirmReport"/);

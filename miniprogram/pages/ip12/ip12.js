@@ -49,10 +49,22 @@ function guideView(questionnaire, moduleIndex, stepIndex) {
 }
 
 function profileSummary(questionnaire) {
-  return Object.keys(questionnaire.profile || {}).slice(0, 6).map((id) => {
+  const profiles = Object.keys(questionnaire.profile || {}).slice(0, 6).map((id) => {
     const item = questionnaire.profile[id] || {};
     return [item.title, item.summary].filter(Boolean).join('：');
-  }).filter(Boolean).join('\n').slice(0, 1800);
+  }).filter(Boolean);
+  const answers = Object.keys(questionnaire.answers || {}).filter((key) => {
+    const answer = questionnaire.answers[key] || {};
+    return answer.confirmed === true;
+  }).slice(-12).reverse().map((key) => {
+    const parts = key.split('-').map(Number);
+    const module = ip12.MODULES[parts[0]];
+    const step = module && module.steps[parts[1]];
+    const answer = questionnaire.answers[key] || {};
+    const text = step ? ip12.answerTextForStep(step, answer).trim() : '';
+    return step && text ? module.name + ' / ' + step.title + '：' + text : '';
+  }).filter(Boolean);
+  return answers.concat(profiles).join('\n').slice(0, 800);
 }
 
 function nextStepTitle(moduleIndex, stepIndex, project) {

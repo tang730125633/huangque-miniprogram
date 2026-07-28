@@ -8,7 +8,8 @@ const ip12 = require('../miniprogram/utils/ip12.js');
 require('../miniprogram/pages/ip12/ip12.js');
 
 const view = fs.readFileSync('miniprogram/pages/ip12/ip12.wxml', 'utf8');
-assert.match(view, /一次只聊一个问题/);
+assert.match(view, /一次只聊一个主题/);
+assert.match(view, /问题后有参考例子/);
 assert.match(view, /bindtap="askGuide"/);
 assert.doesNotMatch(view, /让 AI 问第一题/);
 
@@ -28,13 +29,14 @@ api.request = (path, options) => {
     guideCount += 1;
     if (guideCount === 1) {
       return Promise.resolve({ statusCode: 200, data: { ok: true, guide: {
-        reply: '我记下了，还想确认一个细节。',
-        follow_up_questions: ['你希望我在报告里怎么称呼你？'],
+        reply: '明白了，我们只补一个小细节。',
+        follow_up_questions: ['你更习惯我叫你唐老师、唐总，还是其他称呼？'],
         suggested_answer: '常用称呼待补充'
       } } });
     }
     return Promise.resolve({ statusCode: 200, data: { ok: true, guide: {
-      reply: '好的，已经记下。', follow_up_questions: [], suggested_answer: '唐老师'
+      reply: '好的，已经记下。', follow_up_questions: [],
+      suggested_answer: guideCount === 2 ? '唐老师' : '女性，31–35 岁'
     } } });
   }
   if (path === '/api/gen/digital-ip/projects/ip12-guide') {
@@ -83,14 +85,14 @@ context.patchQuestionnaire = page.patchQuestionnaire;
   assert.strictEqual(context._questionnaire.answers['0-0'].confirmed, false, 'one follow-up must stay on the current field');
   assert.deepStrictEqual({ moduleIndex: context.data.moduleIndex, stepIndex: context.data.stepIndex }, { moduleIndex: 0, stepIndex: 0 });
   assert.strictEqual(context._questionnaire.guideTurns.length, 3, 'first exchange includes the visible interview question');
-  assert.match(context._questionnaire.guideTurns[2].content, /怎么称呼你/);
+  assert.match(context._questionnaire.guideTurns[2].content, /更习惯我叫你/);
   assert.match(context.data.note, /继续回答/);
 
-  context.data.guideInput = '报告里就叫我唐老师';
+  context.data.guideInput = '大家就叫我唐老师';
   await page.askGuide.call(context, { currentTarget: { dataset: {} } });
   assert.strictEqual(requests[2].path, '/api/gen/digital-ip/guide');
   assert.strictEqual(requests[2].options.data.recent_turns.length, 3);
-  assert.strictEqual(context._questionnaire.answers['0-0'].text, '我平时用唐老师这个称呼\n报告里就叫我唐老师');
+  assert.strictEqual(context._questionnaire.answers['0-0'].text, '我平时用唐老师这个称呼\n大家就叫我唐老师');
   assert.strictEqual(context._questionnaire.answers['0-0'].keywords, '唐老师');
   assert.strictEqual(context._questionnaire.answers['0-0'].confirmed, true, 'no follow-up auto-confirms the field');
   assert.deepStrictEqual({ moduleIndex: context.data.moduleIndex, stepIndex: context.data.stepIndex }, { moduleIndex: 0, stepIndex: 1 });
@@ -99,8 +101,15 @@ context.patchQuestionnaire = page.patchQuestionnaire;
   assert.strictEqual(context.data.busy, false);
   assert.strictEqual(context.data.guideBusy, false);
 
+  context._questionnaire.profile = { 1: { title: '旧模块摘要', summary: '旧'.repeat(900) } };
+  context.data.guideInput = '女性，31–35 岁';
+  await page.askGuide.call(context, { currentTarget: { dataset: {} } });
+  assert.strictEqual(requests[4].path, '/api/gen/digital-ip/guide');
+  assert.match(requests[4].options.data.ip_summary, /^定位诊断 \/ 姓名或昵称：我平时用唐老师这个称呼/);
+  assert.ok(requests[4].options.data.ip_summary.length <= 800);
+
   const patchRequests = requests.filter((request) => request.path === '/api/gen/digital-ip/projects/ip12-guide');
-  assert.strictEqual(patchRequests.length, 2);
+  assert.strictEqual(patchRequests.length, 3);
   assert.ok(patchRequests.every((request) => request.options.data.state.questionnaire_state.interviewVersion === 2));
   console.log('ip12 guide checks passed');
 })().catch((error) => {
