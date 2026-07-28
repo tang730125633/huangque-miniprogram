@@ -4,44 +4,12 @@ const { MODULES } = require('./ip12_questions.js');
 
 const MODULE_STEPS = MODULES.map((module) => module.steps.length);
 const MODULE_NAMES = MODULES.map((module) => module.name);
-const ACTIVE_MODULE_COUNT = 8;
+const INTERVIEW_VERSION = 2;
+const ACTIVE_MODULE_COUNT = 6;
+const FOUNDATION_MODULE_COUNT = 4;
 const ACTIVE_MODULES = MODULES.slice(0, ACTIVE_MODULE_COUNT);
 const ACTIVE_MODULE_STEPS = ACTIVE_MODULES.map((module) => module.steps.length);
 const TOTAL_STEPS = ACTIVE_MODULE_STEPS.reduce((sum, count) => sum + count, 0);
-const ROADMAP_STEPS = MODULES.reduce((sum, module) => sum + Number(module.plannedSteps || module.steps.length || 0), 0);
-const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'txt', 'md', 'png', 'jpg', 'jpeg', 'webp'];
-const MAX_FILES = 6;
-const MAX_BYTES = 20 * 1024 * 1024;
-const MAX_FILE_BYTES = 8 * 1024 * 1024;
-const FIRST_MODULE_INDEX = 0;
-const FIRST_STEP_INDEX = 0;
-const FIRST_MODULE_NAME = MODULE_NAMES[0];
-const FIRST_STEP_NAME = MODULES[0].steps[0].title;
-const MIME_TYPES = {
-  pdf: 'application/pdf', doc: 'application/msword',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  ppt: 'application/vnd.ms-powerpoint',
-  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  xls: 'application/vnd.ms-excel',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  csv: 'text/csv', txt: 'text/plain', md: 'text/plain',
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp'
-};
-
-function extension(name) {
-  const match = String(name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
-  return match ? match[1] : '';
-}
-
-function isAllowedFile(file) {
-  return !!file && ALLOWED_EXTENSIONS.indexOf(extension(file.name)) !== -1;
-}
-
-function mimeType(name) { return MIME_TYPES[extension(name)] || ''; }
-function isWithinFileLimit(file) {
-  const size = Number(file && file.size || 0);
-  return size > 0 && size <= MAX_FILE_BYTES;
-}
 
 function keyFor(moduleIndex, stepIndex) { return String(moduleIndex) + '-' + String(stepIndex); }
 
@@ -65,12 +33,14 @@ function cursor(moduleIndex, stepIndex) {
 }
 
 function normalizeQuestionnaire(value) {
-  const source = value && typeof value === 'object' ? value : {};
+  const candidate = value && typeof value === 'object' ? value : {};
+  const source = candidate.interviewVersion === INTERVIEW_VERSION ? candidate : {};
   const current = cursor(
     source.moduleIndex !== undefined ? source.moduleIndex : source.module_index,
     source.stepIndex !== undefined ? source.stepIndex : source.step_index
   );
   return syncDerived(Object.assign({}, source, current, {
+    interviewVersion: INTERVIEW_VERSION,
     answers: Object.assign({}, source.answers || {})
   }));
 }
@@ -97,19 +67,11 @@ function answerTextForStep(step, answer) {
   return String(value.text || (step.preview || []).join('\n'));
 }
 
-function answerReady(step, answer) {
-  if (!step) return false;
-  if (step.type === 'review') return true;
-  return !!answerTextForStep(step, answer).trim();
-}
-
 function syncDerived(questionnaireState) {
   const questionnaire = questionnaireState && typeof questionnaireState === 'object' ? questionnaireState : {};
   const answers = questionnaire.answers || {};
   const profile = Object.assign({}, questionnaire.profile || {});
   const completedModules = [];
-  const legacyCompleted = (Array.isArray(questionnaire.completedModules) ? questionnaire.completedModules : [])
-    .filter((id) => Number(id) > ACTIVE_MODULE_COUNT);
   ACTIVE_MODULES.forEach((module, moduleIndex) => {
     const complete = module.steps.every((step, stepIndex) => {
       const answer = answers[keyFor(moduleIndex, stepIndex)] || {};
@@ -123,16 +85,20 @@ function syncDerived(questionnaireState) {
     const lastIndex = module.steps.length - 1;
     const lastAnswer = answers[keyFor(moduleIndex, lastIndex)] || {};
     if (lastAnswer.confirmed === true && !profile[module.id]) {
+      const summary = module.steps.map((step, stepIndex) => {
+        const answer = answers[keyFor(moduleIndex, stepIndex)] || {};
+        return String(answer.keywords || answerTextForStep(step, answer)).trim();
+      }).filter(Boolean).join('；').slice(0, 180);
       profile[module.id] = {
         title: module.name,
         output: module.output,
-        summary: answerTextForStep(module.steps[lastIndex], lastAnswer).slice(0, 180) || module.output
+        summary: summary || module.output
       };
     } else if (lastAnswer.skipped === true) {
       delete profile[module.id];
     }
   });
-  questionnaire.completedModules = completedModules.concat(legacyCompleted);
+  questionnaire.completedModules = completedModules;
   questionnaire.profile = profile;
   return questionnaire;
 }
@@ -154,18 +120,6 @@ function editAnswer(questionnaireState, moduleIndex, stepIndex, patch) {
     delete next.aiChoice;
   }
   questionnaire.answers[key] = next;
-  return syncDerived(questionnaire);
-}
-
-function setAiChoice(questionnaireState, moduleIndex, stepIndex, candidateIndex) {
-  const questionnaire = normalizeQuestionnaire(questionnaireState);
-  const current = writableCursor(moduleIndex, stepIndex);
-  if (!current) return questionnaire;
-  const key = keyFor(current.moduleIndex, current.stepIndex);
-  const previous = questionnaire.answers[key] && typeof questionnaire.answers[key] === 'object' ? questionnaire.answers[key] : {};
-  questionnaire.answers[key] = Object.assign({}, previous, {
-    aiChoice: Number(candidateIndex), confirmed: false, skipped: false
-  });
   return syncDerived(questionnaire);
 }
 
@@ -195,11 +149,12 @@ function withCursor(questionnaireState, moduleIndex, stepIndex) {
   return Object.assign(normalizeQuestionnaire(questionnaireState), cursor(moduleIndex, stepIndex));
 }
 
-function nextCursor(moduleIndex, stepIndex) {
+function nextCursor(moduleIndex, stepIndex, contentUnlocked) {
   const current = cursor(moduleIndex, stepIndex);
   if (current.stepIndex < MODULES[current.moduleIndex].steps.length - 1) {
     return { moduleIndex: current.moduleIndex, stepIndex: current.stepIndex + 1 };
   }
+  if (current.moduleIndex === FOUNDATION_MODULE_COUNT - 1 && contentUnlocked !== true) return current;
   if (current.moduleIndex < ACTIVE_MODULES.length - 1) return { moduleIndex: current.moduleIndex + 1, stepIndex: 0 };
   return current;
 }
@@ -231,7 +186,37 @@ function progress(questionnaireState) {
     unresolved: TOTAL_STEPS - confirmed - skipped, skippedItems };
 }
 
-function moduleCards(questionnaireState, activeModuleIndex) {
+function foundationProgress(questionnaireState) {
+  const questionnaire = normalizeQuestionnaire(questionnaireState);
+  let confirmed = 0;
+  let skipped = 0;
+  ACTIVE_MODULES.slice(0, FOUNDATION_MODULE_COUNT).forEach((module, moduleIndex) => {
+    module.steps.forEach((step, stepIndex) => {
+      const answer = questionnaire.answers[keyFor(moduleIndex, stepIndex)] || {};
+      if (answer.confirmed === true) confirmed += 1;
+      else if (answer.skipped === true) skipped += 1;
+    });
+  });
+  const total = ACTIVE_MODULE_STEPS.slice(0, FOUNDATION_MODULE_COUNT).reduce((sum, count) => sum + count, 0);
+  return { total, confirmed, skipped, progressed: confirmed + skipped, unresolved: total - confirmed - skipped };
+}
+
+function foundationStage(project) {
+  return project && project.foundation_stage && typeof project.foundation_stage === 'object'
+    ? project.foundation_stage : { status: 'missing', stale: false };
+}
+
+function foundationReady(project) {
+  const stage = foundationStage(project);
+  return stage.status === 'confirmed' && stage.stale !== true;
+}
+
+function isModuleUnlocked(moduleIndex, project) {
+  const index = Number(moduleIndex);
+  return isOpenModuleIndex(index) && (index < FOUNDATION_MODULE_COUNT || foundationReady(project));
+}
+
+function moduleCards(questionnaireState, activeModuleIndex, project) {
   const questionnaire = normalizeQuestionnaire(questionnaireState);
   return MODULES.map((module, moduleIndex) => {
     let confirmed = 0;
@@ -242,63 +227,14 @@ function moduleCards(questionnaireState, activeModuleIndex) {
       else if (answer.skipped === true) skipped += 1;
     });
     const comingSoon = moduleIndex >= ACTIVE_MODULE_COUNT;
+    const locked = !comingSoon && moduleIndex >= FOUNDATION_MODULE_COUNT && !foundationReady(project);
     return { index: moduleIndex, id: module.id, name: module.name, steps: Number(module.plannedSteps || module.steps.length),
       confirmed, skipped, progressed: confirmed + skipped, active: moduleIndex === activeModuleIndex,
-      done: !comingSoon && confirmed + skipped === module.steps.length, comingSoon };
+      done: !comingSoon && confirmed + skipped === module.steps.length, comingSoon, locked };
   });
 }
 
-function modules(completed) {
-  let left = Math.max(0, Number(completed) || 0);
-  return MODULES.map((module, index) => {
-    const done = Math.min(module.steps.length, left);
-    left -= done;
-    return { index: index + 1, name: module.name, steps: Number(module.plannedSteps || module.steps.length), done,
-      comingSoon: index >= ACTIVE_MODULE_COUNT };
-  });
-}
-
-function currentAnswer(questionnaireState, lastAnalysis, moduleIndex, stepIndex) {
-  const questionnaire = normalizeQuestionnaire(questionnaireState);
-  const current = cursor(moduleIndex === undefined ? 0 : moduleIndex, stepIndex === undefined ? 0 : stepIndex);
-  const answer = questionnaire.answers[keyFor(current.moduleIndex, current.stepIndex)];
-  return answerTextForStep(stepAt(current.moduleIndex, current.stepIndex), answer) ||
-    String(lastAnalysis && lastAnalysis.input && lastAnalysis.input.answer || '');
-}
-
-function mergeQuestionnaire(questionnaireState, answer, confirmed, candidateIndex) {
-  let questionnaire = editAnswer(questionnaireState, 0, 0, { text: String(answer || '') });
-  if (Number.isInteger(candidateIndex)) questionnaire = setAiChoice(questionnaire, 0, 0, candidateIndex);
-  if (confirmed === true) questionnaire = markConfirmed(questionnaire, 0, 0);
-  return questionnaire;
-}
-
-function confirmedStepCount(questionnaireState) { return progress(questionnaireState).confirmed; }
-
-function analysisContext(questionnaireState, moduleIndex, stepIndex) {
-  const questionnaire = normalizeQuestionnaire(questionnaireState);
-  const current = cursor(moduleIndex === undefined ? 0 : moduleIndex, stepIndex === undefined ? 0 : stepIndex);
-  const confirmed = [];
-  Object.keys(questionnaire.answers).forEach((key) => {
-    const answer = questionnaire.answers[key];
-    if (!answer || answer.confirmed !== true) return;
-    const parts = key.split('-').map(Number);
-    const step = isOpenModuleIndex(parts[0]) && MODULES[parts[0]] && MODULES[parts[0]].steps[parts[1]];
-    if (!step) return;
-    const text = answerTextForStep(step, answer).slice(0, 1200);
-    if (text) confirmed.push({ step: key, answer: text });
-  });
-  return { current_module: MODULES[current.moduleIndex].name,
-    current_step: MODULES[current.moduleIndex].steps[current.stepIndex].title,
-    confirmed_context: confirmed.slice(-12) };
-}
-
-function canGenerateReport(questionnaireState) { return progress(questionnaireState).unresolved === 0; }
-
-function formatBytes(bytes) {
-  const value = Number(bytes) || 0;
-  return value < 1024 * 1024 ? Math.ceil(value / 1024) + ' KB' : (value / (1024 * 1024)).toFixed(1) + ' MiB';
-}
+function canGenerateReport(questionnaireState) { return foundationProgress(questionnaireState).unresolved === 0; }
 
 function projectList(data) {
   if (Array.isArray(data)) return data;
@@ -311,64 +247,11 @@ function textList(value) {
   return [typeof value === 'string' ? value : (value.text || value.title || JSON.stringify(value))];
 }
 
-function evidenceList(value) {
-  const items = Array.isArray(value) ? value : (value ? [value] : []);
-  return items.map((item) => {
-    if (typeof item === 'string') return item;
-    const file = item.file_name || item.filename || item.source || '未命名资料';
-    const location = item.location || '未定位';
-    const claim = item.claim || item.text || item.summary || '未提供主张';
-    const evidence = item.evidence || item.quote || item.detail || '';
-    return file + ' · ' + location + '：' + claim + (evidence ? '（证据：' + evidence + '）' : '');
-  });
-}
-
-function analysisFromProject(project) {
-  const current = project || {};
-  const last = current.last_analysis || (current.state && current.state.last_analysis) || {};
-  return last.analysis || last;
-}
-
-function planView(plan, type) {
-  if (!plan) return { lines: [], prompt: '' };
-  if (Array.isArray(plan)) return { lines: textList(plan), prompt: textList(plan)[0] || '' };
-  if (typeof plan === 'string') return { lines: [plan], prompt: plan };
-  const duration = plan.duration_seconds ? plan.duration_seconds + ' 秒' : plan.duration;
-  const fields = type === 'video'
-    ? [['目标', plan.goal], ['形式', plan.format], ['时长', duration], ['脚本方向', plan.script_direction], ['镜头', plan.shots], ['所需素材', plan.assets_needed], ['步骤', plan.steps]]
-    : [['目标', plan.goal], ['提示词', plan.prompt], ['所需参考', plan.references_needed], ['步骤', plan.steps]];
-  const lines = fields.reduce((list, pair) => {
-    const value = pair[1];
-    if (!value) return list;
-    return list.concat(Array.isArray(value) ? value.map((item) => pair[0] + '：' + (typeof item === 'string' ? item : JSON.stringify(item))) : [pair[0] + '：' + value]);
-  }, []);
-  const videoPrompt = [plan.goal, plan.script_direction, Array.isArray(plan.shots) ? plan.shots.join('；') : plan.shots]
-    .filter(Boolean).join('；');
-  return { lines, prompt: type === 'video' ? videoPrompt : (plan.prompt || plan.goal || '') };
-}
-
-function productPrompt(pain, match) {
-  const item = match || {};
-  return [pain, item.fit_reason].concat(Array.isArray(item.execution_steps) ? item.execution_steps : [])
-    .filter(Boolean).join('；').slice(0, 1800);
-}
-
-function productAction(productId) {
-  if (productId === 'image_studio') return { type: 'image', label: '可点击跳转使用黄雀图片功能' };
-  if (productId === 'video_studio') return { type: 'video', label: '可点击跳转使用黄雀视频功能' };
-  if (productId === 'script_studio') return { type: 'script', label: '可点击跳转使用黄雀文案功能' };
-  if (productId === 'voice_studio') return { type: 'audio', label: '可点击跳转使用黄雀音频功能' };
-  if (productId === 'workflow_canvas') return { type: 'website', label: '可点击获取黄雀网站创作画布地址' };
-  return { type: '', label: '' };
-}
-
 module.exports = {
-  MODULES, MODULE_STEPS, MODULE_NAMES, ACTIVE_MODULE_COUNT, ACTIVE_MODULES, ACTIVE_MODULE_STEPS, TOTAL_STEPS, ROADMAP_STEPS,
-  ALLOWED_EXTENSIONS, MAX_FILES, MAX_BYTES, MAX_FILE_BYTES,
-  FIRST_MODULE_INDEX, FIRST_STEP_INDEX, FIRST_MODULE_NAME, FIRST_STEP_NAME, MIME_TYPES,
-  extension, isAllowedFile, mimeType, isWithinFileLimit, keyFor, isOpenModuleIndex, writableCursor, cursor, normalizeQuestionnaire, stepAt,
-  answerText, answerTextForStep, answerReady, syncDerived, editAnswer, setAiChoice, markConfirmed, markSkipped, withCursor,
-  nextCursor, previousCursor, progress, moduleCards, modules, currentAnswer, mergeQuestionnaire,
-  confirmedStepCount, analysisContext, canGenerateReport, formatBytes, projectList, textList, evidenceList,
-  analysisFromProject, planView, productPrompt, productAction
+  MODULES, MODULE_STEPS, MODULE_NAMES, INTERVIEW_VERSION, ACTIVE_MODULE_COUNT, FOUNDATION_MODULE_COUNT,
+  ACTIVE_MODULES, ACTIVE_MODULE_STEPS, TOTAL_STEPS,
+  keyFor, isOpenModuleIndex, writableCursor, cursor, normalizeQuestionnaire, stepAt,
+  answerText, answerTextForStep, syncDerived, editAnswer, markConfirmed, markSkipped, withCursor,
+  nextCursor, previousCursor, progress, foundationProgress, foundationStage, foundationReady, isModuleUnlocked,
+  moduleCards, canGenerateReport, projectList, textList
 };
