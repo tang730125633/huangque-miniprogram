@@ -70,6 +70,7 @@ const context = {
   }
 };
 context.patchQuestionnaire = page.patchQuestionnaire;
+context.handleNavigationMessage = page.handleNavigationMessage;
 
 (async () => {
   await page.askGuide.call(context, { currentTarget: { dataset: {} } });

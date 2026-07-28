@@ -7,6 +7,7 @@ assert.strictEqual(ip12.ACTIVE_MODULE_COUNT, 6);
 assert.strictEqual(ip12.TOTAL_STEPS, 38);
 assert.strictEqual(ip12.foundationProgress({}).total, 30);
 assert.deepStrictEqual(ip12.ACTIVE_MODULE_STEPS, [18, 4, 3, 5, 5, 3]);
+assert.strictEqual(ip12.GUIDE_TURN_LIMIT, 240);
 assert.deepStrictEqual(ip12.MODULE_NAMES.slice(6), ['IP 形象设计', '脚本分镜', '私域矩阵', '朋友圈运营', '销售策略', '公众号变现']);
 assert.ok(ip12.MODULES.slice(6).every((module) => module.availability === 'coming_soon' && module.desc === '正在开发中，敬请期待'));
 assert.strictEqual(ip12.MODULES[0].steps[0].title, '姓名或昵称');
@@ -28,6 +29,25 @@ assert.strictEqual(ip12.progress(questionnaire).confirmed, 1);
 assert.strictEqual(ip12.progress(questionnaire).skipped, 0);
 questionnaire = ip12.editAnswer(questionnaire, 0, 0, { text: 'Tang' });
 assert.strictEqual(questionnaire.answers['0-0'].confirmed, false);
+
+let resume = ip12.normalizeQuestionnaire({});
+resume = ip12.editAnswer(resume, 0, 0, { text: '已答' });
+resume = ip12.markConfirmed(resume, 0, 0);
+resume = ip12.markSkipped(resume, 0, 1);
+assert.strictEqual(ip12.firstUnresolvedStep(resume, 0), 2);
+resume = ip12.withCursor(resume, 0, 3);
+resume = ip12.editAnswer(resume, 0, 3, { text: '已答' });
+resume = ip12.markConfirmed(resume, 0, 3);
+for (let stepIndex = 4; stepIndex < ip12.MODULES[0].steps.length; stepIndex += 1) {
+  resume = ip12.editAnswer(resume, 0, stepIndex, { text: '已答' });
+  resume = ip12.markConfirmed(resume, 0, stepIndex);
+}
+assert.deepStrictEqual(ip12.nextUnresolvedCursor(resume, 0, 17, {}), { moduleIndex: 0, stepIndex: 2 });
+assert.deepStrictEqual(ip12.navigationCommand('继续'), { type: 'next' });
+assert.deepStrictEqual(ip12.navigationCommand('上一题'), { type: 'previous' });
+assert.deepStrictEqual(ip12.navigationCommand('暂时跳过'), { type: 'skip' });
+assert.deepStrictEqual(ip12.navigationCommand('你跳一下模块2'), { type: 'module', moduleIndex: 1 });
+assert.strictEqual(ip12.navigationCommand('广州'), null);
 
 questionnaire = ip12.normalizeQuestionnaire({});
 ip12.ACTIVE_MODULES.slice(0, 4).forEach((module, moduleIndex) => module.steps.forEach((step, stepIndex) => {
@@ -58,6 +78,9 @@ assert.match(page, /state: \{ questionnaire_state: normalized \}/);
 assert.match(page, /res\.statusCode === 409/);
 assert.match(page, /\/api\/gen\/digital-ip\/guide/);
 assert.match(page, /follow_up_questions/);
+assert.match(page, /handleNavigationMessage\(message\)/);
+assert.match(page, /ip12\.firstUnresolvedStep/);
+assert.match(page, /slice\(-ip12\.GUIDE_TURN_LIMIT\)/);
 assert.match(page, /keywords: suggestedAnswer/);
 assert.match(page, /confirmed: followUp\.length === 0/);
 assert.match(page, /\/report-confirm/);

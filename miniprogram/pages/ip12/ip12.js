@@ -29,7 +29,7 @@ function guideView(questionnaire, moduleIndex, stepIndex) {
   let previousStepKey = '';
   const turns = allTurns
     .filter((turn) => turn && ip12.MODULES[Number(String(turn.stepKey || '').split('-')[0])])
-    .slice(-24)
+    .slice(-ip12.GUIDE_TURN_LIMIT)
     .map((turn) => {
       const parts = String(turn.stepKey || '').split('-').map(Number);
       const module = ip12.MODULES[parts[0]];
@@ -363,7 +363,8 @@ Page({
       return Promise.resolve(null);
     }
     this.setData({ modulesOpen: false });
-    return this.moveTo({ moduleIndex, stepIndex: 0 }, '已切换到模块 ' + (moduleIndex + 1) + '。');
+    const stepIndex = ip12.firstUnresolvedStep(this._questionnaire, moduleIndex);
+    return this.moveTo({ moduleIndex, stepIndex }, '已进入模块 ' + (moduleIndex + 1) + ' 的首个未完成问题。');
   },
 
   toggleModules() { this.setData({ modulesOpen: !this.data.modulesOpen }); },
@@ -402,6 +403,38 @@ Page({
     this.setData({ guideInput: String(e.detail && e.detail.value || '') });
   },
 
+  handleNavigationMessage(message) {
+    const command = ip12.navigationCommand(message);
+    if (!command) return null;
+    this.setData({ guideInput: '' });
+    if (command.type === 'previous') return this.previousStep();
+    if (command.type === 'skip') return this.skipCurrent();
+    if (command.type === 'module') {
+      if (!ip12.isModuleUnlocked(command.moduleIndex, this._project)) {
+        this.setData({ note: '请先确认模块 1–4 阶段报告，模块 5–6 才会解锁。' });
+        return Promise.resolve(null);
+      }
+      return this.moveTo({
+        moduleIndex: command.moduleIndex,
+        stepIndex: ip12.firstUnresolvedStep(this._questionnaire, command.moduleIndex)
+      }, '已进入模块 ' + (command.moduleIndex + 1) + ' 的首个未完成问题。');
+    }
+    const answer = this._questionnaire.answers[ip12.keyFor(this.data.moduleIndex, this.data.stepIndex)] || {};
+    if (answer.confirmed !== true && answer.skipped !== true) {
+      this.setData({ note: '请先回答当前问题，或点击“暂时跳过”。' });
+      return Promise.resolve(null);
+    }
+    const next = ip12.nextUnresolvedCursor(
+      this._questionnaire, this.data.moduleIndex, this.data.stepIndex, this._project
+    );
+    if (!next) {
+      this.setData({ note: ip12.foundationReady(this._project)
+        ? '当前开放模块已经完成。' : '请先生成并确认模块 1–4 阶段报告。' });
+      return Promise.resolve(null);
+    }
+    return this.moveTo(next, '已进入下一个未完成问题。');
+  },
+
   askGuide(e) {
     if (!this._project || this.data.busy || this.data.guideBusy) return Promise.resolve(null);
     const message = String(e && e.currentTarget && e.currentTarget.dataset.message || this.data.guideInput || '').trim();
@@ -409,6 +442,8 @@ Page({
       this.setData({ note: '请先回答小黄雀的当前问题。' });
       return Promise.resolve(null);
     }
+    const navigation = this.handleNavigationMessage(message);
+    if (navigation) return navigation;
     if (!this.data.guideConsent) {
       this.setData({ note: '请先明确同意将当前回答发送给 AI。' });
       return Promise.resolve(null);
@@ -476,7 +511,8 @@ Page({
           follow_up_questions: followUp,
           stepKey
         }
-      ]).slice(-72);
+      // ponytail: 240 条覆盖当前六模块试点；超过后再迁独立追加式会话表。
+      ]).slice(-ip12.GUIDE_TURN_LIMIT);
 
       let questionnaire = ip12.editAnswer(this._questionnaire, moduleIndex, stepIndex, {
         text: mergedAnswer,
@@ -491,13 +527,13 @@ Page({
       });
       questionnaire = ip12.syncDerived(Object.assign({}, questionnaire, { guideTurns: turns }));
       if (followUp.length === 0) {
-        const next = ip12.nextCursor(moduleIndex, stepIndex, ip12.foundationReady(this._project));
+        const next = ip12.nextUnresolvedCursor(questionnaire, moduleIndex, stepIndex, this._project) ||
+          ip12.nextCursor(moduleIndex, stepIndex, ip12.foundationReady(this._project));
         questionnaire = ip12.withCursor(questionnaire, next.moduleIndex, next.stepIndex);
       }
-      const completedFoundation = followUp.length === 0 && moduleIndex === ip12.FOUNDATION_MODULE_COUNT - 1 &&
-        stepIndex === module.steps.length - 1;
-      const completedFlow = followUp.length === 0 && moduleIndex === ip12.ACTIVE_MODULE_COUNT - 1 &&
-        stepIndex === module.steps.length - 1;
+      const completedFoundation = followUp.length === 0 && ip12.foundationProgress(questionnaire).unresolved === 0 &&
+        !ip12.foundationReady(this._project);
+      const completedFlow = followUp.length === 0 && ip12.progress(questionnaire).unresolved === 0;
       return this.patchQuestionnaire(questionnaire).then((project) => {
         this.applyProject(project);
         this.setData({

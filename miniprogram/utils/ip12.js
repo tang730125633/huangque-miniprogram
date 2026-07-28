@@ -7,6 +7,7 @@ const MODULE_NAMES = MODULES.map((module) => module.name);
 const INTERVIEW_VERSION = 2;
 const ACTIVE_MODULE_COUNT = 6;
 const FOUNDATION_MODULE_COUNT = 4;
+const GUIDE_TURN_LIMIT = 240;
 const ACTIVE_MODULES = MODULES.slice(0, ACTIVE_MODULE_COUNT);
 const ACTIVE_MODULE_STEPS = ACTIVE_MODULES.map((module) => module.steps.length);
 const TOTAL_STEPS = ACTIVE_MODULE_STEPS.reduce((sum, count) => sum + count, 0);
@@ -30,6 +31,50 @@ function cursor(moduleIndex, stepIndex) {
   if (!isOpenModuleIndex(mi)) mi = 0;
   if (!Number.isInteger(si) || si < 0 || si >= MODULES[mi].steps.length) si = 0;
   return { moduleIndex: mi, stepIndex: si };
+}
+
+function firstUnresolvedStep(questionnaireState, moduleIndex) {
+  const questionnaire = normalizeQuestionnaire(questionnaireState);
+  const index = Number(moduleIndex);
+  if (!isOpenModuleIndex(index)) return 0;
+  const step = MODULES[index].steps.findIndex((item, stepIndex) => {
+    const answer = questionnaire.answers[keyFor(index, stepIndex)] || {};
+    return answer.confirmed !== true && answer.skipped !== true;
+  });
+  return step < 0 ? 0 : step;
+}
+
+function nextUnresolvedCursor(questionnaireState, moduleIndex, stepIndex, project) {
+  const questionnaire = normalizeQuestionnaire(questionnaireState);
+  const current = cursor(moduleIndex, stepIndex);
+  const candidates = [];
+  for (let si = current.stepIndex + 1; si < MODULES[current.moduleIndex].steps.length; si += 1) {
+    candidates.push({ moduleIndex: current.moduleIndex, stepIndex: si });
+  }
+  for (let si = 0; si < current.stepIndex; si += 1) {
+    candidates.push({ moduleIndex: current.moduleIndex, stepIndex: si });
+  }
+  for (let mi = current.moduleIndex + 1; mi < ACTIVE_MODULE_COUNT; mi += 1) {
+    for (let si = 0; si < MODULES[mi].steps.length; si += 1) candidates.push({ moduleIndex: mi, stepIndex: si });
+  }
+  for (let mi = 0; mi < current.moduleIndex; mi += 1) {
+    for (let si = 0; si < MODULES[mi].steps.length; si += 1) candidates.push({ moduleIndex: mi, stepIndex: si });
+  }
+  return candidates.find((candidate) => {
+    if (!isModuleUnlocked(candidate.moduleIndex, project)) return false;
+    const answer = questionnaire.answers[keyFor(candidate.moduleIndex, candidate.stepIndex)] || {};
+    return answer.confirmed !== true && answer.skipped !== true;
+  }) || null;
+}
+
+function navigationCommand(value) {
+  const text = String(value || '').replace(/[\s，。！？!?、]/g, '');
+  if (['继续', '下一题', '下一个', '往下', '进入下一题'].indexOf(text) !== -1) return { type: 'next' };
+  if (['上一题', '上一个', '返回上一题'].indexOf(text) !== -1) return { type: 'previous' };
+  if (['跳过', '暂时跳过', '这题跳过'].indexOf(text) !== -1) return { type: 'skip' };
+  const module = text.match(/^(?:你)?(?:帮我)?(?:跳到|跳一下|进入|切换到)?模块([1-6])(?:吧)?$/) ||
+    text.match(/^(?:你)?(?:帮我)?(?:跳到|跳一下|进入|切换到)(?:第)?([1-6])(?:个)?模块(?:吧)?$/);
+  return module ? { type: 'module', moduleIndex: Number(module[1]) - 1 } : null;
 }
 
 function normalizeQuestionnaire(value) {
@@ -248,9 +293,10 @@ function textList(value) {
 }
 
 module.exports = {
-  MODULES, MODULE_STEPS, MODULE_NAMES, INTERVIEW_VERSION, ACTIVE_MODULE_COUNT, FOUNDATION_MODULE_COUNT,
+  MODULES, MODULE_STEPS, MODULE_NAMES, INTERVIEW_VERSION, ACTIVE_MODULE_COUNT, FOUNDATION_MODULE_COUNT, GUIDE_TURN_LIMIT,
   ACTIVE_MODULES, ACTIVE_MODULE_STEPS, TOTAL_STEPS,
-  keyFor, isOpenModuleIndex, writableCursor, cursor, normalizeQuestionnaire, stepAt,
+  keyFor, isOpenModuleIndex, writableCursor, cursor, firstUnresolvedStep, nextUnresolvedCursor, navigationCommand,
+  normalizeQuestionnaire, stepAt,
   answerText, answerTextForStep, syncDerived, editAnswer, markConfirmed, markSkipped, withCursor,
   nextCursor, previousCursor, progress, foundationProgress, foundationStage, foundationReady, isModuleUnlocked,
   moduleCards, canGenerateReport, projectList, textList
