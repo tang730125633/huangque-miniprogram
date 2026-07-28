@@ -39,7 +39,7 @@ function completeProject() {
   ip12.ACTIVE_MODULES.forEach((module, moduleIndex) => module.steps.forEach((step, stepIndex) => {
     answers[moduleIndex + '-' + stepIndex] = { skipped: true };
   }));
-  return { id: 'done', state: { questionnaire_state: { answers } } };
+  return { id: 'done', state: { questionnaire_state: { interviewVersion: 2, answers } } };
 }
 
 (async () => {

@@ -6,26 +6,43 @@ global.Page = (definition) => { page = definition; };
 const api = require('../miniprogram/utils/api.js');
 const ip12 = require('../miniprogram/utils/ip12.js');
 require('../miniprogram/pages/ip12/ip12.js');
+
 const view = fs.readFileSync('miniprogram/pages/ip12/ip12.wxml', 'utf8');
-assert.match(view, /bindtap="resetGuideMemory">重置教练记忆/);
-assert.match(view, /主站与小程序同步/);
+assert.match(view, /一次只聊一个问题/);
+assert.match(view, /bindtap="askGuide"/);
+assert.doesNotMatch(view, /让 AI 问第一题/);
 
 const requests = [];
-const initialQuestionnaire = ip12.normalizeQuestionnaire({
-  answers: { '0-0': { text: '我做成过一件值得复盘的事。', confirmed: true } }
-});
-const project = { id: 'ip12-guide', revision: 4, state: { questionnaire_state: initialQuestionnaire } };
+let guideCount = 0;
+let revision = 4;
+const initialQuestionnaire = ip12.normalizeQuestionnaire({ interviewVersion: 2, answers: {} });
+const project = {
+  id: 'ip12-guide', revision,
+  foundation_stage: { status: 'missing', stale: false },
+  state: { questionnaire_state: initialQuestionnaire }
+};
+
 api.request = (path, options) => {
   requests.push({ path, options });
   if (path === '/api/gen/digital-ip/guide') {
-    return Promise.resolve({ statusCode: 200, data: {
-      ok: true,
-      guide: { reply: '哪段经历最能代表你的能力？', suggested_answer: '我想从一次真实成果开始讲起。' }
-    } });
+    guideCount += 1;
+    if (guideCount === 1) {
+      return Promise.resolve({ statusCode: 200, data: { ok: true, guide: {
+        reply: '我记下了，还想确认一个细节。',
+        follow_up_questions: ['你希望我在报告里怎么称呼你？'],
+        suggested_answer: '常用称呼待补充'
+      } } });
+    }
+    return Promise.resolve({ statusCode: 200, data: { ok: true, guide: {
+      reply: '好的，已经记下。', follow_up_questions: [], suggested_answer: '唐老师'
+    } } });
   }
   if (path === '/api/gen/digital-ip/projects/ip12-guide') {
+    revision += 1;
     return Promise.resolve({ statusCode: 200, data: { project: {
-      id: 'ip12-guide', revision: 5, state: { questionnaire_state: options.data.state.questionnaire_state }
+      id: 'ip12-guide', revision,
+      foundation_stage: { status: 'missing', stale: false },
+      state: { questionnaire_state: options.data.state.questionnaire_state }
     } } });
   }
   throw new Error('unexpected request ' + path);
@@ -33,7 +50,8 @@ api.request = (path, options) => {
 
 const context = {
   data: Object.assign({}, page.data, {
-    moduleIndex: 0, stepIndex: 0, guideConsent: true, guideInput: '', busy: false, guideBusy: false
+    moduleIndex: 0, stepIndex: 0, guideConsent: true, guideInput: '我平时用唐老师这个称呼',
+    busy: false, guideBusy: false, atFoundationGate: false, flowComplete: false
   }),
   _project: project,
   _questionnaire: initialQuestionnaire,
@@ -41,58 +59,49 @@ const context = {
   applyProject(nextProject) {
     this._project = nextProject;
     this._questionnaire = ip12.normalizeQuestionnaire(nextProject.state.questionnaire_state);
-    const turns = this._questionnaire.guideTurns || [];
-    const latest = turns.slice().reverse().find((turn) => turn.role === 'assistant') || {};
-    this.setData({ revision: nextProject.revision, guideTurns: turns,
-      guideSuggestedAnswer: latest.suggested_answer || latest.suggestedAnswer || '' });
+    this.data.revision = nextProject.revision;
+    this.data.moduleIndex = this._questionnaire.moduleIndex;
+    this.data.stepIndex = this._questionnaire.stepIndex;
+    this.data.atFoundationGate = false;
+    this.data.flowComplete = false;
     return nextProject;
   }
 };
 context.patchQuestionnaire = page.patchQuestionnaire;
 
 (async () => {
-  await page.askGuide.call(context, { currentTarget: { dataset: { message: '请开始问我吧。一次只问一个问题。' } } });
+  await page.askGuide.call(context, { currentTarget: { dataset: {} } });
   assert.strictEqual(requests[0].path, '/api/gen/digital-ip/guide');
   assert.strictEqual(requests[0].options.method, 'POST');
   assert.strictEqual(requests[0].options.data.module, '定位诊断');
+  assert.strictEqual(requests[0].options.data.step, '姓名或昵称');
   assert.strictEqual(requests[0].options.data.consent, true);
   assert.strictEqual(requests[0].options.data.recent_turns.length, 0);
-  assert.strictEqual(requests.filter((request) => /\/confirm$/.test(request.path)).length, 0);
-  assert.strictEqual(context._questionnaire.answers['0-0'].text, '我做成过一件值得复盘的事。');
-  assert.strictEqual(context._questionnaire.answers['0-0'].confirmed, true, 'guide must not change a confirmed answer');
-  assert.strictEqual(context._questionnaire.guideTurns.length, 2);
-  assert.strictEqual(context._questionnaire.guideTurns[1].content, '哪段经历最能代表你的能力？');
-  assert.strictEqual(context._questionnaire.guideTurns[1].suggested_answer, '我想从一次真实成果开始讲起。');
+  assert.strictEqual(context._questionnaire.answers['0-0'].text, '我平时用唐老师这个称呼');
+  assert.strictEqual(context._questionnaire.answers['0-0'].keywords, '常用称呼待补充');
+  assert.strictEqual(context._questionnaire.answers['0-0'].suggested_answer, '常用称呼待补充');
+  assert.strictEqual(context._questionnaire.answers['0-0'].confirmed, false, 'one follow-up must stay on the current field');
+  assert.deepStrictEqual({ moduleIndex: context.data.moduleIndex, stepIndex: context.data.stepIndex }, { moduleIndex: 0, stepIndex: 0 });
+  assert.strictEqual(context._questionnaire.guideTurns.length, 3, 'first exchange includes the visible interview question');
+  assert.match(context._questionnaire.guideTurns[2].content, /怎么称呼你/);
+  assert.match(context.data.note, /继续回答/);
+
+  context.data.guideInput = '报告里就叫我唐老师';
+  await page.askGuide.call(context, { currentTarget: { dataset: {} } });
+  assert.strictEqual(requests[2].path, '/api/gen/digital-ip/guide');
+  assert.strictEqual(requests[2].options.data.recent_turns.length, 3);
+  assert.strictEqual(context._questionnaire.answers['0-0'].text, '我平时用唐老师这个称呼\n报告里就叫我唐老师');
+  assert.strictEqual(context._questionnaire.answers['0-0'].keywords, '唐老师');
+  assert.strictEqual(context._questionnaire.answers['0-0'].confirmed, true, 'no follow-up auto-confirms the field');
+  assert.deepStrictEqual({ moduleIndex: context.data.moduleIndex, stepIndex: context.data.stepIndex }, { moduleIndex: 0, stepIndex: 1 });
+  assert.strictEqual(context._questionnaire.interviewVersion, 2);
+  assert.match(context.data.note, /继续下一题/);
   assert.strictEqual(context.data.busy, false);
   assert.strictEqual(context.data.guideBusy, false);
 
-  let modal;
-  global.wx = { showModal(options) { modal = options; options.success({ confirm: true }); } };
-  context.data.guideInput = '尚未发送的临时输入';
-  await page.resetGuideMemory.call(context);
-  assert.match(modal.content, /同步到主站/);
-  assert.match(modal.content, /不会删除已确认答案/);
-  assert.strictEqual(requests[2].path, '/api/gen/digital-ip/projects/ip12-guide');
-  assert.deepStrictEqual(requests[2].options.data.state.questionnaire_state.guideTurns, []);
-  assert.strictEqual(context._questionnaire.answers['0-0'].text, '我做成过一件值得复盘的事。');
-  assert.strictEqual(context._questionnaire.answers['0-0'].confirmed, true);
-  assert.deepStrictEqual(context._questionnaire.guideTurns, []);
-  assert.strictEqual(context.data.guideInput, '');
-  assert.strictEqual(context.data.guideConsent, false);
-  assert.match(context.data.note, /教练记忆已清除/);
-
-  const syncContext = {
-    data: Object.assign({}, page.data), _project: null, _questionnaire: ip12.normalizeQuestionnaire({}),
-    setData(patch) { Object.assign(this.data, patch); }
-  };
-  page.applyProject.call(syncContext, {
-    id: 'main-site-project', revision: 8,
-    state: { questionnaire_state: ip12.normalizeQuestionnaire({ guideTurns: [
-      { role: 'assistant', content: '来自主站的问题', suggested_answer: '来自主站的建议草稿', stepKey: '0-0' }
-    ] }) }
-  });
-  assert.strictEqual(syncContext.data.guideTurns[0].content, '来自主站的问题');
-  assert.strictEqual(syncContext.data.guideSuggestedAnswer, '来自主站的建议草稿');
+  const patchRequests = requests.filter((request) => request.path === '/api/gen/digital-ip/projects/ip12-guide');
+  assert.strictEqual(patchRequests.length, 2);
+  assert.ok(patchRequests.every((request) => request.options.data.state.questionnaire_state.interviewVersion === 2));
   console.log('ip12 guide checks passed');
 })().catch((error) => {
   console.error(error);
