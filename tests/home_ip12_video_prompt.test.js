@@ -33,34 +33,27 @@ function pageWith(response) {
   return { page, navigations, requests };
 }
 
-function completeProject() {
-  const answers = {};
-  const ip12 = require('../miniprogram/utils/ip12.js');
-  ip12.ACTIVE_MODULES.forEach((module, moduleIndex) => module.steps.forEach((step, stepIndex) => {
-    answers[moduleIndex + '-' + stepIndex] = { skipped: true };
-  }));
-  return { id: 'done', state: { questionnaire_state: { interviewVersion: 2, answers } } };
-}
+function completeProject() { return { id: 'done', coach_state: { completed_modules: [1, 2, 3, 4, 5, 6] } }; }
 
 (async () => {
-  let test = pageWith({ statusCode: 200, data: { projects: [] } });
+  let test = pageWith({ statusCode: 200, data: [] });
   await test.page.onTapPrimaryCreation.call(test.page);
   assert.strictEqual(test.page.data.videoIp12PromptVisible, true);
   assert.deepStrictEqual(test.navigations, []);
-  assert.deepStrictEqual(test.requests, [{ path: '/api/gen/digital-ip/projects', method: 'GET' }]);
+  assert.deepStrictEqual(test.requests, [{ path: '/workbench/ip12/api/conversations', method: 'GET' }]);
 
   test.page.skipVideoIp12Prompt.call(test.page);
   assert.strictEqual(test.page.data.videoIp12PromptVisible, false);
   test.page.createIp12BeforeVideo.call(test.page);
   assert.deepStrictEqual(test.navigations, ['/pages/ip12/ip12']);
 
-  test = pageWith({ statusCode: 200, data: { projects: [{ id: 'draft', state: { questionnaire_state: {} } }] } });
+  test = pageWith({ statusCode: 200, data: [{ id: 'draft', coach_state: { completed_modules: [] } }] });
   await test.page.onTapPrimaryCreation.call(test.page);
   assert.strictEqual(test.page.data.videoIp12PromptVisible, true);
   test.page.continueToVideo.call(test.page);
   assert.deepStrictEqual(test.navigations, ['/pages/video/video?mode=generate']);
 
-  test = pageWith({ statusCode: 200, data: { projects: [completeProject()] } });
+  test = pageWith({ statusCode: 200, data: [completeProject()] });
   await test.page.onTapPrimaryCreation.call(test.page);
   assert.strictEqual(test.page.data.videoIp12PromptVisible, false);
   assert.deepStrictEqual(test.navigations, ['/pages/video/video?mode=generate']);
@@ -75,11 +68,11 @@ function completeProject() {
   assert.strictEqual(test.page.data.videoIp12PromptVisible, false);
 
   let finishRequest;
-  test = pageWith({ statusCode: 200, data: { projects: [completeProject()] } });
+  test = pageWith({ statusCode: 200, data: [completeProject()] });
   api.request = () => new Promise((resolve) => { finishRequest = resolve; });
   const pending = test.page.onTapPrimaryCreation.call(test.page);
   test.page.onHide.call(test.page);
-  finishRequest({ statusCode: 200, data: { projects: [completeProject()] } });
+  finishRequest({ statusCode: 200, data: [completeProject()] });
   await pending;
   assert.deepStrictEqual(test.navigations, []);
   assert.strictEqual(test.page.data.videoIp12PromptVisible, false);

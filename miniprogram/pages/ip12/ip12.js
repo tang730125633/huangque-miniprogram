@@ -124,7 +124,7 @@ Page({
   downloadReport() {
     if (!this.data.conversationId || this.data.pdfBusy) return;
     this.setData({ pdfBusy: true, note: '正在准备 PDF…' });
-    api.downloadProtected(API + '/foundation-report/' + encodeURIComponent(this.data.conversationId) + '.pdf')
+    return api.downloadProtected(API + '/foundation-report/' + encodeURIComponent(this.data.conversationId) + '.pdf')
       .then((filePath) => new Promise((resolve, reject) => wx.openDocument({ filePath, fileType: 'pdf', showMenu: true, success: resolve, fail: reject })))
       .then(() => this.setData({ note: 'PDF 已打开，可从右上角菜单保存或转发。' }))
       .catch(() => this.setData({ note: 'PDF 暂时无法打开，请稍后重试。' }))
