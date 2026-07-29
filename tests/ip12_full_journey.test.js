@@ -15,5 +15,6 @@ assert.match(page, /我已确认模块 1-4 初稿，请开始模块 5/);
 assert.match(view, /一次问一个问题/);
 assert.match(view, /查看 PDF/);
 assert.match(view, /确认初稿/);
+assert.match(view, /reportConfirmed[\s\S]*随时回来查看 PDF[\s\S]*bindtap="downloadReport"/);
 assert.doesNotMatch(view, /OpenAI|GPT|Structured/i);
 console.log('IP12 Hermes journey checks passed');
