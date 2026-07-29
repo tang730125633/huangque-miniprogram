@@ -1,5 +1,4 @@
 const api = require('../../utils/api.js');
-const ip12 = require('../../utils/ip12.js');
 
 Page({
   data: {
@@ -81,13 +80,13 @@ Page({
     const checkId = Number(this._videoEntryCheckId || 0) + 1;
     this._videoEntryCheckId = checkId;
     this.setData({ videoEntryChecking: true });
-    return api.request('/api/gen/digital-ip/projects', { method: 'GET' }).then((res) => {
+    return api.request('/workbench/ip12/api/conversations', { method: 'GET' }).then((res) => {
       if (this._videoEntryCheckId !== checkId) return null;
       if (res.statusCode === 401) return null;
       if (res.statusCode !== 200) { this.continueToVideo(); return null; }
-      const project = ip12.projectList(res.data)[0];
-      const questionnaire = project && project.state && project.state.questionnaire_state;
-      if (project && ip12.progress(questionnaire).unresolved === 0) this.continueToVideo();
+      const project = Array.isArray(res.data) && res.data[0];
+      const completed = project && project.coach_state && project.coach_state.completed_modules || [];
+      if (completed.indexOf(6) !== -1) this.continueToVideo();
       else this.setData({ videoIp12PromptVisible: true });
       return project || null;
     }).catch(() => {
