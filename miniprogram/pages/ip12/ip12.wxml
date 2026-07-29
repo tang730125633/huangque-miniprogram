@@ -23,7 +23,11 @@
           <view class="secondary-action {{pdfBusy?'disabled':''}}" bindtap="downloadReport">{{pdfBusy ? '正在打开…' : '查看 PDF'}}</view>
           <view class="primary-action {{busy?'disabled':''}}" bindtap="confirmReport">我已核对，确认初稿</view>
         </view>
-        <view wx:if="{{reportConfirmed}}" class="status-note">模块 1–4 初稿已确认，已解锁后续模块。</view>
+        <view wx:if="{{reportConfirmed}}" class="report-card">
+          <view class="report-kicker">已归档</view><view class="report-title">IP 人设定位报告</view>
+          <view class="report-copy">模块 1–4 初稿已确认，可随时回来查看 PDF。</view>
+          <view class="secondary-action {{pdfBusy?'disabled':''}}" bindtap="downloadReport">{{pdfBusy ? '正在打开…' : '查看 PDF'}}</view>
+        </view>
         <view wx:if="{{reportFailed}}" class="status-note">PDF 生成失败，请在网页端重试。</view>
       </block>
       <view id="chat-end"></view>
