@@ -113,7 +113,7 @@
       <image src="/assets/home/tutorial-digital-human.jpg"></image>
     </view>
 
-    <view class="build-version">版本 v0.056</view>
+    <view class="build-version">版本 v0.057</view>
     <view class="bottom-safe"></view>
   </view>
 
