@@ -452,6 +452,65 @@ function saveTextDraft(context, mode, text) {
   await flush();
   assert.strictEqual(postAfterUnload, 0);
 
+  // 订阅授权尚未完成就切到后台时不得提交；回到前台的新提交也不能被旧 Promise 干扰。
+  const hiddenPreflight = makeContext();
+  hiddenPreflight.data.mode = 'generate';
+  hiddenPreflight.data.prompt = '前后台切换后的新提交';
+  hiddenPreflight.startPolling = () => {};
+  hiddenPreflight._preloadSubscriptionTemplate = () => {};
+  hiddenPreflight.refreshPoints = () => {};
+  hiddenPreflight.refreshVideoChannels = () => {};
+  const hiddenSubscriptions = [deferred(), deferred()];
+  let hiddenSubscriptionIndex = 0;
+  hiddenPreflight._requestWorkCompleteSubscription = () => hiddenSubscriptions[hiddenSubscriptionIndex++].promise;
+  const hiddenPosts = [];
+  api.request = (endpoint, options) => {
+    hiddenPosts.push({ endpoint, options });
+    return Promise.resolve({ statusCode: 200, data: { job_id: 'foreground-job' } });
+  };
+  hiddenPreflight.submitJob('/api/gen/xiaole_video', { channel: 'grok' }, 10);
+  hiddenPreflight.onHide();
+  hiddenPreflight.onShow();
+  hiddenPreflight.submitJob('/api/gen/xiaole_video', { channel: 'grok' }, 10);
+  hiddenSubscriptions[0].resolve();
+  await flush();
+  assert.strictEqual(hiddenPreflight._subscriptionPending, true,
+    'an obsolete subscription Promise must not unlock the newer foreground submit');
+  assert.strictEqual(hiddenPosts.length, 0);
+  hiddenSubscriptions[1].resolve();
+  await flush();
+  assert.deepStrictEqual(hiddenPosts.map((item) => item.endpoint), ['/api/gen/xiaole_video']);
+
+  const hiddenBatchPreflight = makeContext();
+  hiddenBatchPreflight.data.mode = 'talking';
+  hiddenBatchPreflight.data.talkText = '批量前后台切换';
+  hiddenBatchPreflight.data.voiceKey = 'voice';
+  hiddenBatchPreflight._setBatchItems([{ kind: 'avatar', id: 1, label: 'A' }, { kind: 'avatar', id: 2, label: 'B' }]);
+  hiddenBatchPreflight.startBatchPolling = () => {};
+  hiddenBatchPreflight._preloadSubscriptionTemplate = () => {};
+  hiddenBatchPreflight.refreshPoints = () => {};
+  hiddenBatchPreflight.refreshVideoChannels = () => {};
+  hiddenBatchPreflight.fetchVoices = () => {};
+  const hiddenBatchSubscriptions = [deferred(), deferred()];
+  let hiddenBatchSubscriptionIndex = 0;
+  hiddenBatchPreflight._requestWorkCompleteSubscription = () => hiddenBatchSubscriptions[hiddenBatchSubscriptionIndex++].promise;
+  const hiddenBatchPosts = [];
+  api.request = (endpoint, options) => {
+    hiddenBatchPosts.push({ endpoint, options });
+    return Promise.resolve({ statusCode: 200, data: { jobs: [{ job_id: 'foreground-batch-job', label: 'A' }] } });
+  };
+  hiddenBatchPreflight.submitTalkingBatch();
+  hiddenBatchPreflight.onHide();
+  hiddenBatchPreflight.onShow();
+  hiddenBatchPreflight.submitTalkingBatch();
+  hiddenBatchSubscriptions[0].resolve();
+  await flush();
+  assert.strictEqual(hiddenBatchPreflight._subscriptionPending, true);
+  assert.strictEqual(hiddenBatchPosts.length, 0);
+  hiddenBatchSubscriptions[1].resolve();
+  await flush();
+  assert.deepStrictEqual(hiddenBatchPosts.map((item) => item.endpoint), ['/api/gen/video/batch']);
+
   let submitResponse = { statusCode: 200, data: { job_id: 'job-valid-1', cost: 10, points_left: 90 } };
   api.request = () => Promise.resolve(submitResponse);
   const acceptedKey = saveTextDraft(submitContext, 'generate', '有效任务提交前的草稿');
