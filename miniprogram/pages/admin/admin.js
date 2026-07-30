@@ -22,9 +22,12 @@ Page({
     loading: false,
     error: '',
     showAdjust: false,
+    showPasswordReset: false,
     target: {},
     delta: '',
     reason: '',
+    newPassword: '',
+    confirmPassword: '',
     saving: false
   },
 
@@ -102,9 +105,21 @@ Page({
     if (this.data.saving) return;
     this.setData({ showAdjust: false, target: {}, delta: '', reason: '' });
   },
+  openPasswordReset(e) {
+    const username = e.currentTarget.dataset.username;
+    const user = this.data.users.find((item) => item.username === username);
+    if (!user) return;
+    this.setData({ showPasswordReset: true, target: user, newPassword: '', confirmPassword: '' });
+  },
+  closePasswordReset() {
+    if (this.data.saving) return;
+    this.setData({ showPasswordReset: false, target: {}, newPassword: '', confirmPassword: '' });
+  },
   stopBubble() {},
   onDelta(e) { this.setData({ delta: e.detail.value }); },
   onReason(e) { this.setData({ reason: e.detail.value }); },
+  onNewPassword(e) { this.setData({ newPassword: e.detail.value }); },
+  onConfirmPassword(e) { this.setData({ confirmPassword: e.detail.value }); },
 
   submitAdjust() {
     if (this.data.saving) return;
@@ -148,6 +163,43 @@ Page({
     }).catch((err) => {
       this.setData({ saving: false });
       wx.showToast({ title: err.message || '点数调整失败', icon: 'none' });
+    });
+  },
+
+  submitPasswordReset() {
+    if (this.data.saving) return;
+    const password = this.data.newPassword || '';
+    if (password.length < 6 || password.length > 128) {
+      wx.showToast({ title: '临时密码需为 6–128 位', icon: 'none' });
+      return;
+    }
+    if (password !== this.data.confirmPassword) {
+      wx.showToast({ title: '两次输入的密码不一致', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '确认重置密码',
+      content: this.data.target.username + '\n该用户的全部登录态会立即失效，下次登录必须改密。',
+      confirmText: '确认重置',
+      confirmColor: '#C2413A',
+      success: (r) => { if (r.confirm) this.doPasswordReset(password); }
+    });
+  },
+
+  doPasswordReset(password) {
+    this.setData({ saving: true });
+    api.request('/api/admin/users/password/reset', {
+      method: 'POST',
+      data: { username: this.data.target.username, new_password: password }
+    }).then((res) => {
+      const d = res.data || {};
+      if (res.statusCode !== 200) throw new Error(d.detail || '密码重置失败');
+      this.setData({ saving: false, showPasswordReset: false, target: {}, newPassword: '', confirmPassword: '' });
+      wx.showToast({ title: '密码已重置', icon: 'success' });
+      this.refreshAll();
+    }).catch((err) => {
+      this.setData({ saving: false });
+      wx.showToast({ title: err.message || '密码重置失败', icon: 'none' });
     });
   }
 });

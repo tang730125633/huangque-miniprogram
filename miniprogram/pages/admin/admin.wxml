@@ -36,6 +36,7 @@
         <view class="points-side">
           <text class="points-value">{{item.points}}</text>
           <text class="muted tiny">点</text>
+          <view class="password-reset-link" data-username="{{item.username}}" catchtap="openPasswordReset">重置密码</view>
         </view>
       </view>
     </view>
@@ -55,6 +56,25 @@
       </view>
     </view>
   </block>
+</view>
+
+<view wx:if="{{showPasswordReset}}" class="modal-mask" bindtap="closePasswordReset">
+  <view class="adjust-modal" catchtap="stopBubble">
+    <view class="modal-title">重置用户密码</view>
+    <view class="target-card">
+      <view class="target-name">{{target.display_name || target.username}}</view>
+      <view class="muted small">{{target.username}}</view>
+    </view>
+    <view class="reset-warning">重置后会注销该用户全部登录态；用户使用临时密码登录后必须立即改密。</view>
+    <view class="field-label">新临时密码</view>
+    <input class="field-input" password="{{true}}" maxlength="128" value="{{newPassword}}" placeholder="6–128 位" placeholder-class="placeholder" bindinput="onNewPassword" />
+    <view class="field-label">再次输入</view>
+    <input class="field-input" password="{{true}}" maxlength="128" value="{{confirmPassword}}" placeholder="再次输入临时密码" placeholder-class="placeholder" bindinput="onConfirmPassword" />
+    <view class="modal-actions">
+      <view class="btn cancel" bindtap="closePasswordReset">取消</view>
+      <view class="btn danger {{saving?'disabled':''}}" bindtap="submitPasswordReset">{{saving?'提交中…':'重置密码'}}</view>
+    </view>
+  </view>
 </view>
 
 <view wx:if="{{showAdjust}}" class="modal-mask" bindtap="closeAdjust">

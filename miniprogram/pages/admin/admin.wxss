@@ -26,8 +26,9 @@
 .user-name-line { display: flex; align-items: center; gap: 10rpx; margin-bottom: 7rpx; }
 .user-name { max-width: 390rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .mini-admin { padding: 3rpx 9rpx; border-radius: 999rpx; color: var(--primary-ink); background: var(--primary-soft); font-size: 18rpx; }
-.points-side { margin-left: 20rpx; color: var(--secondary); }
+.points-side { margin-left: 20rpx; color: var(--secondary); text-align: right; }
 .points-value { font-size: 32rpx; font-weight: 700; }
+.password-reset-link { margin-top: 8rpx; padding: 7rpx 12rpx; border: 1rpx solid rgba(255,92,138,.45); border-radius: 10rpx; color: var(--error); font-size: 20rpx; }
 .tiny { font-size: 19rpx; }
 .audit-row { padding: 24rpx; }
 .audit-top { display: flex; justify-content: space-between; align-items: center; }
@@ -45,8 +46,10 @@
 .field-input, .field-textarea { box-sizing: border-box; width: 100%; padding: 20rpx; border: 1rpx solid var(--line); border-radius: 14rpx; background: #0f0c15; color: #fff; }
 .field-input { height: 78rpx; }
 .field-textarea { height: 150rpx; }
+.reset-warning { padding: 18rpx; border-radius: 14rpx; color: #ffd3df; background: rgba(255,92,138,.1); font-size: 22rpx; line-height: 1.6; }
 .modal-actions { display: flex; gap: 14rpx; margin-top: 26rpx; }
 .btn { flex: 1; padding: 22rpx 10rpx; border-radius: 15rpx; text-align: center; font-weight: 600; }
 .btn.cancel { color: var(--text-muted); background: var(--surface-muted); }
 .btn.confirm { color: #fff; background: var(--grad); }
+.btn.danger { color: #fff; background: #C2413A; }
 .btn.disabled { opacity: .5; }
