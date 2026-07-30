@@ -801,7 +801,11 @@ Page({
     if (this.data.mode === 'talking') this.fetchVoices();
   },
 
-  onHide() { this._saveCurrentDraft(); },
+  onHide() {
+    this._lifecycleToken += 1;
+    this._subscriptionPending = false;
+    this._saveCurrentDraft();
+  },
 
   _preloadSubscriptionTemplate() {
     if (this._workCompleteTemplateId || this._subscriptionLoadPromise) return;
@@ -1567,8 +1571,9 @@ Page({
     this._requestWorkCompleteSubscription()
       .catch(() => {})
       .then(() => {
+        if (lifecycleToken !== this._lifecycleToken) return;
         this._subscriptionPending = false;
-        if (lifecycleToken !== this._lifecycleToken || this.data.mode !== submittedMode) return;
+        if (this.data.mode !== submittedMode) return;
         this._submitTalkingBatchRequest(body, need, submittedMode, submission.localRevision, submission.storageRevision);
       });
   },
@@ -2094,8 +2099,9 @@ Page({
     this._requestWorkCompleteSubscription()
       .catch(() => {})
       .then(() => {
+        if (lifecycleToken !== this._lifecycleToken) return;
         this._subscriptionPending = false;
-        if (lifecycleToken !== this._lifecycleToken || this.data.mode !== submittedMode) return;
+        if (this.data.mode !== submittedMode) return;
         this._submitJobRequest(endpoint, body, cost, submittedMode, submission.localRevision, submission.storageRevision);
       });
   },
