@@ -31,19 +31,28 @@
 .prompt-field { box-sizing: border-box; width: 100%; height: 76rpx; padding: 0 18rpx; border-radius: 12rpx; background: var(--surface-muted); border: 1rpx solid var(--line); color: var(--text); font-size: 24rpx; }
 .prompt-apply { margin-top: 16rpx; padding: 19rpx 20rpx; border-radius: 14rpx; text-align: center; color: #fff; font-size: 26rpx; font-weight: 600; background: linear-gradient(100deg, #d83bcc, #7b46ff); }
 
+.draft-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin: -8rpx 8rpx 24rpx; color: var(--text-muted); font-size: 22rpx; }
+.draft-row.error { color: #c2413a; }
+.draft-age { opacity: .75; }
+.draft-clear { flex: none; color: var(--primary); padding: 8rpx 0 8rpx 18rpx; }
+
 .upbox {
   height: 180rpx; border: 2rpx dashed var(--line); border-radius: 16rpx;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx;
   background: var(--surface-muted);
 }
 .up-plus { font-size: 46rpx; color: var(--text-muted); }
-.up-preview { position: relative; }
-.up-img { width: 100%; height: 300rpx; border-radius: 16rpx; }
-.up-clear {
-  position: absolute; top: 14rpx; right: 14rpx;
-  background: rgba(25,28,26,0.6); color: #fff; font-size: 23rpx;
-  padding: 6rpx 16rpx; border-radius: 10rpx;
-}
+.ref-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.ref-clear-all { color: var(--primary); font-size: 22rpx; padding: 8rpx 0 8rpx 16rpx; }
+.ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; }
+.ref-grid.single { grid-template-columns: 1fr; }
+.ref-cell { position: relative; min-height: 220rpx; border-radius: 16rpx; overflow: hidden; background: var(--surface-muted); border: 1rpx solid var(--line); }
+.ref-img { width: 100%; height: 220rpx; display: block; }
+.ref-index { position: absolute; left: 10rpx; bottom: 10rpx; padding: 4rpx 12rpx; border-radius: 999rpx; background: rgba(25,28,26,.68); color: #fff; font-size: 20rpx; }
+.ref-del { position: absolute; top: 10rpx; right: 10rpx; width: 44rpx; height: 44rpx; line-height: 42rpx; text-align: center; border-radius: 50%; background: rgba(25,28,26,.68); color: #fff; font-size: 23rpx; }
+.ref-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; border-style: dashed; }
+.ref-saving { padding: 24rpx; text-align: center; border-radius: 14rpx; background: var(--surface-muted); }
+.ref-help { margin-top: 12rpx; line-height: 1.5; }
 
 .engine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 .engine {

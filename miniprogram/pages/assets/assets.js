@@ -6,6 +6,13 @@ const TABS = [
   { key: 'video', name: '视频' }
 ];
 
+function promptOf(item) {
+  if (!item) return '';
+  const prompt = typeof item.prompt === 'string' ? item.prompt.trim() : '';
+  if (prompt) return prompt;
+  return typeof item.text === 'string' ? item.text.trim() : '';
+}
+
 Page({
   data: {
     tabs: TABS,
@@ -14,7 +21,10 @@ Page({
     audios: [],
     videos: [],
     loading: false,
-    playingId: ''
+    playingId: '',
+    promptOpen: false,
+    activePrompt: '',
+    activePromptTitle: ''
   },
 
   onLoad() {
@@ -47,10 +57,20 @@ Page({
     api.request(path, { method: 'GET' }).then((res) => {
       const items = (res.data && res.data.items) || [];
       if (tab === 'image') {
-        const urls = items.map((it) => api.absUrl(it.url)).filter(Boolean);
-        Promise.all(urls.map((url) => {
-          if (url.indexOf('/api/gen/file/') === -1) return Promise.resolve(url);
-          return api.downloadProtected(url).catch(() => '');
+        const records = items.filter((it) => it.url).map((it, index) => {
+          const prompt = promptOf(it);
+          return {
+            id: String(it.job_id || it.url) + ':' + index,
+            url: api.absUrl(it.url),
+            prompt,
+            hasPrompt: Boolean(prompt)
+          };
+        }).filter((it) => it.url);
+        Promise.all(records.map((item) => {
+          if (item.url.indexOf('/api/gen/file/') === -1) return Promise.resolve(item);
+          return api.downloadProtected(item.url)
+            .then((url) => Object.assign({}, item, { url }))
+            .catch(() => null);
         })).then((images) => {
           // 用户可能在下载期间切走 tab，避免旧请求覆盖当前页面状态。
           if (this.data.tab === 'image') this.setData({ images: images.filter(Boolean) });
@@ -64,12 +84,17 @@ Page({
       } else {
         // 后端返回 video_url（可能是 COS 直链或受保护的 /api/gen/file/ 相对路径）
         // 和 image_file（封面文件名，受保护，需带 token 下载后才能显示）
-        const videos = items.filter((it) => it.video_url).map((it) => ({
-          url: api.absUrl(it.video_url),
-          cover: api.absUrl(it.image_url || it.cover_url || it.cover || ''),
-          coverFile: it.image_file || '',
-          text: it.text || '视频作品'
-        }));
+        const videos = items.filter((it) => it.video_url).map((it) => {
+          const prompt = promptOf(it);
+          return {
+            url: api.absUrl(it.video_url),
+            cover: api.absUrl(it.image_url || it.cover_url || it.cover || ''),
+            coverFile: it.image_file || '',
+            text: it.text || '视频作品',
+            prompt,
+            hasPrompt: Boolean(prompt)
+          };
+        });
         this.setData({ videos }, () => this._loadCovers());
       }
       this.setData({ loading: false });
@@ -78,7 +103,41 @@ Page({
   },
 
   previewImage(e) {
-    wx.previewImage({ current: e.currentTarget.dataset.u, urls: this.data.images });
+    wx.previewImage({
+      current: e.currentTarget.dataset.u,
+      urls: this.data.images.map((item) => item.url).filter(Boolean)
+    });
+  },
+
+  showPrompt(e) {
+    const kind = e.currentTarget.dataset.kind;
+    const index = Number(e.currentTarget.dataset.i);
+    const items = kind === 'video' ? this.data.videos : this.data.images;
+    const prompt = items[index] && items[index].prompt;
+    if (!prompt) {
+      wx.showToast({ title: '该作品没有提示词记录', icon: 'none' });
+      return;
+    }
+    this.setData({
+      promptOpen: true,
+      activePrompt: prompt,
+      activePromptTitle: kind === 'video' ? '视频提示词' : '图片提示词'
+    });
+  },
+
+  closePrompt() {
+    this.setData({ promptOpen: false, activePrompt: '', activePromptTitle: '' });
+  },
+
+  keepPromptOpen() {},
+
+  copyPrompt() {
+    if (!this.data.activePrompt) return;
+    wx.setClipboardData({
+      data: this.data.activePrompt,
+      success: () => wx.showToast({ title: '提示词已复制' }),
+      fail: () => wx.showToast({ title: '复制失败，请稍后重试', icon: 'none' })
+    });
   },
 
   saveImage(e) {

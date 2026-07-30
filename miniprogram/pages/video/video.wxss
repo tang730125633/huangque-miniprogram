@@ -28,6 +28,12 @@
   position: absolute; right: 12rpx; top: 12rpx; font-size: 18rpx; color: #fff;
   background: rgba(148,141,168,0.6); padding: 2rpx 12rpx; border-radius: 20rpx;
 }
+.draft-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 18rpx;
+  margin: -8rpx 0 24rpx; padding: 14rpx 18rpx; border-radius: 14rpx;
+  color: var(--text-muted); background: var(--surface-muted); border: 1rpx solid var(--line); font-size: 21rpx;
+}
+.draft-clear { flex: none; padding: 8rpx 4rpx; color: var(--primary); font-size: 22rpx; }
 
 /* 视频生成表单 */
 .eng-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
@@ -96,6 +102,8 @@
 .seg-item.on { color: var(--primary-ink); background: var(--primary-soft); border-color: var(--primary); font-weight: 600; }
 
 /* 音色选择 */
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.clone-link { flex: none; padding: 10rpx 4rpx; color: var(--primary); font-size: 22rpx; }
 .voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 .voice-card {
   position: relative; padding: 22rpx 18rpx; border-radius: 16rpx;
@@ -120,6 +128,7 @@
 .avatar-ph { display: inline-block; }
 .avatar-name { font-size: 21rpx; color: var(--text-muted); margin-top: 6rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .avatar-cell.on .avatar-name { color: var(--primary); }
+.avatar-manage { margin-top: 5rpx; padding: 8rpx 0; color: var(--primary); font-size: 19rpx; }
 .avatar-add-ico {
   width: 108rpx; height: 108rpx; border-radius: 50%; margin: 0 auto;
   border: 2rpx dashed var(--line); color: var(--text-muted); font-size: 44rpx;
