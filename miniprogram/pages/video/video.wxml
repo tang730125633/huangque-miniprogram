@@ -18,6 +18,11 @@
     </view>
   </scroll-view>
 
+  <view class="draft-bar">
+    <text>{{draftStatus || '未提交内容自动保存在本机'}}</text>
+    <view class="draft-clear" bindtap="clearCurrentDraft">清空当前草稿</view>
+  </view>
+
   <!-- ===== 模式：电影化身（motion 单人 / duo 双人 / open 开放式）===== -->
   <block wx:if="{{mode==='cinematic'}}">
     <view class="card">
@@ -41,6 +46,7 @@
           <image wx:if="{{item.image}}" class="avatar-img" src="{{item.image}}" mode="aspectFill"></image>
           <view wx:else class="avatar-img avatar-ph"></view>
           <view class="avatar-name">{{item.name}}</view>
+          <view class="avatar-manage" data-id="{{item.id}}" catchtap="manageAvatar">管理</view>
         </view>
         <view class="avatar-cell avatar-add {{avatarBusy?'disabled':''}}" bindtap="createAvatar">
           <view class="avatar-add-ico">＋</view>
@@ -307,6 +313,7 @@
           <image wx:if="{{item.image}}" class="avatar-img" src="{{item.image}}" mode="aspectFill"></image>
           <view wx:else class="avatar-img avatar-ph"></view>
           <view class="avatar-name">{{item.name}}</view>
+          <view class="avatar-manage" data-id="{{item.id}}" catchtap="manageAvatar">管理</view>
         </view>
         <view class="avatar-cell avatar-add" bindtap="addBatchImage">
           <view class="avatar-add-ico">＋</view>
@@ -341,7 +348,10 @@
           placeholder-class="ph" value="{{talkText}}" bindinput="onTalkText" maxlength="1000" auto-height show-confirm-bar="{{false}}"></textarea>
       </view>
       <view class="card">
-        <view class="label">音色 <text class="muted small">（公共 / 个人克隆）</text></view>
+        <view class="label-row">
+          <view class="label">音色 <text class="muted small">（公共 / 个人克隆）</text></view>
+          <view class="clone-link" bindtap="goClone">去复刻音色</view>
+        </view>
         <view wx:if="{{voices.length}}" class="voice-grid">
           <view wx:for="{{voices}}" wx:key="key" class="voice-card {{voiceKey===item.key?'on':''}}" data-k="{{item.key}}" bindtap="selectVoice">
             <view class="voice-name">{{item.name}}</view>

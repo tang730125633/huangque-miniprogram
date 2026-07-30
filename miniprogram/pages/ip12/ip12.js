@@ -117,6 +117,7 @@ Page({
   },
 
   sendInput() { return this.sendMessage(''); },
+  goClone() { wx.navigateTo({ url: '/pages/clone/clone' }); },
   toggleHistory() { this.setData({ historyOpen: !this.data.historyOpen }); },
   closeHistory() { this.setData({ historyOpen: false }); },
   chooseConversation(e) { return this.openConversation(e.currentTarget.dataset.id); },

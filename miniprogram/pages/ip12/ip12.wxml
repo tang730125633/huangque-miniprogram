@@ -1,7 +1,7 @@
 <view class="ip12-page">
   <view class="topbar">
     <view><view class="eyebrow">你的 IP 成长档案</view><view class="module-title">模块 {{currentModule}} · {{currentModuleName}}</view></view>
-    <view class="history-trigger" bindtap="toggleHistory">历史</view>
+    <view class="topbar-actions"><view class="clone-trigger" bindtap="goClone">复刻音色</view><view class="history-trigger" bindtap="toggleHistory">历史</view></view>
   </view>
 
   <scroll-view class="chat" scroll-y scroll-with-animation scroll-into-view="chat-end">

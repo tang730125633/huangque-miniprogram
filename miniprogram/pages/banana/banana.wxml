@@ -41,17 +41,34 @@
       auto-height show-confirm-bar="{{false}}"></textarea>
   </view>
 
+  <view wx:if="{{draftStatus}}" class="draft-row {{draftStatusError?'error':''}}">
+    <text>{{draftStatus}}<text wx:if="{{hasDraft}}" class="draft-age"> · 本机保留 7 天</text></text>
+    <text wx:if="{{hasDraft}}" class="draft-clear" bindtap="clearDraft">清空草稿</text>
+  </view>
+
   <!-- 参考图（图生图） -->
   <view class="card">
-    <view class="label">参考图 <text class="muted small">（可选 · 传图即「图生图」）</text></view>
-    <view wx:if="{{!refPreview}}" class="upbox" bindtap="chooseRef">
+    <view class="ref-head">
+      <view class="label">参考图 <text class="muted small">（{{engine==='xiaole'?'果肉最多 4 张':'当前引擎 1 张'}}）</text></view>
+      <view wx:if="{{refPreviews.length && !refBusy}}" class="ref-clear-all" bindtap="clearRef">清空图片</view>
+    </view>
+    <view wx:if="{{!refPreviews.length && !refBusy}}" class="upbox" bindtap="chooseRef">
       <image class="ic-up" src="../../assets/icons/upload.svg"></image>
       <text class="muted small">上传参考图</text>
     </view>
-    <view wx:else class="up-preview">
-      <image class="up-img" src="{{refPreview}}" mode="aspectFill"></image>
-      <view class="up-clear" bindtap="clearRef">✕ 清除</view>
+    <view wx:if="{{refPreviews.length}}" class="ref-grid {{maxRefCount===1?'single':''}}">
+      <view wx:for="{{refPreviews}}" wx:key="*this" class="ref-cell">
+        <image class="ref-img" src="{{item}}" mode="aspectFill"></image>
+        <view class="ref-index">图{{index + 1}}</view>
+        <view class="ref-del" data-i="{{index}}" catchtap="removeRef">✕</view>
+      </view>
+      <view wx:if="{{refPreviews.length < maxRefCount && !refBusy}}" class="ref-cell ref-add" bindtap="chooseRef">
+        <image class="ic-up" src="../../assets/icons/upload.svg"></image>
+        <text class="muted small">继续添加</text>
+      </view>
     </view>
+    <view wx:if="{{refBusy}}" class="ref-saving muted small">正在保存参考图…</view>
+    <view class="muted small ref-help">参考图仅保存在本机草稿中，提交成功后自动清理</view>
   </view>
 
   <!-- 引擎 -->

@@ -9,11 +9,16 @@
   <!-- 图片 -->
   <block wx:if="{{tab==='image'}}">
     <view wx:if="{{images.length}}" class="grid3">
-      <view wx:for="{{images}}" wx:key="*this" class="cell-image-wrap">
-        <image src="{{item}}" data-u="{{item}}" bindtap="previewImage"
+      <view wx:for="{{images}}" wx:key="id" class="cell-image-wrap">
+        <image src="{{item.url}}" data-u="{{item.url}}" bindtap="previewImage"
           class="cell-img" mode="aspectFill" lazy-load></image>
-        <view class="download-btn" data-u="{{item}}" catchtap="saveImage" aria-label="保存图片到相册">
+        <view class="download-btn" data-u="{{item.url}}" catchtap="saveImage" aria-label="保存图片到相册">
           <image class="download-ic" src="../../assets/icons/download.svg" mode="aspectFit"></image>
+        </view>
+        <view class="prompt-meta">
+          <text class="prompt-state {{item.hasPrompt?'has':''}}">{{item.hasPrompt?'有提示词':'无提示词记录'}}</text>
+          <view wx:if="{{item.hasPrompt}}" class="prompt-link" data-kind="image" data-i="{{index}}"
+            catchtap="showPrompt" role="button" aria-label="查看图片提示词">查看提示词</view>
         </view>
       </view>
     </view>
@@ -42,14 +47,21 @@
   <!-- 视频 -->
   <block wx:if="{{tab==='video'}}">
     <view wx:if="{{videos.length}}" class="grid2">
-      <view wx:for="{{videos}}" wx:key="url" class="cell-video" data-u="{{item.url}}" bindtap="playVideo">
-        <image wx:if="{{item.cover}}" src="{{item.cover}}" class="cell-video-cover" mode="aspectFill" lazy-load></image>
-        <view wx:else class="cell-video-ph"></view>
-        <view class="cell-video-play"><image class="ic-pp" src="../../assets/icons/play_pink.svg"></image></view>
-        <view class="download-btn" data-u="{{item.url}}" catchtap="saveVideo" aria-label="保存视频到相册">
-          <image class="download-ic" src="../../assets/icons/download.svg" mode="aspectFit"></image>
+      <view wx:for="{{videos}}" wx:key="url" class="cell-video">
+        <view class="cell-video-stage" data-u="{{item.url}}" bindtap="playVideo">
+          <image wx:if="{{item.cover}}" src="{{item.cover}}" class="cell-video-cover" mode="aspectFill" lazy-load></image>
+          <view wx:else class="cell-video-ph"></view>
+          <view class="cell-video-play"><image class="ic-pp" src="../../assets/icons/play_pink.svg"></image></view>
+          <view class="download-btn" data-u="{{item.url}}" catchtap="saveVideo" aria-label="保存视频到相册">
+            <image class="download-ic" src="../../assets/icons/download.svg" mode="aspectFit"></image>
+          </view>
+          <view class="cell-video-text">{{item.text}}</view>
         </view>
-        <view class="cell-video-text">{{item.text}}</view>
+        <view class="prompt-meta">
+          <text class="prompt-state {{item.hasPrompt?'has':''}}">{{item.hasPrompt?'有提示词':'无提示词记录'}}</text>
+          <view wx:if="{{item.hasPrompt}}" class="prompt-link" data-kind="video" data-i="{{index}}"
+            catchtap="showPrompt" role="button" aria-label="查看视频提示词">查看提示词</view>
+        </view>
       </view>
     </view>
     <view wx:elif="{{!loading}}" class="empty-state">
@@ -58,5 +70,21 @@
       <view class="empty-sub">去「视频」页生成第一条视频吧</view>
     </view>
   </block>
+
+  <view wx:if="{{promptOpen}}" class="prompt-mask" catchtap="closePrompt">
+    <view class="prompt-dialog" catchtap="keepPromptOpen">
+      <view class="prompt-head">
+        <text class="prompt-title">{{activePromptTitle}}</text>
+        <view class="prompt-close" catchtap="closePrompt" role="button" aria-label="关闭提示词">×</view>
+      </view>
+      <scroll-view class="prompt-scroll" scroll-y>
+        <text class="prompt-full" user-select>{{activePrompt}}</text>
+      </scroll-view>
+      <view class="prompt-actions">
+        <view class="prompt-action secondary" catchtap="closePrompt">关闭</view>
+        <view class="prompt-action primary" catchtap="copyPrompt">复制提示词</view>
+      </view>
+    </view>
+  </view>
 
 </view>
