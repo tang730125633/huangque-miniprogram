@@ -25,6 +25,9 @@ assert.strictEqual(store[card.ATTRIBUTION_KEY].expires_at, validatedAt + card.AT
 assert.deepStrictEqual(card.privacy({}), { phone: false, email: false, address: false, wechat_qr: false });
 assert.deepStrictEqual(card.privacy({ privacy: { phone: 1, email: true, address: 'yes', wechat_qr: false } }), { phone: true, email: true, address: true, wechat_qr: false });
 assert.strictEqual(card.isComplete({ name: '王小明', title: '设计师', company: '黄雀' }), true);
+assert.deepStrictEqual(card.cardPayload({ avatar: 'signed-avatar', wechat_qr: 'signed-qr', name: '王小明' }), {
+  name: '王小明', title: '', company: '', bio: '', tags: '', links: '', email: '', address: '', phone: '', privacy: { phone: false, email: false, address: false, wechat_qr: false }
+});
 
 global.Page = function () {};
 const login = require('../miniprogram/pages/login/login.js');
@@ -69,6 +72,10 @@ assert.match(editCard, /legal\?type=terms/);
 assert.match(editCard, /openPrivacyContract/);
 assert.match(editCardJs, /indexOf\('yes'\) !== -1/);
 assert.match(editCardJs, /pendingMedia/);
+assert.match(editCardJs, /function uploadMedia\(filePath, field\)/);
+assert.match(editCardJs, /field: field, data: 'data:image\/jpeg;base64,' \+ result\.data/);
+assert.match(editCardJs, /uploadMedia\(pendingMedia\[field\], field\)/);
+assert.doesNotMatch(editCardJs, /uploadPendingMedia[\s\S]*\/api\/auth\/card\/me/);
 assert.match(editCardJs, /invite_attribution_token/);
 assert.match(editCardJs, /display_name: payload\.name/);
 assert.match(editCardJs, /\/api\/auth\/card\/unpublish/);
@@ -88,12 +95,29 @@ assert.doesNotMatch(profilePage, /goInvite\(\)[\s\S]*membership\.status/);
 
 let editDefinition;
 global.Page = function (definition) { editDefinition = definition; };
-require('../miniprogram/pages/card-edit/card-edit.js');
+const editModule = require('../miniprogram/pages/card-edit/card-edit.js');
 const editContext = { data: Object.assign({}, editDefinition.data), setData(patch) { Object.assign(this.data, patch); } };
 editDefinition.agreement.call(editContext, { detail: { value: ['yes'] } });
 assert.strictEqual(editContext.data.agreed, true);
 editDefinition.agreement.call(editContext, { detail: { value: [] } });
 assert.strictEqual(editContext.data.agreed, false);
+
+const api = require('../miniprogram/utils/api.js');
+let mediaRequest;
+global.wx.getFileSystemManager = function () {
+  return { readFile(options) { options.success({ data: 'QUJD' }); } };
+};
+api.request = function (path, options) {
+  mediaRequest = { path, options };
+  return Promise.resolve({ statusCode: 200, data: { url: 'https://example.test/avatar.jpg' } });
+};
+editModule.uploadMedia('/tmp/avatar.jpg', 'avatar').then((url) => {
+  assert.strictEqual(url, 'https://example.test/avatar.jpg');
+  assert.deepStrictEqual(mediaRequest, {
+    path: '/api/auth/card/media',
+    options: { method: 'POST', data: { field: 'avatar', data: 'data:image/jpeg;base64,QUJD' }, timeout: 60000 }
+  });
+}).catch((error) => { throw error; });
 
 const networkPage = require('../miniprogram/pages/network/network.js');
 const roots = [networkPage.nodeView({ node_id: 'node-1', public_id: 'public-1', has_children: true }, 0, 'self')];

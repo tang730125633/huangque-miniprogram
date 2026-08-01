@@ -15,10 +15,10 @@ function privacy(card) {
 function cardPayload(card) {
   card = card || {};
   return {
-    avatar: String(card.avatar || ''), name: String(card.name || '').trim(), title: String(card.title || '').trim(),
+    name: String(card.name || '').trim(), title: String(card.title || '').trim(),
     company: String(card.company || '').trim(), bio: String(card.bio || '').trim(), tags: String(card.tags || '').trim(),
     links: String(card.links || '').trim(), email: String(card.email || '').trim(), address: String(card.address || '').trim(),
-    phone: String(card.phone || '').trim(), wechat_qr: String(card.wechat_qr || ''), privacy: privacy(card)
+    phone: String(card.phone || '').trim(), privacy: privacy(card)
   };
 }
 

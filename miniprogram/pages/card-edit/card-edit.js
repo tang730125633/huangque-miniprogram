@@ -6,12 +6,12 @@ function blankCard() {
   return { avatar: '', name: '', title: '', company: '', bio: '', tags: '', links: '', email: '', address: '', phone: '', wechat_qr: '', privacy: cardUtil.privacy() };
 }
 
-function uploadMedia(filePath) {
+function uploadMedia(filePath, field) {
   return new Promise((resolve, reject) => {
     const fs = wx.getFileSystemManager && wx.getFileSystemManager();
     if (!fs) { reject(new Error('当前微信版本不支持图片上传')); return; }
     fs.readFile({ filePath: filePath, encoding: 'base64', success: (result) => {
-      api.request('/api/auth/card/media', { method: 'POST', data: { data_base64: result.data, mime_type: 'image/jpeg' }, timeout: 60000 })
+      api.request('/api/auth/card/media', { method: 'POST', data: { field: field, data: 'data:image/jpeg;base64,' + result.data }, timeout: 60000 })
         .then((res) => {
           const data = res.data || {};
           const url = data.url || (data.media && data.media.url);
@@ -60,7 +60,7 @@ Page({
           return;
         }
         this.setData({ loading: true, error: '' });
-        uploadMedia(filePath).then((url) => this.setData({ ['card.' + field]: url, loading: false }))
+        uploadMedia(filePath, field).then((url) => this.setData({ ['card.' + field]: url, loading: false }))
           .catch((error) => this.setData({ loading: false, error: error.message || '图片上传失败' }));
       };
       if (wx.compressImage) wx.compressImage({ src: filePath, quality: 80, success: (compressed) => { filePath = compressed.tempFilePath || filePath; proceed(); }, fail: proceed });
@@ -73,7 +73,6 @@ Page({
     this.setData({ loading: true, error: '' });
     const payload = cardUtil.cardPayload(this.data.card);
     const pendingMedia = this.data.pendingMedia || {};
-    Object.keys(pendingMedia).forEach((field) => { payload[field] = ''; });
     const attribution = cardUtil.lastValidAttribution();
     const request = this.data.anonymous
       ? api.request('/api/auth/miniprogram-register', { method: 'POST', data: { username: this.data.username.trim(), password: this.data.password, display_name: payload.name, device_id: device.getDeviceId(), card: payload, invite_code: attribution ? attribution.code : undefined, invite_attribution_token: attribution ? attribution.attribution_token : undefined } })
@@ -100,13 +99,8 @@ Page({
   },
   uploadPendingMedia(saved, pendingMedia) {
     const updated = Object.assign({}, saved);
-    return Object.keys(pendingMedia).reduce((chain, field) => chain.then(() => uploadMedia(pendingMedia[field]).then((url) => { updated[field] = url; })), Promise.resolve())
-      .then(() => api.request('/api/auth/card/me', { method: 'PUT', data: cardUtil.cardPayload(updated) }))
-      .then((res) => {
-        const data = res.data || {};
-        if (res.statusCode !== 200) throw new Error(data.detail || '图片保存失败');
-        return Object.assign(updated, data.card || {});
-      });
+    return Object.keys(pendingMedia).reduce((chain, field) => chain.then(() => uploadMedia(pendingMedia[field], field).then((url) => { updated[field] = url; })), Promise.resolve())
+      .then(() => updated);
   },
   publish() {
     if (!api.getToken()) { this.save(); return; }
