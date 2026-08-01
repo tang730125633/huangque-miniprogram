@@ -16,18 +16,20 @@ function cardView(source) {
 }
 
 Page({
-  data: { loading: true, error: '', card: {}, isMine: false, publicId: '', inviteCode: '' },
+  data: { loading: true, error: '', card: {}, isMine: false, shareReady: false, publicId: '', inviteCode: '' },
 
   onLoad(options) {
+    if (wx.hideShareMenu) wx.hideShareMenu();
     const id = String((options && options.id) || '').trim();
     const code = invite.extractLaunchInvite({ query: options || {} });
-    this.setData({ publicId: id, inviteCode: code });
+    this.setData({ publicId: id, inviteCode: code, isMine: String((options && options.mine) || '') === '1' });
     if (id) this.loadPublic(id, code);
     else this.loadMine();
   },
 
   loadPublic(id, code) {
-    this.setData({ loading: true, error: '' });
+    if (wx.hideShareMenu) wx.hideShareMenu();
+    this.setData({ loading: true, error: '', shareReady: false });
     const query = '?id=' + encodeURIComponent(id) + (code ? '&invite=' + encodeURIComponent(code) : '');
     api.request('/api/auth/card/public' + query, { method: 'GET' }).then((res) => {
       const data = res.data || {};
@@ -38,23 +40,29 @@ Page({
         cardUtil.rememberValidInvite(code, attributionToken, data.invite_expires_at || data.attribution_expires_at, data.invite_validated_at || data.server_time);
       }
       const source = data.card || data;
-      this.setData({ loading: false, card: cardView(source), publicId: source.public_id || id });
+      const shareReady = invite.validInviteCode(source.invite_code);
+      this.setData({ loading: false, card: cardView(source), publicId: source.public_id || id, shareReady: shareReady });
+      if (shareReady && wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
     }).catch((error) => this.setData({ loading: false, error: error.message || '名片加载失败' }));
   },
 
   loadMine() {
     if (!api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
-    this.setData({ loading: true, error: '' });
+    if (wx.hideShareMenu) wx.hideShareMenu();
+    this.setData({ loading: true, error: '', shareReady: false });
     api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '你还没有完成名片');
-      this.setData({ loading: false, card: cardView(data.card), isMine: true, publicId: data.card.public_id || '' });
+      const shareReady = cardUtil.isPublished(data.card) && invite.validInviteCode(data.card.invite_code);
+      this.setData({ loading: false, card: cardView(data.card), isMine: true, shareReady: shareReady, publicId: data.card.public_id || '' });
+      if (shareReady && wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
     }).catch((error) => this.setData({ loading: false, error: error.message || '名片读取失败' }));
   },
 
   goJoin() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
   goEdit() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
   onShareAppMessage() {
+    if (!this.data.shareReady) return { title: '黄雀 AI', path: '/pages/home/home', imageUrl: '/assets/share/invite-card.jpg' };
     const id = this.data.publicId || this.data.card.public_id;
     if (!id) return { title: '黄雀 AI 公开名片', path: '/pages/card-edit/card-edit', imageUrl: '/assets/share/invite-card.jpg' };
     return { title: (this.data.card.name || '我') + '的黄雀公开名片', path: invite.cardSharePath(id, this.data.card.invite_code), imageUrl: '/assets/share/invite-card.jpg' };

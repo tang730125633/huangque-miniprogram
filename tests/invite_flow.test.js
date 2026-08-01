@@ -39,10 +39,24 @@ assert.match(inviteJs, /\/api\/auth\/invite\/referrer/);
 assert.match(inviteJs, /\/api\/auth\/card\/me/);
 assert.match(inviteJs, /onShareAppMessage\(\)/);
 assert.match(inviteJs, /invite\.cardSharePath\(this\.data\.publicId, this\.data\.code\)/);
+assert.match(inviteJs, /cardUtil\.isPublished\(card\)/);
+assert.match(inviteJs, /invite\.validInviteCode\(code\.code\)/);
+assert.match(inviteJs, /wx\.hideShareMenu\(\)/);
+assert.match(inviteJs, /wx\.showShareMenu\(\{ menus: \['shareAppMessage'\] \}\)/);
+assert.match(inviteJs, /registrationSharePath\(this\.data\.code\)/);
 assert.match(inviteJs, /imageUrl:\s*'\/assets\/share\/invite-card\.jpg'/);
 assert.match(inviteWxml, /open-type="share"/);
 assert.match(inviteWxml, /shareReady/);
+assert.match(inviteWxml, /分享我的名片，邀请好友/);
+assert.match(inviteWxml, /打开微信好友列表/);
 assert.doesNotMatch(inviteWxml, /bindtap="copyLink"/);
 assert.ok(fs.existsSync(path.join(root, 'miniprogram/assets/share/invite-card.jpg')));
+
+let invitePage;
+global.Page = function (definition) { invitePage = definition; };
+global.wx = { hideShareMenu() {}, showShareMenu() {} };
+require('../miniprogram/pages/invite/invite.js');
+assert.strictEqual(invitePage.onShareAppMessage.call({ data: { shareReady: false, code: 'ABCD23' } }).path, '/pages/login/login?invite=ABCD23');
+assert.strictEqual(invitePage.onShareAppMessage.call({ data: { shareReady: true, code: 'ABCD23', publicId: 'public-1', cardName: '王小明' } }).path, '/pages/card/card?id=public-1&invite=ABCD23');
 
 console.log('invite flow tests passed');

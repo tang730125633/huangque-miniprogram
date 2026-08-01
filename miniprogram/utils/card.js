@@ -27,6 +27,10 @@ function isComplete(card) {
   return !!(value.name && value.title && value.company);
 }
 
+function isPublished(card) {
+  return !!(card && (card.published === true || card.is_published === true || card.status === 'published'));
+}
+
 function serverTime(value) {
   let time = Number(value);
   if (time > 0 && time < 100000000000) time *= 1000;
@@ -60,4 +64,4 @@ function lastValidInvite(now) {
   return attribution ? attribution.code : '';
 }
 
-module.exports = { ATTRIBUTION_KEY, ATTRIBUTION_TTL, privacy, cardPayload, isComplete, rememberValidInvite, lastValidAttribution, lastValidInvite };
+module.exports = { ATTRIBUTION_KEY, ATTRIBUTION_TTL, privacy, cardPayload, isComplete, isPublished, rememberValidInvite, lastValidAttribution, lastValidInvite };

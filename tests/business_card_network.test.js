@@ -25,6 +25,10 @@ assert.strictEqual(store[card.ATTRIBUTION_KEY].expires_at, validatedAt + card.AT
 assert.deepStrictEqual(card.privacy({}), { phone: false, email: false, address: false, wechat_qr: false });
 assert.deepStrictEqual(card.privacy({ privacy: { phone: 1, email: true, address: 'yes', wechat_qr: false } }), { phone: true, email: true, address: true, wechat_qr: false });
 assert.strictEqual(card.isComplete({ name: '王小明', title: '设计师', company: '黄雀' }), true);
+assert.strictEqual(card.isPublished({ public_id: 'public-1', status: 'draft' }), false);
+assert.strictEqual(card.isPublished({ public_id: 'public-1', is_published: false }), false);
+assert.strictEqual(card.isPublished({ public_id: 'public-1', status: 'published' }), true);
+assert.strictEqual(card.isPublished({ public_id: 'public-1', is_published: true }), true);
 assert.deepStrictEqual(card.cardPayload({ avatar: 'signed-avatar', wechat_qr: 'signed-qr', name: '王小明' }), {
   name: '王小明', title: '', company: '', bio: '', tags: '', links: '', email: '', address: '', phone: '', privacy: { phone: false, email: false, address: false, wechat_qr: false }
 });
@@ -52,18 +56,26 @@ const root = path.resolve(__dirname, '..');
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
 ['pages/card/card', 'pages/card-edit/card-edit', 'pages/network/network'].forEach((page) => assert.ok(appJson.pages.includes(page)));
 const publicCard = fs.readFileSync(path.join(root, 'miniprogram/pages/card/card.js'), 'utf8');
+const publicCardWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/card/card.wxml'), 'utf8');
 const editCard = fs.readFileSync(path.join(root, 'miniprogram/pages/card-edit/card-edit.wxml'), 'utf8');
 const editCardJs = fs.readFileSync(path.join(root, 'miniprogram/pages/card-edit/card-edit.js'), 'utf8');
+const editCardWxss = fs.readFileSync(path.join(root, 'miniprogram/pages/card-edit/card-edit.wxss'), 'utf8');
 const network = fs.readFileSync(path.join(root, 'miniprogram/pages/network/network.js'), 'utf8');
 const networkWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/network/network.wxml'), 'utf8');
 const invitePage = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.js'), 'utf8');
 const inviteWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.wxml'), 'utf8');
+const inviteWxss = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.wxss'), 'utf8');
 const profilePage = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/profile.js'), 'utf8');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
 assert.match(publicCard, /data\.invite_valid === true/);
 assert.match(publicCard, /rememberValidInvite/);
 assert.match(publicCard, /invite_attribution_token/);
 assert.match(publicCard, /imageUrl: '\/assets\/share\/invite-card\.jpg'/);
+assert.match(publicCard, /wx\.hideShareMenu\(\)/);
+assert.match(publicCard, /wx\.showShareMenu\(\{ menus: \['shareAppMessage'\] \}\)/);
+assert.match(publicCard, /if \(!this\.data\.shareReady\)/);
+assert.match(publicCardWxml, /open-type="share"/);
+assert.match(publicCardWxml, /分享我的名片，邀请好友/);
 assert.match(editCard, /card\.privacy\.phone/);
 assert.match(editCard, /card\.privacy\.email/);
 assert.match(editCard, /card\.privacy\.address/);
@@ -80,7 +92,17 @@ assert.doesNotMatch(editCardJs, /uploadPendingMedia[\s\S]*\/api\/auth\/card\/me/
 assert.match(editCardJs, /invite_attribution_token/);
 assert.match(editCardJs, /display_name: payload\.name/);
 assert.match(editCardJs, /\/api\/auth\/card\/unpublish/);
+assert.match(editCardJs, /published: cardUtil\.isPublished\(data\.card\)/);
+assert.match(editCardJs, /const published = cardUtil\.isPublished\(card\);/);
+assert.doesNotMatch(editCardJs, /cardUtil\.isPublished\(card\) \|\| this\.data\.published/);
+assert.match(editCardJs, /this\.publish\(warning\)/);
+assert.match(editCardJs, /&mine=1/);
 assert.match(editCardJs, /账号和文字名片已保存，请稍后重试图片/);
+assert.match(editCard, /保存并公开名片/);
+assert.match(editCard, /wx:if="\{\{!anonymous && published\}\}"/);
+assert.match(editCardWxss, /\.field input \{ height: 84rpx; padding: 0 20rpx; line-height: 84rpx; \}/);
+assert.match(editCardWxss, /\.field textarea \{ height: 220rpx; min-height: 220rpx; padding: 18rpx 20rpx; line-height: 1\.6; \}/);
+assert.match(editCardWxss, /\.switch-field input \{ flex: 1; width: auto; min-width: 0; margin-top: 0; \}/);
 assert.match(network, /\/api\/auth\/network\/ancestors/);
 assert.match(network, /parent=self/);
 assert.match(network, /loadBranch/);
@@ -90,13 +112,23 @@ assert.match(networkWxml, /wx:key="node_id"/);
 assert.match(networkWxml, /item\.avatar/);
 assert.match(invitePage, /\/api\/auth\/card\/me/);
 assert.match(invitePage, /invite\.cardSharePath\(this\.data\.publicId, this\.data\.code\)/);
+assert.match(invitePage, /cardUtil\.isPublished\(card\)/);
+assert.match(invitePage, /invite\.validInviteCode\(code\.code\)/);
+assert.match(invitePage, /wx\.hideShareMenu\(\)/);
+assert.match(invitePage, /wx\.showShareMenu\(\{ menus: \['shareAppMessage'\] \}\)/);
+assert.match(invitePage, /registrationSharePath\(this\.data\.code\)/);
 assert.match(inviteWxml, /shareReady/);
+assert.match(inviteWxml, /分享我的名片，邀请好友/);
+assert.match(inviteWxml, /打开微信好友列表/);
+assert.match(inviteWxss, /width: 100%; min-width: 0;/);
+assert.match(inviteWxss, /box-sizing: border-box;/);
 assert.match(profilePage, /goInvite\(\) \{ wx\.navigateTo/);
 assert.doesNotMatch(profilePage, /goInvite\(\)[\s\S]*membership\.status/);
 
 let editDefinition;
 global.Page = function (definition) { editDefinition = definition; };
 const editModule = require('../miniprogram/pages/card-edit/card-edit.js');
+const cardEditDefinition = editDefinition;
 const editContext = { data: Object.assign({}, editDefinition.data), setData(patch) { Object.assign(this.data, patch); } };
 editDefinition.agreement.call(editContext, { detail: { value: ['yes'] } });
 assert.strictEqual(editContext.data.agreed, true);
@@ -119,6 +151,43 @@ editModule.uploadMedia('/tmp/avatar.jpg', 'avatar').then((url) => {
     options: { method: 'POST', data: { field: 'avatar', data: 'data:image/jpeg;base64,QUJD' }, timeout: 60000 }
   });
 }).catch((error) => { throw error; });
+
+require('node:test')('registering a draft card publishes it before redirecting', { timeout: 1000 }, async () => {
+  delete store.hq_token;
+  const requests = [];
+  const completeCard = {
+    name: '王小明', title: '设计师', company: '黄雀', bio: '', tags: '', links: '',
+    email: '', address: '', phone: '', avatar: '', wechat_qr: '', privacy: card.privacy()
+  };
+  api.request = function (requestPath) {
+    requests.push(requestPath);
+    if (requestPath === '/api/auth/miniprogram-register') {
+      return Promise.resolve({ statusCode: 200, data: { token: 'new-token', card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'draft' }) } });
+    }
+    if (requestPath === '/api/auth/card/publish') {
+      return Promise.resolve({ statusCode: 200, data: { card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'published', invite_code: 'ABCD23' }) } });
+    }
+    return Promise.reject(new Error('unexpected request ' + requestPath));
+  };
+  global.wx.showToast = function () {};
+  let finishRedirect;
+  const redirected = new Promise((resolve) => { finishRedirect = resolve; });
+  global.wx.redirectTo = function (options) { finishRedirect(options.url); };
+  const context = {
+    data: Object.assign({}, cardEditDefinition.data, {
+      anonymous: true, agreed: true, username: 'wang', password: 'secret',
+      card: completeCard, pendingMedia: {}, loading: false
+    }),
+    setData(patch) { Object.assign(this.data, patch); },
+    publish: cardEditDefinition.publish,
+    openCard: cardEditDefinition.openCard
+  };
+  cardEditDefinition.save.call(context);
+  const redirect = await redirected;
+  assert.strictEqual(redirect, '/pages/card/card?id=public-1&mine=1');
+  assert.deepStrictEqual(requests, ['/api/auth/miniprogram-register', '/api/auth/card/publish']);
+  assert.strictEqual(context.data.published, true);
+});
 
 const networkPage = require('../miniprogram/pages/network/network.js');
 const roots = [networkPage.nodeView({ node_id: 'node-1', public_id: 'public-1', has_children: true }, 0, 'self')];
