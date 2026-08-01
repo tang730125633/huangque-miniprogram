@@ -23,13 +23,13 @@ function uploadMedia(filePath, field) {
 }
 
 Page({
-  data: { step: 1, card: blankCard(), pendingMedia: {}, username: '', password: '', agreed: false, anonymous: true, loading: false, error: '', publicId: '' },
+  data: { step: 1, card: blankCard(), pendingMedia: {}, username: '', password: '', agreed: false, anonymous: true, loading: false, error: '', publicId: '', published: false },
   onLoad() {
     if (!api.getToken()) return;
     this.setData({ anonymous: false, loading: true });
     api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
       const data = res.data || {};
-      if (res.statusCode === 200 && data.card) this.setData({ card: Object.assign(blankCard(), data.card, { privacy: cardUtil.privacy(data.card) }), publicId: data.card.public_id || '' });
+      if (res.statusCode === 200 && data.card) this.setData({ card: Object.assign(blankCard(), data.card, { privacy: cardUtil.privacy(data.card) }), publicId: data.card.public_id || '', published: cardUtil.isPublished(data.card) });
       this.setData({ loading: false });
     }).catch(() => this.setData({ loading: false }));
   },
@@ -87,8 +87,14 @@ Page({
       }
       const saved = Object.assign({}, payload, data.card || {});
       const finish = (card, warning) => {
-        this.setData({ loading: false, anonymous: false, pendingMedia: {}, card: Object.assign({}, this.data.card, card), publicId: card.public_id || data.public_id || '', error: warning || '' });
-        wx.showToast({ title: warning ? '文字名片已保存' : '名片已保存', icon: 'success' });
+        const publicId = card.public_id || data.public_id || this.data.publicId || '';
+        const published = cardUtil.isPublished(card);
+        this.setData({ loading: false, anonymous: false, pendingMedia: {}, card: Object.assign({}, this.data.card, card), publicId: publicId, published: published, error: warning || '' });
+        if (published) {
+          this.openCard(publicId, warning ? '文字名片已保存' : '修改已保存');
+          return;
+        }
+        this.publish(warning);
       };
       if (this.data.anonymous && Object.keys(pendingMedia).length) {
         this.uploadPendingMedia(saved, pendingMedia).then((updated) => finish(updated)).catch(() => finish(saved, '账号和文字名片已保存，请稍后重试图片'));
@@ -102,16 +108,21 @@ Page({
     return Object.keys(pendingMedia).reduce((chain, field) => chain.then(() => uploadMedia(pendingMedia[field], field).then((url) => { updated[field] = url; })), Promise.resolve())
       .then(() => updated);
   },
-  publish() {
-    if (!api.getToken()) { this.save(); return; }
+  openCard(publicId, title) {
+    if (!publicId) { this.setData({ error: '名片已保存，但公开编号读取失败，请重试' }); return; }
+    wx.showToast({ title: title || '名片已公开', icon: 'success' });
+    wx.redirectTo({ url: '/pages/card/card?id=' + encodeURIComponent(publicId) + '&mine=1' });
+  },
+  publish(warning) {
+    if (!api.getToken()) { this.setData({ error: '请先完成注册再公开名片' }); return; }
     this.setData({ loading: true, error: '' });
     api.request('/api/auth/card/publish', { method: 'POST' }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !(data.public_id || (data.card && data.card.public_id))) throw new Error(data.detail || '公开名片失败');
       const id = data.public_id || data.card.public_id;
-      this.setData({ loading: false, publicId: id });
-      wx.redirectTo({ url: '/pages/card/card?id=' + encodeURIComponent(id) });
-    }).catch((error) => this.setData({ loading: false, error: error.message || '公开名片失败' }));
+      this.setData({ loading: false, publicId: id, published: true, card: Object.assign({}, this.data.card, data.card || {}) });
+      this.openCard(id, warning ? '文字名片已公开' : '名片已公开');
+    }).catch((error) => this.setData({ loading: false, published: false, error: (error.message || '公开名片失败') + '，名片资料已保存，请重试' }));
   },
   unpublish() {
     if (!this.data.publicId || this.data.loading) return;
@@ -123,7 +134,7 @@ Page({
         api.request('/api/auth/card/unpublish', { method: 'POST' }).then((res) => {
           const data = res.data || {};
           if (res.statusCode !== 200) throw new Error(data.detail || '取消公开失败');
-          this.setData({ loading: false, publicId: '' });
+          this.setData({ loading: false, published: false });
           wx.showToast({ title: '已取消公开', icon: 'success' });
         }).catch((error) => this.setData({ loading: false, error: error.message || '取消公开失败' }));
       }

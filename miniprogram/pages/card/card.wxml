@@ -17,8 +17,9 @@
       <view wx:if="{{card.showAddress}}" class="row"><text>地址</text><text selectable="true">{{card.address}}</text></view>
       <view wx:if="{{card.showQr}}" class="qr-wrap"><text>微信二维码</text><image class="qr" src="{{card.wechat_qr}}" mode="aspectFit" /></view>
     </view>
-    <view wx:if="{{isMine}}" class="primary-button" bindtap="goEdit">编辑名片</view>
-    <button wx:else class="primary-button" open-type="share">分享这张名片</button>
-    <view wx:if="{{!isMine}}" class="join" bindtap="goJoin">我也要一张</view>
+    <button wx:if="{{shareReady}}" class="primary-button" open-type="share">{{isMine ? '分享我的名片，邀请好友' : '分享这张名片'}}</button>
+    <view wx:if="{{isMine && !shareReady}}" class="primary-button" bindtap="goEdit">完善并公开名片</view>
+    <view wx:if="{{isMine}}" class="join" bindtap="goEdit">编辑名片</view>
+    <view wx:else class="join" bindtap="goJoin">我也要一张</view>
   </block>
 </view>
