@@ -52,7 +52,7 @@ Page({
     wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], success: (result) => {
       const media = result.tempFiles && result.tempFiles[0];
       if (!media || (media.fileType && media.fileType !== 'image')) { this.setData({ error: '只支持图片格式' }); return; }
-      if (media.size > 5 * 1024 * 1024) { this.setData({ error: '请上传 5MB 以内的图片' }); return; }
+      if (media.size > 4 * 1024 * 1024) { this.setData({ error: '请上传 4MB 以内的图片' }); return; }
       let filePath = media.tempFilePath;
       const proceed = () => {
         if (this.data.anonymous) {

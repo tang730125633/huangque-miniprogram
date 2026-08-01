@@ -72,6 +72,7 @@ assert.match(editCard, /legal\?type=terms/);
 assert.match(editCard, /openPrivacyContract/);
 assert.match(editCardJs, /indexOf\('yes'\) !== -1/);
 assert.match(editCardJs, /pendingMedia/);
+assert.match(editCardJs, /media\.size > 4 \* 1024 \* 1024/);
 assert.match(editCardJs, /function uploadMedia\(filePath, field\)/);
 assert.match(editCardJs, /field: field, data: 'data:image\/jpeg;base64,' \+ result\.data/);
 assert.match(editCardJs, /uploadMedia\(pendingMedia\[field\], field\)/);
