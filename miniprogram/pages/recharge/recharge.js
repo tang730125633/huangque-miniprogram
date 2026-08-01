@@ -31,6 +31,7 @@ function requestVirtualPayment(params) {
 }
 
 const MEMBERSHIP_PACKAGE = { id: 'membership_experience', product_id: 'hq_member_exp_1y', title: '开通一年体验官', benefit: '赠 1000 点', price_yuan: '499.00', amount: 499, points: 1000 };
+const EXPERIENCE_RENEWAL_PACKAGE = { id: 'membership_experience_renewal', product_type: 'membership_experience_renewal', order_type: 'membership_experience_renewal', title: '体验会员续费', benefit: '延长一年', price_yuan: '499.00', amount: 499, points: 0, membership_renewal: true };
 const MEMBERSHIP_NAMES = { experience: '体验官', partner: '合伙人', initiator: '发起人' };
 
 function isMembershipActive(user) {
@@ -47,7 +48,7 @@ function buildRechargeConfig(user, virtualConfig) {
   const discountLabel = membershipActive
     ? (user.points_purchase_discount_label || ({ 7500: '7.5折', 5500: '5.5折' }[discountBps]) || '原价')
     : '';
-  const packages = membershipActive ? (config.items || []).map(function (item) {
+  let packages = membershipActive ? (config.items || []).map(function (item) {
     const listPriceFen = Number(item.list_price_fen === undefined ? item.price_fen : item.list_price_fen);
     const priceFen = Number(item.price_fen === undefined ? listPriceFen : item.price_fen);
     return Object.assign({}, item, {
@@ -56,12 +57,17 @@ function buildRechargeConfig(user, virtualConfig) {
       show_discount: priceFen < listPriceFen
     });
   }) : [MEMBERSHIP_PACKAGE];
+  const tier = user.membership_tier || config.membership_tier;
+  const experienceRenewal = membershipActive && tier === 'experience';
+  if (experienceRenewal) packages = [EXPERIENCE_RENEWAL_PACKAGE].concat(packages);
   return {
     membershipActive,
     membershipName,
     discountLabel,
     hasDiscount: discountBps < 10000,
     packages,
+    experienceRenewal,
+    contactAdmin: membershipActive && (tier === 'partner' || tier === 'initiator'),
     custom: membershipActive ? (config.custom || null) : null,
     configured: membershipActive ? !!config.configured : true,
     environment: config.environment || 'production'
@@ -74,6 +80,10 @@ function paymentMode(packageId) {
 
 function virtualPaymentPayload(packageId, amount, code) {
   const data = { package_id: packageId, wx_code: code };
+  if (packageId === EXPERIENCE_RENEWAL_PACKAGE.id) {
+    data.product_type = EXPERIENCE_RENEWAL_PACKAGE.product_type;
+    data.order_type = EXPERIENCE_RENEWAL_PACKAGE.order_type;
+  }
   if (packageId === 'custom_points') data.custom_amount_yuan = amount;
   return data;
 }
@@ -254,14 +264,14 @@ const pageDefinition = {
         return this.pollVirtualPaid(orderId, 8);
       })
       .then((result) => {
-        const membershipPurchase = packageId === MEMBERSHIP_PACKAGE.id;
+        const membershipPurchase = packageId === MEMBERSHIP_PACKAGE.id || packageId === EXPERIENCE_RENEWAL_PACKAGE.id;
         this.setData({
           payingId: '',
           points: result.points === null || result.points === undefined ? this.data.points : result.points,
-          statusText: membershipPurchase ? '体验官开通成功，赠送点数已到账' : '充值成功，点数已到账'
+          statusText: packageId === EXPERIENCE_RENEWAL_PACKAGE.id ? '体验会员已延长一年' : (membershipPurchase ? '体验官开通成功，赠送点数已到账' : '充值成功，点数已到账')
         });
         this.paymentInFlight = false;
-        wx.showToast({ title: membershipPurchase ? '体验官已开通' : '点数已到账', icon: 'success' });
+        wx.showToast({ title: packageId === EXPERIENCE_RENEWAL_PACKAGE.id ? '续费成功' : (membershipPurchase ? '体验官已开通' : '点数已到账'), icon: 'success' });
         if (membershipPurchase) this.refresh();
         else this.refreshOrders(false);
       })
@@ -342,5 +352,5 @@ Page(pageDefinition);
 
 if (typeof module !== 'undefined') module.exports = {
   buildRechargeConfig, paymentMode, virtualPaymentPayload, isMiniProgramWxPayOrder,
-  MEMBERSHIP_PACKAGE, pageDefinition
+  MEMBERSHIP_PACKAGE, EXPERIENCE_RENEWAL_PACKAGE, pageDefinition
 };

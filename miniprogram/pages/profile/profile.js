@@ -33,13 +33,9 @@ Page({
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); },
   goClone() { wx.navigateTo({ url: '/pages/clone/clone' }); },
   goRecharge() { wx.navigateTo({ url: '/pages/recharge/recharge' }); },
-  goInvite() {
-    if (this.data.membership.status !== 'active') {
-      api.showMembershipRequired();
-      return;
-    }
-    wx.navigateTo({ url: '/pages/invite/invite' });
-  },
+  goCard() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
+  goNetwork() { wx.navigateTo({ url: '/pages/network/network' }); },
+  goInvite() { wx.navigateTo({ url: '/pages/invite/invite' }); },
   goAdmin() {
     if (!this.data.isAdmin) return;
     wx.navigateTo({ url: '/pages/admin/admin' });

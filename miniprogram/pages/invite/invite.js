@@ -22,7 +22,9 @@ Page({
     },
     rewardTotal: 0,
     rewards: [],
-    referrer: null
+    referrer: null,
+    shareReady: false,
+    publicId: ''
   },
 
   onShow() {
@@ -43,12 +45,13 @@ Page({
       api.request('/api/auth/invite/code', { method: 'GET' }),
       api.request('/api/auth/invite/dashboard', { method: 'GET' }),
       api.request('/api/auth/invite/reward-points?limit=20&offset=0', { method: 'GET' }),
-      api.request('/api/auth/invite/referrer', { method: 'GET' })
+      api.request('/api/auth/invite/referrer', { method: 'GET' }),
+      api.request('/api/auth/card/me', { method: 'GET' }).catch(() => null)
     ]).then((responses) => {
       const fallbackErrors = [
         '邀请码读取失败', '邀请统计读取失败', '奖励记录读取失败', '推荐人信息读取失败'
       ];
-      responses.forEach((response, index) => {
+      responses.slice(0, 4).forEach((response, index) => {
         if (response.statusCode !== 200) {
           const body = response.data || {};
           throw new Error(body.detail || fallbackErrors[index]);
@@ -58,13 +61,18 @@ Page({
       const dashboard = responses[1].data || {};
       const rewards = responses[2].data || {};
       const referrer = responses[3].data || {};
+      const cardResponse = responses[4];
+      const card = cardResponse && cardResponse.statusCode === 200 && cardResponse.data && cardResponse.data.card;
+      const publicId = card && card.public_id;
       this.setData({
         loading: false,
         code: code.code || '',
         stats: dashboard,
         rewardTotal: Number(rewards.total_reward_points || 0),
         rewards: (rewards.records || []).map(formatReward),
-        referrer: referrer.referrer || null
+        referrer: referrer.referrer || null,
+        shareReady: !!(publicId && card.published !== false && card.is_published !== false),
+        publicId: publicId || ''
       });
     }).catch((error) => {
       this.setData({ loading: false, error: error.message || '邀请数据读取失败' });
@@ -75,11 +83,12 @@ Page({
     if (!this.data.code) return;
     wx.setClipboardData({ data: this.data.code });
   },
+  goCardEdit() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
 
   onShareAppMessage() {
     return {
       title: '黄雀AI邀请你注册',
-      path: invite.registrationSharePath(this.data.code),
+      path: invite.cardSharePath(this.data.publicId, this.data.code),
       imageUrl: '/assets/share/invite-card.jpg'
     };
   }

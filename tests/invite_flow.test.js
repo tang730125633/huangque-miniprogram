@@ -36,10 +36,12 @@ assert.match(profileWxml, /邀请中心/);
 assert.match(inviteJs, /\/api\/auth\/invite\/dashboard/);
 assert.match(inviteJs, /\/api\/auth\/invite\/reward-points/);
 assert.match(inviteJs, /\/api\/auth\/invite\/referrer/);
+assert.match(inviteJs, /\/api\/auth\/card\/me/);
 assert.match(inviteJs, /onShareAppMessage\(\)/);
-assert.match(inviteJs, /invite\.registrationSharePath\(this\.data\.code\)/);
+assert.match(inviteJs, /invite\.cardSharePath\(this\.data\.publicId, this\.data\.code\)/);
 assert.match(inviteJs, /imageUrl:\s*'\/assets\/share\/invite-card\.jpg'/);
 assert.match(inviteWxml, /open-type="share"/);
+assert.match(inviteWxml, /shareReady/);
 assert.doesNotMatch(inviteWxml, /bindtap="copyLink"/);
 assert.ok(fs.existsSync(path.join(root, 'miniprogram/assets/share/invite-card.jpg')));
 
