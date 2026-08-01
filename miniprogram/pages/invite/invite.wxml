@@ -8,7 +8,8 @@
       <view class="invite-code">{{code}}</view>
       <view class="invite-actions">
         <button class="action-button" bindtap="copyCode">复制邀请码</button>
-        <button class="action-button primary" open-type="share">邀请好友</button>
+        <button wx:if="{{shareReady}}" class="action-button primary" open-type="share">邀请好友</button>
+        <button wx:else class="action-button primary" bindtap="goCardEdit">先创建并公开名片</button>
       </view>
     </view>
 

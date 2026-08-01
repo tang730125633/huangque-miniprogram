@@ -6,7 +6,10 @@ const card = require('../../utils/card.js');
 function buildRegistrationPayload(username, password, inviteCode, cardData) {
   const payload = { username: username, password: password, device_id: device.getDeviceId() };
   if (inviteCode) payload.invite_code = inviteCode;
-  if (cardData) payload.card = card.cardPayload(cardData);
+  if (cardData) {
+    payload.card = card.cardPayload(cardData);
+    payload.display_name = payload.card.name;
+  }
   return payload;
 }
 

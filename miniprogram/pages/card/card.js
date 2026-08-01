@@ -33,8 +33,9 @@ Page({
       const data = res.data || {};
       if (res.statusCode !== 200 || !(data.card || data.id || data.public_id)) throw new Error(data.detail || '名片不存在或已取消公开');
       // 归因只接受该公开页服务端的校验结果，URL 和本机时间都不能单独建立关系。
-      if (code && (data.invite_valid === true || (data.invite && data.invite.valid === true))) {
-        cardUtil.rememberValidInvite(code, data.invite_validated_at || data.server_time);
+      const attributionToken = data.invite_attribution_token || data.attribution_token;
+      if (code && attributionToken && (data.invite_valid === true || (data.invite && data.invite.valid === true))) {
+        cardUtil.rememberValidInvite(code, attributionToken, data.invite_expires_at || data.attribution_expires_at, data.invite_validated_at || data.server_time);
       }
       const source = data.card || data;
       this.setData({ loading: false, card: cardView(source), publicId: source.public_id || id });
@@ -55,8 +56,8 @@ Page({
   goEdit() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
   onShareAppMessage() {
     const id = this.data.publicId || this.data.card.public_id;
-    if (!id) return { title: '黄雀 AI 公开名片', path: '/pages/card-edit/card-edit' };
-    return { title: (this.data.card.name || '我') + '的黄雀公开名片', path: invite.cardSharePath(id, this.data.card.invite_code) };
+    if (!id) return { title: '黄雀 AI 公开名片', path: '/pages/card-edit/card-edit', imageUrl: '/assets/share/invite-card.jpg' };
+    return { title: (this.data.card.name || '我') + '的黄雀公开名片', path: invite.cardSharePath(id, this.data.card.invite_code), imageUrl: '/assets/share/invite-card.jpg' };
   }
 });
 

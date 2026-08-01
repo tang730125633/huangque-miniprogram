@@ -23,7 +23,7 @@ function uploadMedia(filePath) {
 }
 
 Page({
-  data: { step: 1, card: blankCard(), username: '', password: '', agreed: false, anonymous: true, loading: false, error: '', publicId: '' },
+  data: { step: 1, card: blankCard(), pendingMedia: {}, username: '', password: '', agreed: false, anonymous: true, loading: false, error: '', publicId: '' },
   onLoad() {
     if (!api.getToken()) return;
     this.setData({ anonymous: false, loading: true });
@@ -36,7 +36,12 @@ Page({
   input(e) { this.setData({ ['card.' + e.currentTarget.dataset.field]: e.detail.value, error: '' }); },
   accountInput(e) { this.setData({ [e.currentTarget.dataset.field]: e.detail.value, error: '' }); },
   setPrivacy(e) { this.setData({ ['card.privacy.' + e.currentTarget.dataset.field]: !!e.detail.value, error: '' }); },
-  agreement(e) { this.setData({ agreed: !!e.detail.value }); },
+  agreement(e) { this.setData({ agreed: ((e.detail && e.detail.value) || []).indexOf('yes') !== -1 }); },
+  openPrivacyContract() {
+    const fallback = () => wx.navigateTo({ url: '/pages/legal/legal?type=privacy' });
+    if (!wx.openPrivacyContract) { fallback(); return; }
+    wx.openPrivacyContract({ fail: fallback });
+  },
   next() {
     if (!this.data.card.name.trim() || !this.data.card.title.trim() || !this.data.card.company.trim()) { this.setData({ error: '请填写姓名、职称和公司' }); return; }
     this.setData({ step: 2, error: '' });
@@ -50,6 +55,10 @@ Page({
       if (media.size > 5 * 1024 * 1024) { this.setData({ error: '请上传 5MB 以内的图片' }); return; }
       let filePath = media.tempFilePath;
       const proceed = () => {
+        if (this.data.anonymous) {
+          this.setData({ ['card.' + field]: filePath, ['pendingMedia.' + field]: filePath, error: '' });
+          return;
+        }
         this.setData({ loading: true, error: '' });
         uploadMedia(filePath).then((url) => this.setData({ ['card.' + field]: url, loading: false }))
           .catch((error) => this.setData({ loading: false, error: error.message || '图片上传失败' }));
@@ -63,8 +72,11 @@ Page({
     if (this.data.anonymous && (!this.data.username.trim() || !this.data.password || !this.data.agreed)) { this.setData({ error: '请设置账号、密码并同意协议' }); return; }
     this.setData({ loading: true, error: '' });
     const payload = cardUtil.cardPayload(this.data.card);
+    const pendingMedia = this.data.pendingMedia || {};
+    Object.keys(pendingMedia).forEach((field) => { payload[field] = ''; });
+    const attribution = cardUtil.lastValidAttribution();
     const request = this.data.anonymous
-      ? api.request('/api/auth/miniprogram-register', { method: 'POST', data: { username: this.data.username.trim(), password: this.data.password, device_id: device.getDeviceId(), card: payload, invite_code: cardUtil.lastValidInvite() || undefined } })
+      ? api.request('/api/auth/miniprogram-register', { method: 'POST', data: { username: this.data.username.trim(), password: this.data.password, display_name: payload.name, device_id: device.getDeviceId(), card: payload, invite_code: attribution ? attribution.code : undefined, invite_attribution_token: attribution ? attribution.attribution_token : undefined } })
       : api.request('/api/auth/card/me', { method: 'PUT', data: payload });
     request.then((res) => {
       const data = res.data || {};
@@ -74,10 +86,27 @@ Page({
         if (!token) throw new Error('注册成功但未获得登录凭证');
         api.setToken(token);
       }
-      const saved = data.card || payload;
-      this.setData({ loading: false, anonymous: false, card: Object.assign({}, this.data.card, saved), publicId: saved.public_id || data.public_id || '' });
-      wx.showToast({ title: '名片已保存', icon: 'success' });
+      const saved = Object.assign({}, payload, data.card || {});
+      const finish = (card, warning) => {
+        this.setData({ loading: false, anonymous: false, pendingMedia: {}, card: Object.assign({}, this.data.card, card), publicId: card.public_id || data.public_id || '', error: warning || '' });
+        wx.showToast({ title: warning ? '文字名片已保存' : '名片已保存', icon: 'success' });
+      };
+      if (this.data.anonymous && Object.keys(pendingMedia).length) {
+        this.uploadPendingMedia(saved, pendingMedia).then((updated) => finish(updated)).catch(() => finish(saved, '账号和文字名片已保存，请稍后重试图片'));
+        return;
+      }
+      finish(saved);
     }).catch((error) => this.setData({ loading: false, error: error.message || '名片保存失败' }));
+  },
+  uploadPendingMedia(saved, pendingMedia) {
+    const updated = Object.assign({}, saved);
+    return Object.keys(pendingMedia).reduce((chain, field) => chain.then(() => uploadMedia(pendingMedia[field]).then((url) => { updated[field] = url; })), Promise.resolve())
+      .then(() => api.request('/api/auth/card/me', { method: 'PUT', data: cardUtil.cardPayload(updated) }))
+      .then((res) => {
+        const data = res.data || {};
+        if (res.statusCode !== 200) throw new Error(data.detail || '图片保存失败');
+        return Object.assign(updated, data.card || {});
+      });
   },
   publish() {
     if (!api.getToken()) { this.save(); return; }
@@ -89,6 +118,22 @@ Page({
       this.setData({ loading: false, publicId: id });
       wx.redirectTo({ url: '/pages/card/card?id=' + encodeURIComponent(id) });
     }).catch((error) => this.setData({ loading: false, error: error.message || '公开名片失败' }));
+  },
+  unpublish() {
+    if (!this.data.publicId || this.data.loading) return;
+    wx.showModal({
+      title: '取消公开名片', content: '取消后外部链接将无法访问，但名片资料会保留，之后可再次公开。', confirmText: '取消公开', confirmColor: '#C2413A',
+      success: (result) => {
+        if (!result.confirm) return;
+        this.setData({ loading: true, error: '' });
+        api.request('/api/auth/card/unpublish', { method: 'POST' }).then((res) => {
+          const data = res.data || {};
+          if (res.statusCode !== 200) throw new Error(data.detail || '取消公开失败');
+          this.setData({ loading: false, publicId: '' });
+          wx.showToast({ title: '已取消公开', icon: 'success' });
+        }).catch((error) => this.setData({ loading: false, error: error.message || '取消公开失败' }));
+      }
+    });
   }
 });
 

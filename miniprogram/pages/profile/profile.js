@@ -35,13 +35,7 @@ Page({
   goRecharge() { wx.navigateTo({ url: '/pages/recharge/recharge' }); },
   goCard() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
   goNetwork() { wx.navigateTo({ url: '/pages/network/network' }); },
-  goInvite() {
-    if (this.data.membership.status !== 'active') {
-      api.showMembershipRequired();
-      return;
-    }
-    wx.navigateTo({ url: '/pages/invite/invite' });
-  },
+  goInvite() { wx.navigateTo({ url: '/pages/invite/invite' }); },
   goAdmin() {
     if (!this.data.isAdmin) return;
     wx.navigateTo({ url: '/pages/admin/admin' });

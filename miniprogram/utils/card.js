@@ -27,25 +27,37 @@ function isComplete(card) {
   return !!(value.name && value.title && value.company);
 }
 
-function rememberValidInvite(code, serverValidatedAt) {
+function serverTime(value) {
+  let time = Number(value);
+  if (time > 0 && time < 100000000000) time *= 1000;
+  if (!time && value) time = Date.parse(value);
+  return time || 0;
+}
+
+function rememberValidInvite(code, attributionToken, expiresAt, serverValidatedAt) {
   code = invite.normalizeInviteCode(code);
-  if (!invite.validInviteCode(code)) return false;
+  if (!invite.validInviteCode(code) || !attributionToken) return false;
   // 服务端是否有效是归因门槛；本地只缓存其已确认结果，便于注册请求携带。
-  let validatedAt = Number(serverValidatedAt);
-  if (validatedAt > 0 && validatedAt < 100000000000) validatedAt *= 1000;
-  if (!validatedAt && serverValidatedAt) validatedAt = Date.parse(serverValidatedAt);
-  wx.setStorageSync(ATTRIBUTION_KEY, { code: code, validated_at: validatedAt || Date.now() });
+  const validatedAt = serverTime(serverValidatedAt);
+  const serverExpires = serverTime(expiresAt);
+  const expires = validatedAt ? Math.min(serverExpires || (validatedAt + ATTRIBUTION_TTL), validatedAt + ATTRIBUTION_TTL) : serverExpires;
+  if (!expires) return false;
+  wx.setStorageSync(ATTRIBUTION_KEY, { code: code, attribution_token: String(attributionToken), expires_at: expires, validated_at: validatedAt });
   return true;
 }
 
-function lastValidInvite(now) {
+function lastValidAttribution(now) {
   const record = wx.getStorageSync(ATTRIBUTION_KEY) || {};
-  const validAt = Number(record.validated_at || 0);
-  if (!invite.validInviteCode(record.code) || !validAt || Number(now || Date.now()) - validAt > ATTRIBUTION_TTL) {
+  if (!invite.validInviteCode(record.code) || !record.attribution_token || !Number(record.expires_at) || Number(now || Date.now()) > Number(record.expires_at)) {
     wx.removeStorageSync(ATTRIBUTION_KEY);
-    return '';
+    return null;
   }
-  return record.code;
+  return { code: record.code, attribution_token: record.attribution_token };
 }
 
-module.exports = { ATTRIBUTION_KEY, ATTRIBUTION_TTL, privacy, cardPayload, isComplete, rememberValidInvite, lastValidInvite };
+function lastValidInvite(now) {
+  const attribution = lastValidAttribution(now);
+  return attribution ? attribution.code : '';
+}
+
+module.exports = { ATTRIBUTION_KEY, ATTRIBUTION_TTL, privacy, cardPayload, isComplete, rememberValidInvite, lastValidAttribution, lastValidInvite };
