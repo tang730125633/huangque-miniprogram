@@ -1,4 +1,5 @@
 <view class="container invite-page">
+  <canvas canvas-id="cardShareCover" style="position:fixed;left:-600px;top:-500px;width:500px;height:400px;opacity:0;pointer-events:none;" />
   <view wx:if="{{loading}}" class="card loading-state">正在读取邀请数据…</view>
   <view wx:elif="{{error}}" class="card error-state">{{error}}</view>
 

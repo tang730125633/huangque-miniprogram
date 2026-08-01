@@ -1,4 +1,5 @@
 <view class="container card-page">
+  <canvas canvas-id="cardShareCover" style="position:fixed;left:-600px;top:-500px;width:500px;height:400px;opacity:0;pointer-events:none;" />
   <view wx:if="{{loading}}" class="card state">正在加载名片…</view>
   <view wx:elif="{{error}}" class="card state error">{{error}}<view class="primary-button" bindtap="goJoin">我也要一张</view></view>
   <block wx:else>

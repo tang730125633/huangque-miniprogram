@@ -1,6 +1,8 @@
 const invite = require('./invite.js');
 const ATTRIBUTION_KEY = 'hq_card_last_valid_invite';
 const ATTRIBUTION_TTL = 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_SHARE_IMAGE = '/assets/share/invite-card.jpg';
+const SHARE_CANVAS_ID = 'cardShareCover';
 
 function privacy(card) {
   const source = (card && card.privacy) || {};
@@ -64,4 +66,52 @@ function lastValidInvite(now) {
   return attribution ? attribution.code : '';
 }
 
-module.exports = { ATTRIBUTION_KEY, ATTRIBUTION_TTL, privacy, cardPayload, isComplete, isPublished, rememberValidInvite, lastValidAttribution, lastValidInvite };
+function prepareShareImage(page, card) {
+  const avatar = String((card && card.avatar) || '').trim();
+  if (avatar) return Promise.resolve(avatar);
+
+  const name = String((card && card.name) || '黄雀').trim() || '黄雀';
+  return new Promise((resolve) => {
+    if (!wx.createCanvasContext || !wx.canvasToTempFilePath) {
+      resolve(DEFAULT_SHARE_IMAGE);
+      return;
+    }
+    try {
+      const context = wx.createCanvasContext(SHARE_CANVAS_ID, page);
+      context.setFillStyle('#0b0912');
+      context.fillRect(0, 0, 500, 400);
+      context.setTextAlign('center');
+      context.setTextBaseline('middle');
+      context.setFillStyle('#f4a847');
+      context.setFontSize(112);
+      context.fillText(Array.from(name)[0], 250, 168);
+      context.setFillStyle('#ffffff');
+      context.setFontSize(Array.from(name).length > 8 ? 30 : 38);
+      context.fillText(Array.from(name).slice(0, 12).join(''), 250, 292, 420);
+      context.setFillStyle('#9f98b3');
+      context.setFontSize(22);
+      context.fillText('黄雀公开名片', 250, 352);
+      context.draw(false, () => {
+        wx.canvasToTempFilePath({
+          canvasId: SHARE_CANVAS_ID,
+          width: 500,
+          height: 400,
+          destWidth: 1000,
+          destHeight: 800,
+          fileType: 'jpg',
+          quality: 0.92,
+          success: (result) => resolve(result.tempFilePath || DEFAULT_SHARE_IMAGE),
+          fail: () => resolve(DEFAULT_SHARE_IMAGE)
+        }, page);
+      });
+    } catch (error) {
+      resolve(DEFAULT_SHARE_IMAGE);
+    }
+  });
+}
+
+module.exports = {
+  ATTRIBUTION_KEY, ATTRIBUTION_TTL, DEFAULT_SHARE_IMAGE,
+  privacy, cardPayload, isComplete, isPublished, rememberValidInvite,
+  lastValidAttribution, lastValidInvite, prepareShareImage
+};

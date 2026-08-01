@@ -25,6 +25,7 @@ Page({
     rewards: [],
     referrer: null,
     shareReady: false,
+    shareImageUrl: '',
     publicId: '',
     cardName: ''
   },
@@ -43,6 +44,8 @@ Page({
   },
 
   load() {
+    const loadId = (this._loadId || 0) + 1;
+    this._loadId = loadId;
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', shareReady: false });
     return Promise.all([
@@ -52,6 +55,7 @@ Page({
       api.request('/api/auth/invite/referrer', { method: 'GET' }),
       api.request('/api/auth/card/me', { method: 'GET' })
     ]).then((responses) => {
+      if (loadId !== this._loadId) return;
       const fallbackErrors = [
         '邀请码读取失败', '邀请统计读取失败', '奖励记录读取失败', '推荐人信息读取失败'
       ];
@@ -80,12 +84,15 @@ Page({
         rewardTotal: Number(rewards.total_reward_points || 0),
         rewards: (rewards.records || []).map(formatReward),
         referrer: referrer.referrer || null,
-        shareReady: shareReady,
+        shareReady: false,
+        shareImageUrl: '',
         publicId: publicId || '',
         cardName: (card && card.name) || ''
+      }, () => {
+        if (shareReady) this.enableShare(card, loadId);
       });
-      if (shareReady && wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
     }).catch((error) => {
+      if (loadId !== this._loadId) return;
       this.setData({ loading: false, error: error.message || '邀请数据读取失败' });
     });
   },
@@ -100,14 +107,22 @@ Page({
     wx.navigateTo({ url: '/pages/card/card?id=' + encodeURIComponent(this.data.publicId) + '&mine=1' });
   },
 
+  enableShare(card, loadId) {
+    return cardUtil.prepareShareImage(this, card).then((imageUrl) => {
+      if (loadId !== this._loadId) return;
+      this.setData({ shareImageUrl: imageUrl, shareReady: true });
+      if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
+    });
+  },
+
   onShareAppMessage() {
     if (!this.data.shareReady) {
-      return { title: '黄雀 AI 邀请你注册', path: invite.registrationSharePath(this.data.code), imageUrl: '/assets/share/invite-card.jpg' };
+      return { title: '黄雀 AI 邀请你注册', path: invite.registrationSharePath(this.data.code), imageUrl: cardUtil.DEFAULT_SHARE_IMAGE };
     }
     return {
       title: (this.data.cardName || '我') + '的黄雀公开名片',
       path: invite.cardSharePath(this.data.publicId, this.data.code),
-      imageUrl: '/assets/share/invite-card.jpg'
+      imageUrl: this.data.shareImageUrl
     };
   }
 });
