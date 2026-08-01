@@ -1,0 +1,19 @@
+<view class="container network-page">
+  <view wx:if="{{loading}}" class="card state">正在绘制人脉星球…</view>
+  <view wx:elif="{{error}}" class="card state error">{{error}}<view class="retry" bindtap="load">重试</view></view>
+  <block wx:else>
+    <view class="card orbit" aria-label="人脉星球，仅显示完整祖先链和自己的后代">
+      <view class="ring outer"></view><view class="ring inner"></view><view class="self">我</view>
+      <view wx:for="{{ancestors}}" wx:key="public_id" class="planet ancestor" data-id="{{item.public_id}}" bindtap="openCard">{{item.initial}}</view>
+      <view wx:for="{{children}}" wx:key="public_id" class="planet child" data-id="{{item.public_id}}" bindtap="openCard">{{item.initial}}</view>
+    </view>
+    <view class="hint">只展示完整祖先链与你邀请发展的后代，不展示兄弟或旁支。点节点可查看公开名片。</view>
+    <view class="section-title">祖先链</view>
+    <view wx:if="{{!ancestors.length}}" class="card empty">你是当前链路的起点</view>
+    <view wx:for="{{ancestors}}" wx:key="public_id" class="card person" data-id="{{item.public_id}}" bindtap="openCard"><view class="initial">{{item.initial}}</view><view><view>{{item.name}}</view><view class="muted">{{item.title}}</view></view><text>›</text></view>
+    <view class="section-title">我的后代</view>
+    <view wx:if="{{!children.length}}" class="card empty">暂时还没有后代节点</view>
+    <block wx:for="{{children}}" wx:key="public_id"><view class="card person" data-id="{{item.public_id}}" bindtap="openCard"><view class="initial">{{item.initial}}</view><view><view>{{item.name}}</view><view class="muted">{{item.title}}</view></view><text>›</text></view><view wx:if="{{!item.expanded}}" class="branch" data-index="{{index}}" bindtap="loadBranch">展开下级</view><view wx:for="{{item.children}}" wx:for-item="child" wx:key="public_id" class="card person child-person" data-id="{{child.public_id}}" bindtap="openCard"><view class="initial">{{child.initial}}</view><view><view>{{child.name}}</view><view class="muted">{{child.title}}</view></view><text>›</text></view></block>
+    <view wx:if="{{childCursor}}" class="more" bindtap="loadMore">{{loadingChildren ? '加载中…' : '加载更多后代'}}</view>
+  </block>
+</view>

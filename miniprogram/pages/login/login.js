@@ -1,6 +1,14 @@
 const api = require('../../utils/api.js');
 const device = require('../../utils/device.js');
 const invite = require('../../utils/invite.js');
+const card = require('../../utils/card.js');
+
+function buildRegistrationPayload(username, password, inviteCode, cardData) {
+  const payload = { username: username, password: password, device_id: device.getDeviceId() };
+  if (inviteCode) payload.invite_code = inviteCode;
+  if (cardData) payload.card = card.cardPayload(cardData);
+  return payload;
+}
 
 Page({
   data: {
@@ -102,12 +110,9 @@ Page({
       this.setData({ loading: false, err: '邀请码格式不正确' });
       return;
     }
-    const payload = {
-      username: username,
-      password: password,
-      device_id: device.getDeviceId()
-    };
-    if (inviteCode) payload.invite_code = inviteCode;
+    const payload = this.data.mode === 'register'
+      ? buildRegistrationPayload(username, password, inviteCode, this.data.card)
+      : { username: username, password: password, device_id: device.getDeviceId() };
     api.request(path, { method: 'POST', data: payload })
       .then((res) => {
         this.setData({ loading: false });
@@ -149,3 +154,5 @@ Page({
       });
   }
 });
+
+if (typeof module !== 'undefined') module.exports = { buildRegistrationPayload };

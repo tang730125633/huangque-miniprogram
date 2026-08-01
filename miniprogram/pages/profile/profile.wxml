@@ -52,6 +52,14 @@
   </view>
 
   <view class="card menu-card">
+    <view class="menu-item bordered" bindtap="goCard">
+      <view class="mi-left"><text>我的公开名片</text></view>
+      <text class="muted">›</text>
+    </view>
+    <view class="menu-item bordered" bindtap="goNetwork">
+      <view class="mi-left"><text>人脉星球</text></view>
+      <text class="muted">›</text>
+    </view>
     <view wx:if="{{isAdmin}}" class="menu-item bordered admin-entry" bindtap="goAdmin">
       <view class="mi-left"><image class="mi-ic" src="../../assets/icons/warn.svg"></image><text>管理中心</text></view>
       <text class="muted">›</text>

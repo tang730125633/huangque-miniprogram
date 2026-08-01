@@ -1,0 +1,19 @@
+.card-page { padding-bottom: 72rpx; }
+.state { margin-top: 28rpx; text-align: center; color: var(--text-muted); }
+.error { color: var(--error); }
+.hero { margin-top: 24rpx; text-align: center; padding: 48rpx 30rpx; }
+.avatar { width: 152rpx; height: 152rpx; margin: 0 auto 22rpx; border-radius: 50%; background: var(--surface-muted); }
+.initials { display: flex; align-items: center; justify-content: center; color: var(--secondary); font-size: 58rpx; }
+.name { color: var(--text); font-size: 42rpx; font-weight: 700; }
+.role, .bio { margin-top: 12rpx; color: var(--text-muted); font-size: 25rpx; line-height: 1.7; }
+.bio { color: var(--text); text-align: left; white-space: pre-wrap; }
+.tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 10rpx; margin-top: 22rpx; }
+.tag { padding: 7rpx 15rpx; border-radius: 999rpx; background: var(--primary-soft); color: var(--secondary); font-size: 21rpx; }
+.detail { margin-top: 18rpx; }
+.row { display: flex; justify-content: space-between; gap: 26rpx; padding: 22rpx 0; color: var(--text); font-size: 25rpx; border-bottom: 1rpx solid var(--line); overflow-wrap: anywhere; }
+.row text:first-child, .qr-wrap > text { flex: none; color: var(--text-muted); }
+.qr-wrap { display: flex; flex-direction: column; gap: 16rpx; padding-top: 22rpx; color: var(--text); font-size: 25rpx; }
+.qr { width: 300rpx; height: 300rpx; }
+.primary-button, .join { margin-top: 22rpx; padding: 25rpx; border-radius: 999rpx; text-align: center; color: #fff; background: var(--grad); font-size: 29rpx; }
+button.primary-button::after { border: 0; }
+.join { color: var(--primary); background: transparent; border: 1rpx solid var(--primary); }

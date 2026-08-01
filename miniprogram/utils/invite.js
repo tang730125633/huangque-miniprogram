@@ -31,4 +31,11 @@ function registrationSharePath(code) {
     : '/pages/login/login';
 }
 
-module.exports = { normalizeInviteCode, validInviteCode, extractLaunchInvite, registrationSharePath };
+function cardSharePath(cardId, code) {
+  const id = encodeURIComponent(String(cardId || '').trim());
+  if (!id) return '/pages/card/card';
+  const invite = normalizeInviteCode(code);
+  return '/pages/card/card?id=' + id + (validInviteCode(invite) ? '&invite=' + encodeURIComponent(invite) : '');
+}
+
+module.exports = { normalizeInviteCode, validInviteCode, extractLaunchInvite, registrationSharePath, cardSharePath };

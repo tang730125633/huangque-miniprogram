@@ -1,0 +1,24 @@
+<view class="container card-page">
+  <view wx:if="{{loading}}" class="card state">正在加载名片…</view>
+  <view wx:elif="{{error}}" class="card state error">{{error}}<view class="primary-button" bindtap="goJoin">我也要一张</view></view>
+  <block wx:else>
+    <view class="card hero">
+      <image wx:if="{{card.avatar}}" class="avatar" src="{{card.avatar}}" mode="aspectFill" />
+      <view wx:else class="avatar initials">{{card.initial}}</view>
+      <view class="name">{{card.name}}</view>
+      <view class="role">{{card.title}} · {{card.company}}</view>
+      <view wx:if="{{card.bio}}" class="bio">{{card.bio}}</view>
+      <view wx:if="{{card.tagsList.length}}" class="tags"><text wx:for="{{card.tagsList}}" wx:key="*this" class="tag">{{item}}</text></view>
+    </view>
+    <view class="card detail">
+      <view wx:if="{{card.links}}" class="row"><text>链接</text><text selectable="true">{{card.links}}</text></view>
+      <view wx:if="{{card.showPhone}}" class="row"><text>电话</text><text selectable="true">{{card.phone}}</text></view>
+      <view wx:if="{{card.showEmail}}" class="row"><text>邮箱</text><text selectable="true">{{card.email}}</text></view>
+      <view wx:if="{{card.showAddress}}" class="row"><text>地址</text><text selectable="true">{{card.address}}</text></view>
+      <view wx:if="{{card.showQr}}" class="qr-wrap"><text>微信二维码</text><image class="qr" src="{{card.wechat_qr}}" mode="aspectFit" /></view>
+    </view>
+    <view wx:if="{{isMine}}" class="primary-button" bindtap="goEdit">编辑名片</view>
+    <button wx:else class="primary-button" open-type="share">分享这张名片</button>
+    <view wx:if="{{!isMine}}" class="join" bindtap="goJoin">我也要一张</view>
+  </block>
+</view>
