@@ -44,7 +44,8 @@ assert.match(inviteJs, /invite\.validInviteCode\(code\.code\)/);
 assert.match(inviteJs, /wx\.hideShareMenu\(\)/);
 assert.match(inviteJs, /wx\.showShareMenu\(\{ menus: \['shareAppMessage'\] \}\)/);
 assert.match(inviteJs, /registrationSharePath\(this\.data\.code\)/);
-assert.match(inviteJs, /imageUrl:\s*'\/assets\/share\/invite-card\.jpg'/);
+assert.match(inviteJs, /prepareShareImage\(this, card\)/);
+assert.match(inviteJs, /imageUrl:\s*this\.data\.shareImageUrl/);
 assert.match(inviteWxml, /open-type="share"/);
 assert.match(inviteWxml, /shareReady/);
 assert.match(inviteWxml, /分享我的名片，邀请好友/);
@@ -57,6 +58,36 @@ global.Page = function (definition) { invitePage = definition; };
 global.wx = { hideShareMenu() {}, showShareMenu() {} };
 require('../miniprogram/pages/invite/invite.js');
 assert.strictEqual(invitePage.onShareAppMessage.call({ data: { shareReady: false, code: 'ABCD23' } }).path, '/pages/login/login?invite=ABCD23');
-assert.strictEqual(invitePage.onShareAppMessage.call({ data: { shareReady: true, code: 'ABCD23', publicId: 'public-1', cardName: '王小明' } }).path, '/pages/card/card?id=public-1&invite=ABCD23');
+const share = invitePage.onShareAppMessage.call({ data: { shareReady: true, shareImageUrl: 'https://example.test/avatar.jpg', code: 'ABCD23', publicId: 'public-1', cardName: '王小明' } });
+assert.strictEqual(share.path, '/pages/card/card?id=public-1&invite=ABCD23');
+assert.strictEqual(share.imageUrl, 'https://example.test/avatar.jpg');
+
+require('node:test')('share cover uses avatar, then falls back to a generated name image', async () => {
+  assert.strictEqual(await require('../miniprogram/utils/card.js').prepareShareImage({}, { avatar: 'https://example.test/avatar.jpg', name: '王小明' }), 'https://example.test/avatar.jpg');
+  const text = [];
+  global.wx.createCanvasContext = function () {
+    return {
+      setFillStyle() {}, fillRect() {}, setTextAlign() {}, setTextBaseline() {}, setFontSize() {},
+      fillText(value) { text.push(value); }, draw(reserve, callback) { callback(); }
+    };
+  };
+  global.wx.canvasToTempFilePath = function (options) { options.success({ tempFilePath: '/tmp/share-name.jpg' }); };
+  assert.strictEqual(await require('../miniprogram/utils/card.js').prepareShareImage({}, { name: '王小明' }), '/tmp/share-name.jpg');
+  assert.ok(text.includes('王小明'));
+});
+
+require('node:test')('stale share cover cannot overwrite a newer invite load', async () => {
+  const cardUtil = require('../miniprogram/utils/card.js');
+  const original = cardUtil.prepareShareImage;
+  let finish;
+  cardUtil.prepareShareImage = function () { return new Promise((resolve) => { finish = resolve; }); };
+  let updated = false;
+  const page = { _loadId: 2, setData() { updated = true; } };
+  const pending = invitePage.enableShare.call(page, { name: '旧名片' }, 1);
+  finish('/tmp/old-share.jpg');
+  await pending;
+  cardUtil.prepareShareImage = original;
+  assert.strictEqual(updated, false);
+});
 
 console.log('invite flow tests passed');
