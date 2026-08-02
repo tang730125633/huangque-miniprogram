@@ -38,7 +38,12 @@
     <view class="label">提示词 <text class="muted small">（润色后仍可编辑）</text></view>
     <textarea class="prompt" placeholder="描述你想要的画面，例如：美业门店海报，暖光，高级感…"
       placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="1000"
-      auto-height show-confirm-bar="{{false}}"></textarea>
+      cursor="{{promptCursor}}" auto-height show-confirm-bar="{{false}}"></textarea>
+    <view wx:if="{{promptMentionOpen}}" class="mention-menu">
+      <view wx:for="{{refPreviews}}" wx:key="*this" class="mention-item" data-i="{{index}}" bindtap="selectPromptMention">
+        <image src="{{item}}" mode="aspectFill"></image><text>图片{{index + 1}}</text><text class="mention-token">@图片{{index + 1}}</text>
+      </view>
+    </view>
   </view>
 
   <view wx:if="{{draftStatus}}" class="draft-row {{draftStatusError?'error':''}}">

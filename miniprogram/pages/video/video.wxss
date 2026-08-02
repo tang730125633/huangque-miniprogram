@@ -150,6 +150,10 @@
   background: rgba(0,0,0,0.68); color: #fff; font-size: 18rpx;
 }
 .ref-help { margin-top: 12rpx; line-height: 1.5; }
+.mention-menu { margin-top: 10rpx; padding: 8rpx; border: 1rpx solid var(--line); border-radius: 14rpx; background: var(--surface-muted); }
+.mention-item { display: grid; grid-template-columns: 54rpx 1fr auto; align-items: center; gap: 14rpx; padding: 10rpx; border-radius: 10rpx; color: var(--text); font-size: 24rpx; }
+.mention-item image { width: 54rpx; height: 54rpx; border-radius: 8rpx; }
+.mention-token { color: var(--primary); font-size: 21rpx; }
 .ref-add {
   height: 140rpx; border-radius: 12rpx; border: 2rpx dashed var(--line);
   display: flex; align-items: center; justify-content: center;
