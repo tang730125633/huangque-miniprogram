@@ -89,16 +89,18 @@
         </view>
       </view>
       <view class="card">
-        <view class="label">参考图 <text class="muted small">（可选 · 与形象共用 9 张图额度）</text></view>
+        <view class="label">参考图 <text class="muted small">（最多 {{9-avatarIds.length}} 张 · 点图片编号插入）</text></view>
         <view class="ref-grid">
           <view wx:for="{{cineRefPreviews}}" wx:key="*this" class="ref-cell">
             <image class="ref-img" src="{{item}}" mode="aspectFill"></image>
+            <view class="ref-index" data-i="{{index}}" catchtap="insertCineRefMention">图片{{index + 1}}</view>
             <view class="ref-del" data-i="{{index}}" catchtap="removeCineRefImg">✕</view>
           </view>
-          <view class="ref-cell ref-add" bindtap="chooseCineRefImg">
+          <view wx:if="{{cineRefPreviews.length + avatarIds.length < 9}}" class="ref-cell ref-add" bindtap="chooseCineRefImg">
             <image class="ic-up" src="../../assets/icons/upload.svg"></image>
           </view>
         </view>
+        <view class="muted small ref-help">点击图片编号可插入 @图片N；图片与形象合计最多 9 张</view>
       </view>
     </block>
 
@@ -164,7 +166,7 @@
         </view>
       </view>
       <view class="card">
-        <view class="label">分辨率 <text class="muted small">（1080p 仅高清 1.5 支持）</text></view>
+        <view class="label">分辨率 <text class="muted small">（参考图模式仅支持 720p）</text></view>
         <view class="ratio-grid">
           <view wx:for="{{grokResList}}" wx:key="*this" class="chip {{grokRes===item?'active':''}}" data-v="{{item}}" bindtap="selectGrokRes">{{item}}</view>
         </view>
@@ -267,12 +269,14 @@
       <view class="ref-grid">
         <view wx:for="{{refPreviews}}" wx:key="*this" class="ref-cell">
           <image class="ref-img" src="{{item}}" mode="aspectFill"></image>
+          <view class="ref-index" data-i="{{index}}" catchtap="insertGenerateRefMention">图片{{index + 1}}</view>
           <view class="ref-del" data-i="{{index}}" catchtap="removeRef">✕</view>
         </view>
         <view wx:if="{{refPreviews.length < engineRefMax}}" class="ref-cell ref-add" bindtap="chooseRef">
           <image class="ic-up" src="../../assets/icons/upload.svg"></image>
         </view>
       </view>
+      <view class="muted small ref-help">点击图片编号可插入 @图片N；单次最多选 9 张，可继续添加</view>
     </view>
 
     <view wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="card">

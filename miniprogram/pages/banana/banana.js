@@ -1,6 +1,7 @@
 const api = require('../../utils/api.js');
 const drafts = require('../../utils/drafts.js');
 const promptTemplates = require('../../utils/prompt_templates.js');
+const imageMentions = require('../../utils/image_mentions.js');
 
 // 与后端 / 网页版一致的价目与上限
 const COSTBASE = {
@@ -17,7 +18,7 @@ const ENGINES = [
 ];
 const RATIOS = ['9:16', '1:1', '16:9', '3:4'];
 const DRAFT_KEY = 'hq_draft_banana_v1';
-const XIAOLE_MAX_REF = 4;
+const IMAGE_REF_LIMITS = { nb2: 14, pro: 14, gpt: 16, xiaole: 4 };
 const POLL_INTERVAL = 4000;
 const POLL_TIMEOUT_SEC = 900;
 
@@ -40,7 +41,7 @@ Page({
     count: 1,
     maxCount: 2,
     cost: 35,
-    maxRefCount: 1,
+    maxRefCount: IMAGE_REF_LIMITS.nb2,
     refPreviews: [],
     refBusy: false,
     draftStatus: '',
@@ -115,7 +116,7 @@ Page({
     return this._draftStorageKey;
   },
 
-  _refLimit(engine) { return engine === 'xiaole' ? XIAOLE_MAX_REF : 1; },
+  _refLimit(engine) { return IMAGE_REF_LIMITS[engine] || 1; },
 
   _draftPayload(state) {
     return {
@@ -250,7 +251,7 @@ Page({
     this.setData({
       prompt: '', promptTemplateKey: 'poster', tplBrand: '黄雀 AI', tplColor: '紫粉霓虹',
       tplSelling: '三秒生成视觉内容', tplPrice: '免费体验', promptUndo: '', canUndoPrompt: false,
-      engine: 'nb2', ratio: '9:16', quality: 'hd', count: 1, maxCount: 2, maxRefCount: 1,
+      engine: 'nb2', ratio: '9:16', quality: 'hd', count: 1, maxCount: 2, maxRefCount: IMAGE_REF_LIMITS.nb2,
       refPreviews: [], refBusy: false, hasDraft: false, draftStatus: '草稿已清空', draftStatusError: false
     }, () => this.updateCost());
   },
@@ -301,10 +302,13 @@ Page({
   selectEngine(e) {
     if (this.data.refBusy) { this.setNote('参考图保存中，请稍候', '#2F6FED'); return; }
     const engine = e.currentTarget.dataset.k;
-    const removed = (this.data.refPreviews || []).length - this._refLimit(engine);
+    const nextLimit = this._refLimit(engine);
+    const removed = (this.data.refPreviews || []).length - nextLimit;
     if (removed > 0) {
+      const mentionError = imageMentions.validate(this.data.prompt, nextLimit);
+      if (mentionError) { this.setNote(mentionError + '，请先修改提示词', '#C2413A'); return; }
       wx.showModal({
-        title: '切换后仅保留第 1 张图片',
+        title: '切换后仅保留前 ' + nextLimit + ' 张图片',
         content: '其余参考图会从本机草稿中删除，是否继续？',
         confirmText: '继续切换',
         success: (res) => { if (res.confirm) this._applyEngine(engine); }
@@ -323,7 +327,7 @@ Page({
     const removed = (this.data.refPreviews || []).length - refPreviews.length;
     this._refImages = (this._refImages || []).slice(0, maxRefCount);
     this.setData(patch, () => this.updateCost());
-    if (removed) this.setNote('已切换引擎，仅保留第 1 张参考图', '#2F6FED');
+    if (removed) this.setNote('已切换引擎，仅保留前 ' + maxRefCount + ' 张参考图', '#2F6FED');
   },
   selectRatio(e) { this.setData({ ratio: e.currentTarget.dataset.v }, () => this.saveDraft()); },
   selectQuality(e) { this.setData({ quality: e.currentTarget.dataset.v }, () => { this.updateCost(); this.saveDraft(); }); },
@@ -345,7 +349,7 @@ Page({
     const opToken = ++this._refOpToken;
     this.setData({ refBusy: true });
     wx.chooseMedia({
-      count: left, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      count: Math.min(left, 9), mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
       success: (res) => {
         const files = (res.tempFiles || []).slice(0, left);
         Promise.all(files.map((file) => drafts.persistFile(file.tempFilePath)
@@ -391,6 +395,10 @@ Page({
     if (this.data.refBusy) return;
     const index = Number(e.currentTarget.dataset.i);
     if (!Number.isInteger(index) || index < 0 || index >= this.data.refPreviews.length) return;
+    if (imageMentions.usesShiftedIndex(this.data.prompt, index + 1)) {
+      this.setNote('提示词已引用图片 ' + (index + 1) + ' 或后续图片，请先删除对应 @图片N', '#C2413A');
+      return;
+    }
     const refPreviews = this.data.refPreviews.slice(); refPreviews.splice(index, 1);
     if (!this.saveDraft('已自动保存', { refPreviews })) return;
     (this._refImages || []).splice(index, 1);
@@ -398,6 +406,10 @@ Page({
   },
   clearRef() {
     if (this.data.refBusy || !this.data.refPreviews.length) return;
+    if (imageMentions.usesShiftedIndex(this.data.prompt, 1)) {
+      this.setNote('提示词仍有 @图片N，请先删除引用再清空图片', '#C2413A');
+      return;
+    }
     wx.showModal({
       title: '清空参考图？',
       content: '已保存到本机草稿的参考图会一并删除。',
@@ -411,6 +423,12 @@ Page({
     this.setData({ refPreviews: [] });
   },
 
+  insertRefMention(e) {
+    const index = Number(e.currentTarget.dataset.i) + 1;
+    if (!Number.isInteger(index) || index < 1 || index > this.data.refPreviews.length) return;
+    this.setData({ prompt: imageMentions.append(this.data.prompt, index) }, () => this.saveDraft());
+  },
+
   generate() {
     if (this.data.busy) return;
     const prompt = (this.data.prompt || '').trim();
@@ -420,8 +438,12 @@ Page({
     const body = { prompt, ratio: this.data.ratio, quality: this.data.quality, count: this.data.count };
     if (this.data.refBusy) { this.setNote('参考图保存中，请稍候', '#2F6FED'); return; }
     const refImages = this._refImages || [];
-    if (engine === 'xiaole' && refImages.length) body.reference_images = refImages.slice(0, XIAOLE_MAX_REF);
-    else if (refImages[0]) body.image = refImages[0];
+    if (this.data.refPreviews.length !== refImages.length) {
+      this.setNote('部分参考图已失效，请移除后重新选择', '#C2413A'); return;
+    }
+    const mentionError = imageMentions.validate(prompt, refImages.length);
+    if (mentionError) { this.setNote(mentionError, '#C2413A'); return; }
+    if (refImages.length) body.reference_images = refImages.slice(0, this._refLimit(engine));
 
     let endpoint;
     if (engine === 'nb2' || engine === 'pro') {

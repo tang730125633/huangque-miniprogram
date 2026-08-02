@@ -136,7 +136,7 @@
 }
 .avatar-add.disabled { opacity: 0.5; }
 
-/* ===== 果肉参考图多选网格（最多7张）===== */
+/* ===== 参考图多选网格 ===== */
 .ref-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; }
 .ref-cell { position: relative; }
 .ref-img { width: 100%; height: 140rpx; border-radius: 12rpx; background: var(--surface-muted); }
@@ -145,6 +145,11 @@
   background: rgba(0,0,0,0.65); color: #fff; font-size: 20rpx;
   display: flex; align-items: center; justify-content: center;
 }
+.ref-index {
+  position: absolute; left: 8rpx; bottom: 8rpx; padding: 4rpx 10rpx; border-radius: 999rpx;
+  background: rgba(0,0,0,0.68); color: #fff; font-size: 18rpx;
+}
+.ref-help { margin-top: 12rpx; line-height: 1.5; }
 .ref-add {
   height: 140rpx; border-radius: 12rpx; border: 2rpx dashed var(--line);
   display: flex; align-items: center; justify-content: center;

@@ -8,6 +8,7 @@ const videoWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/video/video
 
 assert.match(videoJs, /key: 'micro', name: '黄豆视频'/);
 assert.match(videoJs, /key: 'omni', name: '欧米视频'/);
+assert.match(videoJs, /defaultRatio: '16:9', maxRef: 6/);
 assert.match(videoJs, /key: 'sora', name: 'Sora 2'/);
 assert.match(videoWxml, /黄豆视频官方标准模型/);
 assert.match(videoWxml, /欧米视频官方通道/);
@@ -21,6 +22,8 @@ assert.match(videoWxml, /bindtap="selectOfficialDuration"/);
 assert.match(videoWxml, /bindtap="selectOfficialResolution"/);
 assert.match(videoWxml, /bindtap="selectSoraModel"/);
 assert.match(videoWxml, /仅支持 4、8、12 秒/);
+assert.match(videoWxml, /catchtap="insertGenerateRefMention"/);
+assert.match(videoWxml, /catchtap="insertCineRefMention"/);
 
 let requestOptions;
 let videoPage;
@@ -57,6 +60,21 @@ function pageFor(engine) {
     model: 'doubao-seedance-2-0-260128', duration: 5, resolution: '720p', generate_audio: true
   });
   assert.strictEqual(submitted.cost, 150);
+
+  const omni = pageFor('omni');
+  assert.strictEqual(omni.data.engineRefMax, 6);
+
+  const grok15 = pageFor('grok');
+  grok15._applyGrokModel('grok-imagine-video-1.5');
+  assert.strictEqual(grok15.data.engineRefMax, 7);
+  assert.deepStrictEqual(grok15.data.grokResList, ['720p']);
+  grok15.data.prompt = '让三张参考图中的人物在同一场景互动';
+  grok15.data.refPreviews = ['p1', 'p2', 'p3'];
+  grok15._b64.refImgs = ['r1', 'r2', 'r3'];
+  grok15.submitJob = (endpoint, body, cost) => { submitted = { endpoint, body, cost }; };
+  grok15.submitGenerate();
+  assert.deepStrictEqual(submitted.body.reference_images, ['r1', 'r2', 'r3']);
+  assert.strictEqual(submitted.body.resolution, '720p');
 
   const sora = pageFor('sora');
   sora.data.prompt = '一艘发光的飞船掠过没有人物的未来城市';
