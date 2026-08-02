@@ -55,7 +55,7 @@ const ENGINES_ALL = [
   { key: 'grok', name: '果肉视频', desc: '文生/图生·写实', ref: true, maxRef: 7 },
   { key: 'micro', name: '黄豆视频', desc: '官方有声·4–15 秒', ref: true, maxRef: 9 },
   { key: 'omni', name: '欧米视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 6 },
-  { key: 'sora', name: 'Sora 2', desc: '限时测试·非真人', ref: false, maxRef: 0 }
+  { key: 'sora', name: 'Sora 2', desc: '限时测试·单图首帧', ref: true, maxRef: 1 }
 ];
 const ENGINES = [ENGINES_ALL[0]];
 const OFFICIAL_VIDEO = {
@@ -201,6 +201,8 @@ Page({
     promptUndo: '',
     canUndoPrompt: false,
     prompt: '',
+    promptCursor: -1,
+    promptMentionOpen: false,
     refImgs: [],       // data URL 数组；果肉两种模型最多 7 张
     refPreviews: [],
     // 果肉官方线（xAI）参数：模型 / 分辨率 / 时长，动态计价
@@ -1006,7 +1008,7 @@ Page({
       const model = this.data.soraModel === 'sora-2-pro' ? 'sora-2-pro' : 'sora-2';
       const resolutions = soraResolutions(model);
       return {
-        engine: 'sora', engineRef: false, engineRefMax: 0, engineRefHint: '',
+        engine: 'sora', engineRef: true, engineRefMax: 1, engineRefHint: '（可选 · 1 张 · 不得含真人脸）',
         ratios: SORA_VIDEO.ratios, ratio: '9:16',
         soraModels: SORA_VIDEO.models, soraModel: model,
         soraDurations: SORA_VIDEO.durations, soraDuration: 4,
@@ -1136,7 +1138,21 @@ Page({
     this._syncGenPricing();
     this._draftChanged(true);
   },
-  onPrompt(e) { this.setData({ prompt: e.detail.value }); this._draftChanged(false); },
+  onPrompt(e) {
+    const cursor = Number.isInteger(e.detail.cursor) ? e.detail.cursor : e.detail.value.length;
+    this._promptMentionRange = imageMentions.trigger(e.detail.value, cursor);
+    this.setData({ prompt: e.detail.value, promptCursor: cursor, promptMentionOpen: !!(this._promptMentionRange && this.data.refPreviews.length) });
+    this._draftChanged(false);
+  },
+  selectPromptMention(e) {
+    const index = +e.currentTarget.dataset.i + 1;
+    const range = this._promptMentionRange;
+    if (!range || index > this.data.refPreviews.length) return;
+    const result = imageMentions.insert(this.data.prompt, index, range.start, range.end);
+    this._promptMentionRange = null;
+    this.setData({ prompt: result.value, promptCursor: result.cursor, promptMentionOpen: false });
+    this._draftChanged(true);
+  },
   selectVideoPromptTemplate(e) { this.setData({ videoPromptTemplateKey: e.currentTarget.dataset.k }); this._draftChanged(true); },
   onVideoTemplateField(e) {
     const key = e.currentTarget.dataset.key;
@@ -1233,7 +1249,9 @@ Page({
   insertGenerateRefMention(e) {
     const index = +e.currentTarget.dataset.i + 1;
     if (index < 1 || index > this.data.refPreviews.length) return;
-    this.setData({ prompt: imageMentions.append(this.data.prompt, index) });
+    const cursor = this.data.promptCursor >= 0 ? this.data.promptCursor : this.data.prompt.length;
+    const result = imageMentions.insert(this.data.prompt, index, cursor, cursor);
+    this.setData({ prompt: result.value, promptCursor: result.cursor, promptMentionOpen: false });
     this._draftChanged(true);
   },
 
@@ -1311,7 +1329,8 @@ Page({
         return;
       }
       this.submitJob('/api/gen/sora_video', {
-        model: model, prompt: prompt, seconds: seconds, ratio: this.data.ratio, resolution: resolution
+        model: model, prompt: prompt, seconds: seconds, ratio: this.data.ratio, resolution: resolution,
+        reference_images: this.data.refPreviews.length ? this._b64.refImgs : []
       }, this._genCost());
       return;
     }

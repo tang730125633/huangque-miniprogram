@@ -23,4 +23,18 @@ function append(prompt, index) {
   return value + (value && !/\s$/.test(value) ? ' ' : '') + '@图片' + index;
 }
 
-module.exports = { indexes, validate, usesShiftedIndex, append };
+function trigger(prompt, cursor) {
+  const value = String(prompt || '');
+  const end = Number.isInteger(cursor) && cursor >= 0 ? cursor : value.length;
+  return end > 0 && value.charAt(end - 1) === '@' ? { start: end - 1, end } : null;
+}
+
+function insert(prompt, index, start, end) {
+  const value = String(prompt || '');
+  const from = Number.isInteger(start) ? start : value.length;
+  const to = Number.isInteger(end) ? end : from;
+  const token = '@图片' + index;
+  return { value: value.slice(0, from) + token + value.slice(to), cursor: from + token.length };
+}
+
+module.exports = { indexes, validate, usesShiftedIndex, append, trigger, insert };

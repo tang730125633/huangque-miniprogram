@@ -8,5 +8,7 @@ assert.match(mentions.validate('参考 @图0', 2), /编号从 1 开始/);
 assert.strictEqual(mentions.usesShiftedIndex('保留 @图片1，调整 @图3', 2), true);
 assert.strictEqual(mentions.usesShiftedIndex('只用 @图片1', 2), false);
 assert.strictEqual(mentions.append('主体在左边', 2), '主体在左边 @图片2');
+assert.deepStrictEqual(mentions.trigger('主体参考 @', 6), { start: 5, end: 6 });
+assert.deepStrictEqual(mentions.insert('主体参考 @', 2, 5, 6), { value: '主体参考 @图片2', cursor: 9 });
 
 console.log('image mention tests passed');

@@ -218,7 +218,7 @@
           <view wx:for="{{soraResolutions}}" wx:key="*this" class="chip {{soraResolution===item?'active':''}}"
             data-v="{{item}}" bindtap="selectSoraResolution">{{item}}</view>
         </view>
-        <view class="muted small">限时测试仅支持非真人文生视频，不支持参考图</view>
+        <view class="muted small">支持 1 张非真人参考图作为首帧；不得上传含真人脸的图片</view>
       </view>
     </block>
 
@@ -261,7 +261,12 @@
     <view class="card">
       <view class="label">画面描述 <text wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="muted small">（润色后仍可编辑）</text></view>
       <textarea class="prompt" placeholder="{{engine==='grok' && grokOp==='edit' ? '描述想怎么改这段视频，例如：把背景换成海边日落' : '描述你想要的视频画面，例如：秋天枫叶飘落，慢镜头，暖色调'}}"
-        placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="{{engine==='sora' ? 2000 : 1000}}" auto-height show-confirm-bar="{{false}}"></textarea>
+        placeholder-class="ph" value="{{prompt}}" bindinput="onPrompt" maxlength="{{engine==='sora' ? 2000 : 1000}}" cursor="{{promptCursor}}" auto-height show-confirm-bar="{{false}}"></textarea>
+      <view wx:if="{{promptMentionOpen}}" class="mention-menu">
+        <view wx:for="{{refPreviews}}" wx:key="*this" class="mention-item" data-i="{{index}}" bindtap="selectPromptMention">
+          <image src="{{item}}" mode="aspectFill"></image><text>图片{{index + 1}}</text><text class="mention-token">@图片{{index + 1}}</text>
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{engineRef && !(engine==='grok' && grokOp==='edit')}}" class="card">
@@ -276,7 +281,7 @@
           <image class="ic-up" src="../../assets/icons/upload.svg"></image>
         </view>
       </view>
-      <view class="muted small ref-help">点击图片编号可插入 @图片N；单次最多选 9 张，可继续添加</view>
+      <view class="muted small ref-help">输入 @ 可选择图片；点击图片编号也可插入 @图片N</view>
     </view>
 
     <view wx:if="{{!(engine==='grok' && grokOp==='edit')}}" class="card">

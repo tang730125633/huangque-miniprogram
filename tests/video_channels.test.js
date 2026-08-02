@@ -22,6 +22,8 @@ assert.match(videoWxml, /bindtap="selectOfficialDuration"/);
 assert.match(videoWxml, /bindtap="selectOfficialResolution"/);
 assert.match(videoWxml, /bindtap="selectSoraModel"/);
 assert.match(videoWxml, /仅支持 4、8、12 秒/);
+assert.match(videoWxml, /1 张非真人参考图作为首帧/);
+assert.match(videoWxml, /bindtap="selectPromptMention"/);
 assert.match(videoWxml, /catchtap="insertGenerateRefMention"/);
 assert.match(videoWxml, /catchtap="insertCineRefMention"/);
 
@@ -86,9 +88,14 @@ function pageFor(engine) {
   assert.strictEqual(submitted.endpoint, '/api/gen/sora_video');
   assert.deepStrictEqual(submitted.body, {
     model: 'sora-2-pro', prompt: '一艘发光的飞船掠过没有人物的未来城市',
-    seconds: 8, ratio: '9:16', resolution: '1024p'
+    seconds: 8, ratio: '9:16', resolution: '1024p', reference_images: []
   });
   assert.strictEqual(submitted.cost, 1200);
+
+  sora.data.refPreviews = ['sora-preview'];
+  sora._b64.refImgs = ['data:image/png;base64,c29yYQ=='];
+  sora.submitGenerate();
+  assert.deepStrictEqual(submitted.body.reference_images, sora._b64.refImgs);
 
   sora.submitJob = videoPage.submitJob;
   sora._pollToken = 0;

@@ -35,6 +35,8 @@ Page({
     promptUndo: '',
     canUndoPrompt: false,
     prompt: '',
+    promptCursor: -1,
+    promptMentionOpen: false,
     engine: 'nb2',
     ratio: '9:16',
     quality: 'hd',
@@ -268,7 +270,19 @@ Page({
     return true;
   },
 
-  onPrompt(e) { this.setData({ prompt: e.detail.value }, () => this._queueDraftSave()); },
+  onPrompt(e) {
+    const cursor = Number.isInteger(e.detail.cursor) ? e.detail.cursor : e.detail.value.length;
+    this._promptMentionRange = imageMentions.trigger(e.detail.value, cursor);
+    this.setData({ prompt: e.detail.value, promptCursor: cursor, promptMentionOpen: !!(this._promptMentionRange && this.data.refPreviews.length) }, () => this._queueDraftSave());
+  },
+  selectPromptMention(e) {
+    const index = Number(e.currentTarget.dataset.i) + 1;
+    const range = this._promptMentionRange;
+    if (!range || index > this.data.refPreviews.length) return;
+    const result = imageMentions.insert(this.data.prompt, index, range.start, range.end);
+    this._promptMentionRange = null;
+    this.setData({ prompt: result.value, promptCursor: result.cursor, promptMentionOpen: false }, () => this.saveDraft());
+  },
 
   selectPromptTemplate(e) { this.setData({ promptTemplateKey: e.currentTarget.dataset.k }, () => this.saveDraft()); },
   onTemplateField(e) {
@@ -426,7 +440,9 @@ Page({
   insertRefMention(e) {
     const index = Number(e.currentTarget.dataset.i) + 1;
     if (!Number.isInteger(index) || index < 1 || index > this.data.refPreviews.length) return;
-    this.setData({ prompt: imageMentions.append(this.data.prompt, index) }, () => this.saveDraft());
+    const cursor = this.data.promptCursor >= 0 ? this.data.promptCursor : this.data.prompt.length;
+    const result = imageMentions.insert(this.data.prompt, index, cursor, cursor);
+    this.setData({ prompt: result.value, promptCursor: result.cursor, promptMentionOpen: false }, () => this.saveDraft());
   },
 
   generate() {
