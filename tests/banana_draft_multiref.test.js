@@ -57,7 +57,8 @@ const draftKey = drafts.scopedKey('hq_draft_banana_v1', 'token-a');
 const view = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/banana/banana.wxml'), 'utf8');
 
 assert.match(view, /wx:for="\{\{refPreviews\}\}"/);
-assert.match(view, /果肉最多 4 张/);
+assert.match(view, /最多 \{\{maxRefCount\}\} 张/);
+assert.match(view, /catchtap="insertRefMention"/);
 assert.match(view, /catchtap="removeRef"/);
 assert.match(view, /bindtap="clearDraft">清空草稿/);
 assert.match(view, /已自动保存|draftStatus/);
@@ -117,6 +118,10 @@ function flush() {
     options.success({ tempFiles: [1, 2, 3, 4].map((n) => ({ tempFilePath: 'temp:' + n })) });
   };
   let imagePage = page();
+  assert.strictEqual(imagePage._refLimit('nb2'), 14);
+  assert.strictEqual(imagePage._refLimit('pro'), 14);
+  assert.strictEqual(imagePage._refLimit('gpt'), 16);
+  assert.strictEqual(imagePage._refLimit('xiaole'), 4);
   imagePage.data.engine = 'xiaole';
   imagePage.data.maxRefCount = 4;
   imagePage.chooseRef();
@@ -127,21 +132,34 @@ function flush() {
   assert.deepStrictEqual(storage[draftKey].payload.refFiles, persistedFiles);
   assert.strictEqual(JSON.stringify(storage[draftKey].payload).includes('base64:'), false, '草稿不能保存 base64');
 
-  modalConfirm = false;
   imagePage.selectEngine({ currentTarget: { dataset: { k: 'gpt' } } });
-  assert.strictEqual(imagePage.data.engine, 'xiaole', '取消确认必须保留多图和原引擎');
+  assert.strictEqual(imagePage.data.engine, 'gpt');
+  assert.strictEqual(imagePage.data.maxRefCount, 16);
   assert.strictEqual(imagePage.data.refPreviews.length, 4);
+
+  chooseMedia = (options) => {
+    chosenCount = options.count;
+    options.success({ tempFiles: [{ tempFilePath: 'temp:5' }] });
+  };
+  imagePage.chooseRef();
+  await flush();
+  assert.strictEqual(chosenCount, 9, '微信单次选择最多 9 张，剩余容量通过继续添加补齐');
+  assert.strictEqual(imagePage.data.refPreviews.length, 5);
+
+  modalConfirm = false;
+  imagePage.selectEngine({ currentTarget: { dataset: { k: 'xiaole' } } });
+  assert.strictEqual(imagePage.data.engine, 'gpt', '取消确认必须保留多图和原引擎');
+  assert.strictEqual(imagePage.data.refPreviews.length, 5);
   modalConfirm = true;
-  imagePage.selectEngine({ currentTarget: { dataset: { k: 'gpt' } } });
-  assert.strictEqual(imagePage.data.maxRefCount, 1);
-  assert.deepStrictEqual(imagePage.data.refPreviews, ['saved:temp:1']);
-  assert.deepStrictEqual(imagePage._refImages, ['base64:saved:temp:1']);
-  assert.deepStrictEqual(removedFiles.slice(-3), ['saved:temp:2', 'saved:temp:3', 'saved:temp:4']);
-  assert.deepStrictEqual(storage[draftKey].payload.refFiles, ['saved:temp:1']);
+  imagePage.selectEngine({ currentTarget: { dataset: { k: 'xiaole' } } });
+  assert.strictEqual(imagePage.data.maxRefCount, 4);
+  assert.deepStrictEqual(imagePage.data.refPreviews, ['saved:temp:1', 'saved:temp:2', 'saved:temp:3', 'saved:temp:4']);
+  assert.deepStrictEqual(imagePage._refImages, ['base64:saved:temp:1', 'base64:saved:temp:2', 'base64:saved:temp:3', 'base64:saved:temp:4']);
+  assert.ok(removedFiles.includes('saved:temp:5'));
 
   modalConfirm = false;
   imagePage.clearRef();
-  assert.deepStrictEqual(imagePage.data.refPreviews, ['saved:temp:1'], '取消清空必须保留参考图');
+  assert.strictEqual(imagePage.data.refPreviews.length, 4, '取消清空必须保留参考图');
 
   reset();
   let requested = null;
@@ -164,13 +182,18 @@ function flush() {
   assert.ok(storage[draftKey], '未受理任务必须保留草稿');
 
   const singlePage = page();
-  Object.assign(singlePage.data, { engine: 'gpt', prompt: '单图修改', refPreviews: ['saved:a'] });
+  Object.assign(singlePage.data, { engine: 'gpt', prompt: '多图修改', refPreviews: ['saved:a', 'saved:b'] });
   singlePage._refImages = ['first', 'ignored'];
   singlePage.generate();
   await flush();
   assert.strictEqual(requested.endpoint, '/api/gen/image');
-  assert.strictEqual(requested.body.image, 'first');
-  assert.strictEqual(Object.prototype.hasOwnProperty.call(requested.body, 'reference_images'), false);
+  assert.deepStrictEqual(requested.body.reference_images, ['first', 'ignored']);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(requested.body, 'image'), false);
+
+  singlePage.insertRefMention({ currentTarget: { dataset: { i: 1 } } });
+  assert.match(singlePage.data.prompt, /@图片2/);
+  singlePage.removeRef({ currentTarget: { dataset: { i: 0 } } });
+  assert.strictEqual(singlePage.data.refPreviews.length, 2, '删除会导致 @图片N 错位时必须阻止');
 
   api.request = (endpoint, options) => {
     requested = { endpoint, body: options.data };

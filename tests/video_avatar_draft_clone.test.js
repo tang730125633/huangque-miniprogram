@@ -247,9 +247,11 @@ function saveTextDraft(context, mode, text) {
   destructiveModal.success({ confirm: false });
   assert.deepStrictEqual(confirmContext.data.refPreviews, confirmRefs);
   assert.deepStrictEqual(storage[confirmContext._draftKey('generate')].files, confirmRefs);
+  const modalCount = modals.length;
   confirmContext.selectGrokModel({ currentTarget: { dataset: { k: 'grok-imagine-video-1.5' } } });
-  destructiveModal = modals[modals.length - 1];
-  destructiveModal.success({ confirm: false });
+  assert.strictEqual(modals.length, modalCount, '高清 1.5 支持多图，不应弹出删除确认');
+  assert.strictEqual(confirmContext.data.engineRefMax, 7);
+  assert.deepStrictEqual(confirmContext.data.grokResList, ['720p']);
   assert.deepStrictEqual(confirmContext.data.refPreviews, confirmRefs);
   confirmContext.clearRef();
   destructiveModal = modals[modals.length - 1];

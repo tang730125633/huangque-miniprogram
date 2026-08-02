@@ -1,6 +1,7 @@
 const api = require('../../utils/api.js');
 const promptTemplates = require('../../utils/prompt_templates.js');
 const drafts = require('../../utils/drafts.js');
+const imageMentions = require('../../utils/image_mentions.js');
 
 const DRAFT_SAVE_DELAY = 300;
 
@@ -53,7 +54,7 @@ const RES_CINE = ['720p', '1080p'];
 const ENGINES_ALL = [
   { key: 'grok', name: '果肉视频', desc: '文生/图生·写实', ref: true, maxRef: 7 },
   { key: 'micro', name: '黄豆视频', desc: '官方有声·4–15 秒', ref: true, maxRef: 9 },
-  { key: 'omni', name: '欧米视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 3 },
+  { key: 'omni', name: '欧米视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 6 },
   { key: 'sora', name: 'Sora 2', desc: '限时测试·非真人', ref: false, maxRef: 0 }
 ];
 const ENGINES = [ENGINES_ALL[0]];
@@ -66,7 +67,7 @@ const OFFICIAL_VIDEO = {
   omni: {
     name: '欧米视频', model: 'gemini-omni-flash-preview',
     durations: [3, 5, 8, 10], ratios: ['9:16', '16:9'],
-    resolutions: ['720p'], defaultRatio: '16:9', maxRef: 3
+    resolutions: ['720p'], defaultRatio: '16:9', maxRef: 6
   }
 };
 const SORA_VIDEO = {
@@ -94,11 +95,11 @@ function officialVideoRequestKey() {
 // 果肉官方线：模型 × 分辨率 × 时长动态计价；参考图不额外收点。
 const GROK_MODELS = [
   { k: 'grok-imagine-video', name: '标准 1.0', desc: '480p/720p' },
-  { k: 'grok-imagine-video-1.5', name: '高清 1.5', desc: '最高 1080p' }
+  { k: 'grok-imagine-video-1.5', name: '高清 1.5', desc: '参考图·720p' }
 ];
 const GROK_PRICE = {
   'grok-imagine-video': { '480p': 10, '720p': 12 },
-  'grok-imagine-video-1.5': { '480p': 15, '720p': 25, '1080p': 44 }
+  'grok-imagine-video-1.5': { '720p': 25 }
 };
 const GROK_DURATIONS = [5, 8, 10];
 const VIDEO_COST = 30;       // 口播最低一档：1~30 秒 30 点
@@ -200,12 +201,12 @@ Page({
     promptUndo: '',
     canUndoPrompt: false,
     prompt: '',
-    refImgs: [],       // data URL 数组；标准版最多 7 张，1.5 仅 1 张首帧图
+    refImgs: [],       // data URL 数组；果肉两种模型最多 7 张
     refPreviews: [],
     // 果肉官方线（xAI）参数：模型 / 分辨率 / 时长，动态计价
     grokModels: GROK_MODELS,
     grokModel: 'grok-imagine-video',
-    grokResList: ['480p', '720p'],   // 1.5 另加 1080p（selectGrokModel 里切换）
+    grokResList: ['480p', '720p'],
     grokRes: '720p',
     grokDurs: GROK_DURATIONS,
     grokDur: 10,
@@ -551,7 +552,7 @@ Page({
       const engine = ENGINES_ALL.some((item) => item.key === payload.engine) ? payload.engine : 'grok';
       const grokModel = payload.grokModel === 'grok-imagine-video-1.5' ? payload.grokModel : 'grok-imagine-video';
       const engineDefaults = this._engineState(engine);
-      const refMax = engine === 'grok' ? (grokModel === 'grok-imagine-video-1.5' ? 1 : GEN_MAX_REF) : engineDefaults.engineRefMax;
+      const refMax = engine === 'grok' ? GEN_MAX_REF : engineDefaults.engineRefMax;
       const refs = (payload.refFiles || []).slice(0, refMax).filter(Boolean);
       const patch = Object.assign(this._engineState(engine), {
         prompt: String(payload.prompt || '').slice(0, 2000), refPreviews: refs,
@@ -569,11 +570,12 @@ Page({
         videoTplAction: String(payload.videoTplAction || ''), videoTplStyle: String(payload.videoTplStyle || '')
       });
       if (patch.grokModel === 'grok-imagine-video-1.5') {
-        patch.grokResList = ['480p', '720p', '1080p']; patch.engineRefMax = 1; patch.engineRefHint = '（必选 · 仅 1 张首帧图）';
+        patch.grokResList = ['720p']; patch.engineRefMax = GEN_MAX_REF; patch.engineRefHint = '（必选 · 最多 ' + GEN_MAX_REF + ' 张）';
       } else {
         patch.grokResList = ['480p', '720p']; patch.engineRefMax = engine === 'grok' ? GEN_MAX_REF : patch.engineRefMax;
         if (engine === 'grok') patch.engineRefHint = '（可选 · 最多 ' + GEN_MAX_REF + ' 张）';
       }
+      if (engine === 'grok' && refs.length) patch.grokRes = '720p';
       if (patch.grokResList.indexOf(patch.grokRes) < 0) patch.grokRes = '720p';
       if (engineDefaults.officialDurations && engineDefaults.officialDurations.length
         && engineDefaults.officialDurations.indexOf(patch.officialDuration) < 0) patch.officialDuration = engineDefaults.officialDuration;
@@ -1012,12 +1014,13 @@ Page({
       };
     }
     const cfg = OFFICIAL_VIDEO[eng.key];
-    const maxRef = cfg ? cfg.maxRef : (this.data.grokModel === 'grok-imagine-video-1.5' ? 1 : 7);
+    const maxRef = cfg ? cfg.maxRef : GEN_MAX_REF;
     return {
       engine: eng.key,
       engineRef: eng.ref,
       engineRefMax: maxRef,
-      engineRefHint: maxRef === 1 ? '（必选 · 仅 1 张首帧图）' : '（可选 · 最多 ' + maxRef + ' 张）',
+      engineRefHint: eng.key === 'grok' && this.data.grokModel === 'grok-imagine-video-1.5'
+        ? '（必选 · 最多 ' + maxRef + ' 张）' : '（可选 · 最多 ' + maxRef + ' 张）',
       ratios: cfg ? cfg.ratios : RATIOS_GEN,
       ratio: cfg ? cfg.defaultRatio : '9:16',
       officialDurations: cfg ? cfg.durations : [],
@@ -1046,6 +1049,8 @@ Page({
     const engine = e.currentTarget.dataset.k;
     const next = this._engineState(engine);
     if (this.data.refPreviews.length > next.engineRefMax) {
+      const mentionError = imageMentions.validate(this.data.prompt, next.engineRefMax);
+      if (mentionError) { this.setNote(mentionError + '，请先修改提示词', C_ERR); return; }
       const removeCount = this.data.refPreviews.length - next.engineRefMax;
       wx.showModal({
         title: '切换会移除参考图',
@@ -1071,40 +1076,28 @@ Page({
     this._draftChanged(true);
   },
   selectGrokModel(e) {
-    const model = e.currentTarget.dataset.k;
-    if (model === 'grok-imagine-video-1.5' && this.data.refPreviews.length > 1) {
-      wx.showModal({
-        title: '切换会移除参考图',
-        content: '高清 1.5 仅支持 1 张首帧图，将只保留第 1 张。是否继续？',
-        confirmText: '继续切换',
-        success: (res) => { if (res.confirm) this._applyGrokModel(model); }
-      });
-      return;
-    }
-    this._applyGrokModel(model);
+    this._applyGrokModel(e.currentTarget.dataset.k);
   },
   _applyGrokModel(model) {
     this._nextMediaToken('generate_refs');
     const is15 = model === 'grok-imagine-video-1.5';
-    const resList = is15 ? ['480p', '720p', '1080p'] : ['480p', '720p'];
+    const resList = is15 ? ['720p'] : ['480p', '720p'];
     const patch = {
       grokModel: model, grokResList: resList,
-      engineRefMax: is15 ? 1 : 7,
-      engineRefHint: is15 ? '（必选 · 仅 1 张首帧图）' : '（可选 · 最多 7 张）'
+      engineRefMax: GEN_MAX_REF,
+      engineRefHint: is15 ? '（必选 · 最多 7 张）' : '（可选 · 最多 7 张）'
     };
-    // 1080p 只有 1.5 支持，切回 1.0 时收敛到 720p，避免 400
-    if (resList.indexOf(this.data.grokRes) < 0) patch.grokRes = '720p';
-    if (is15 && this.data.refPreviews.length > 1) {
-      this._b64.refImgs = this._b64.refImgs.slice(0, 1);
-      patch.refPreviews = this.data.refPreviews.slice(0, 1);
-      wx.showToast({ title: '高清 1.5 仅保留第1张首帧图', icon: 'none' });
-    }
+    if (is15 || this.data.refPreviews.length || resList.indexOf(this.data.grokRes) < 0) patch.grokRes = '720p';
     this.setData(patch);
     this._syncGenPricing();
     this._draftChanged(true);
   },
   selectGrokRes(e) {
-    this.setData({ grokRes: e.currentTarget.dataset.v });
+    const resolution = e.currentTarget.dataset.v;
+    if (this.data.refPreviews.length && resolution !== '720p') {
+      this.setNote('使用参考图时仅支持 720p', C_ERR); return;
+    }
+    this.setData({ grokRes: resolution });
     this._syncGenPricing();
     this._draftChanged(true);
   },
@@ -1177,18 +1170,15 @@ Page({
   },
   selectRatio(e) { this.setData({ ratio: e.currentTarget.dataset.v }); this._draftChanged(true); },
   chooseRef() {
-    // 标准版最多 7 张参考图；高清 1.5 只接受 1 张首帧图。
     // reference_images 要「字符串数组」（dataURL/URL），服务端转存 COS 后喂上游
-    const maxRef = this.data.engine === 'grok'
-      ? (this.data.grokModel === 'grok-imagine-video-1.5' ? 1 : GEN_MAX_REF)
-      : this.data.engineRefMax;
+    const maxRef = this.data.engineRefMax;
     const left = maxRef - this.data.refPreviews.length;
     if (left <= 0) {
-      this.setNote(maxRef === 1 ? '果肉高清 1.5 仅支持 1 张首帧图' : '参考图最多 ' + maxRef + ' 张', C_ERR);
+      this.setNote('参考图最多 ' + maxRef + ' 张', C_ERR);
       return;
     }
     wx.chooseMedia({
-      count: left, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      count: Math.min(left, 9), mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
       success: (res) => {
         const mode = this.data.mode;
         const token = this._nextMediaToken('generate_refs');
@@ -1201,7 +1191,9 @@ Page({
             const accepted = items.slice(0, Math.max(0, maxRef - this.data.refPreviews.length));
             this._discardPersisted(items.slice(accepted.length));
             this._b64.refImgs = this._b64.refImgs.concat(accepted.map((item) => item.data));
-            this.setData({ refPreviews: this.data.refPreviews.concat(accepted.map((item) => item.path)) });
+            const patch = { refPreviews: this.data.refPreviews.concat(accepted.map((item) => item.path)) };
+            if (this.data.engine === 'grok') patch.grokRes = '720p';
+            this.setData(patch);
             this._syncGenPricing();
             this._draftChanged(true);
           });
@@ -1210,6 +1202,9 @@ Page({
   },
   removeRef(e) {
     const i = +e.currentTarget.dataset.i;
+    if (imageMentions.usesShiftedIndex(this.data.prompt, i + 1)) {
+      this.setNote('提示词已引用图片 ' + (i + 1) + ' 或后续图片，请先删除对应 @图片N', C_ERR); return;
+    }
     this._b64.refImgs.splice(i, 1);
     const prevs = this.data.refPreviews.slice(); prevs.splice(i, 1);
     this.setData({ refPreviews: prevs });
@@ -1218,6 +1213,9 @@ Page({
   },
   clearRef() {
     if (!this.data.refPreviews.length) return;
+    if (imageMentions.usesShiftedIndex(this.data.prompt, 1)) {
+      this.setNote('提示词仍有 @图片N，请先删除引用再清空图片', C_ERR); return;
+    }
     wx.showModal({
       title: '清空参考图',
       content: '将从当前草稿移除全部参考图，是否继续？',
@@ -1230,6 +1228,12 @@ Page({
     this._b64.refImgs = [];
     this.setData({ refPreviews: [] });
     this._syncGenPricing();
+    this._draftChanged(true);
+  },
+  insertGenerateRefMention(e) {
+    const index = +e.currentTarget.dataset.i + 1;
+    if (index < 1 || index > this.data.refPreviews.length) return;
+    this.setData({ prompt: imageMentions.append(this.data.prompt, index) });
     this._draftChanged(true);
   },
 
@@ -1285,6 +1289,8 @@ Page({
       this.setNote('画面描述太短，请至少输入 5 个有效文字，例如“让人物缓慢跑起来”', C_ERR);
       return;
     }
+    const mentionError = imageMentions.validate(prompt, this.data.refPreviews.length);
+    if (mentionError) { this.setNote(mentionError, C_ERR); return; }
     if (this.data.engine === 'grok' && this.data.grokOp === 'edit') {
       if (!this._b64.editVideo) { this.setNote('请先上传 MP4 参考视频', C_ERR); return; }
       const editBody = {
@@ -1315,9 +1321,12 @@ Page({
         this.setNote('果肉视频最长支持 10 秒', C_ERR);
         return;
       }
-      if (this.data.grokModel === 'grok-imagine-video-1.5' && this.data.refPreviews.length !== 1) {
-        this.setNote('果肉高清 1.5 必须上传且只能上传 1 张首帧图', C_ERR);
+      if (this.data.grokModel === 'grok-imagine-video-1.5' && this.data.refPreviews.length < 1) {
+        this.setNote('果肉高清 1.5 至少需要 1 张参考图', C_ERR);
         return;
+      }
+      if (this.data.refPreviews.length && this.data.grokRes !== '720p') {
+        this.setNote('使用参考图时仅支持 720p', C_ERR); return;
       }
       // 果肉官方线（xAI）：模型/分辨率/时长全量传给后端，动态计价
       body.model = this.data.grokModel;
@@ -1814,6 +1823,9 @@ Page({
       this.setNote((mode === 'duo' ? '双人动作模仿正好选 2 个形象' : '开放式生成最多选 ' + max + ' 个形象'), C_ERR);
       return;
     } else ids.push(id);
+    if (mode === 'open' && ids.length + this.data.cineRefPreviews.length > CINE_MAX_MEDIA_IMAGES) {
+      this.setNote('形象与参考图合计最多 ' + CINE_MAX_MEDIA_IMAGES + ' 张', C_ERR); return;
+    }
     this._setAvatarIds(ids);
     this._draftChanged(true);
   },
@@ -1914,9 +1926,18 @@ Page({
   },
   removeCineRefImg(e) {
     const i = +e.currentTarget.dataset.i;
+    if (imageMentions.usesShiftedIndex(this.data.cinePrompt, i + 1)) {
+      this.setNote('画面描述已引用图片 ' + (i + 1) + ' 或后续图片，请先删除对应 @图片N', C_ERR); return;
+    }
     this._b64.cineRefImgs.splice(i, 1);
     const prevs = this.data.cineRefPreviews.slice(); prevs.splice(i, 1);
     this.setData({ cineRefPreviews: prevs });
+    this._draftChanged(true);
+  },
+  insertCineRefMention(e) {
+    const index = +e.currentTarget.dataset.i + 1;
+    if (index < 1 || index > this.data.cineRefPreviews.length) return;
+    this.setData({ cinePrompt: imageMentions.append(this.data.cinePrompt, index) });
     this._draftChanged(true);
   },
 
@@ -2031,6 +2052,8 @@ Page({
       const prompt = (this.data.cinePrompt || '').trim();
       if (!prompt) { this.setNote('开放式生成请填写画面描述', C_ERR); return; }
       if (prompt.length > CINE_PROMPT_MAX) { this.setNote('画面描述不能超过 ' + CINE_PROMPT_MAX + ' 字', C_ERR); return; }
+      const mentionError = imageMentions.validate(prompt, this.data.cineRefPreviews.length);
+      if (mentionError) { this.setNote(mentionError, C_ERR); return; }
       if (this.data.cineRefVideos.length !== this._b64.cineRefVideos.filter(Boolean).length
         || this.data.cineRefPreviews.length !== this._b64.cineRefImgs.filter(Boolean).length) {
         this.setNote('部分参考媒体已失效，请移除后重新选择', C_ERR); return;
