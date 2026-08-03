@@ -49,4 +49,4 @@ page { background: #050509; }
 
 .empty { text-align: center; color: rgba(255,255,255,0.5); font-size: 26rpx; padding: 120rpx 0; }
 .more { text-align: center; color: rgba(255,255,255,0.4); font-size: 23rpx; padding: 24rpx 0 8rpx; }
-.bottom-safe { height: calc(40rpx + constant(safe-area-inset-bottom)); height: calc(40rpx + env(safe-area-inset-bottom)); }
+.bottom-safe { height: calc(150rpx + constant(safe-area-inset-bottom)); height: calc(150rpx + env(safe-area-inset-bottom)); }

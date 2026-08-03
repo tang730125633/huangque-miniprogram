@@ -39,12 +39,11 @@ function loginUrl(value) {
 function navigateAfterLogin(value, fallback) {
   const target = LOGIN_REDIRECTS[loginRedirect(value)];
   if (target) {
-    wx.redirectTo({ url: target });
+    if (target === '/pages/my-card/my-card') wx.switchTab({ url: target });
+    else wx.redirectTo({ url: target });
     return;
   }
-  const next = fallback || '/pages/home/home';
-  if (next === '/pages/my-card/my-card') wx.redirectTo({ url: next });
-  else wx.switchTab({ url: next });
+  wx.switchTab({ url: fallback || '/pages/home/home' });
 }
 
 function isMembershipRequired(res) {

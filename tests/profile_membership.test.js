@@ -48,6 +48,7 @@ const profileWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/p
 assert.match(profileJs, /membership\.buildMembershipView\(user\)/);
 assert.match(profileWxml, /membership\.discountText/);
 assert.match(profileJs, /goRecharge\(\) \{ wx\.navigateTo\(\{ url: '\/pages\/recharge\/recharge' \}\); \}/);
+assert.match(profileJs, /goCard\(\) \{ wx\.switchTab\(\{ url: '\/pages\/my-card\/my-card' \}\); \}/);
 assert.match(profileWxml, /wx:if="\{\{membership\.status !== 'active'\}\}"/);
 assert.match(profileWxml, /¥499 · 赠 1000 点/);
 assert.doesNotMatch(profileJs, /7\.5折|5\.5折|7500|5500/);

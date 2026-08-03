@@ -48,13 +48,13 @@ function completeProject() { return { id: 'done', coach_state: { completed_modul
   test = pageWith({ statusCode: 200, data: [] });
   test.page.data.cardReady = false;
   await test.page.onTapPrimaryCreation.call(test.page);
-  assert.deepStrictEqual(test.navigations, ['/pages/my-card/my-card']);
+  assert.deepStrictEqual(test.tabNavigations, ['/pages/my-card/my-card']);
   assert.deepStrictEqual(test.requests, []);
 
   test.page.skipVideoIp12Prompt.call(test.page);
   assert.strictEqual(test.page.data.videoIp12PromptVisible, false);
   test.page.createIp12BeforeVideo.call(test.page);
-  assert.deepStrictEqual(test.navigations, ['/pages/my-card/my-card', '/pages/ip12/ip12']);
+  assert.deepStrictEqual(test.navigations, ['/pages/ip12/ip12']);
 
   test = pageWith({ statusCode: 200, data: [{ id: 'draft', coach_state: { completed_modules: [] } }] });
   await test.page.onTapPrimaryCreation.call(test.page);

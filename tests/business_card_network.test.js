@@ -92,8 +92,10 @@ const root = path.resolve(__dirname, '..');
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
 ['pages/my-card/my-card', 'pages/card/card', 'pages/card-edit/card-edit', 'pages/network/network'].forEach((page) => assert.ok(appJson.pages.includes(page)));
 assert.strictEqual(appJson.pages[0], 'pages/my-card/my-card');
+assert.strictEqual(appJson.tabBar.custom, true);
 assert.deepStrictEqual(appJson.tabBar.list.map((item) => [item.pagePath, item.text]), [
-  ['pages/home/home', '首页'],
+  ['pages/my-card/my-card', '我的名片'],
+  ['pages/home/home', '黄雀AI工作台'],
   ['pages/inspiration/inspiration', '一键跟创'],
   ['pages/assets/assets', '历史作品'],
   ['pages/profile/profile', '我的']
@@ -114,10 +116,11 @@ const myCardWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/my-card/my
 const rechargePage = fs.readFileSync(path.join(root, 'miniprogram/pages/recharge/recharge.js'), 'utf8');
 const loginPage = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.js'), 'utf8');
 const loginWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.wxml'), 'utf8');
+const customTabBar = require('../miniprogram/custom-tab-bar/index.js');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
-assert.match(myCardPage, /openWorkbench\(\) \{ wx\.switchTab\(\{ url: '\/pages\/home\/home' \}\); \}/);
 assert.match(myCardPage, /openAccount\(\) \{ wx\.switchTab\(\{ url: '\/pages\/profile\/profile' \}\); \}/);
-assert.match(myCardWxml, /黄雀 AI 工作台/);
+assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['我的名片', '黄雀AI工作台']);
+assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
 assert.match(publicCard, /auth: false/);
 assert.match(publicCard, /retry\(\)/);
 assert.match(publicCard, /data\.invite_valid === true/);
@@ -365,17 +368,20 @@ require('node:test')('follow-create requires a complete WeChat-bound card', asyn
   delete require.cache[require.resolve('../miniprogram/pages/inspiration/inspiration.js')];
   require('../miniprogram/pages/inspiration/inspiration.js');
   api.getToken = () => 'token';
+  const tabs = [];
   const pages = [];
   global.wx.showToast = function () {};
+  global.wx.switchTab = ({ url }) => tabs.push(url);
   global.wx.navigateTo = ({ url }) => pages.push(url);
   const context = { _all: [{ id: 'case-1', prompt: '测试提示', engineKey: 'nb2' }] };
   api.request = () => Promise.resolve({ statusCode: 200, data: { card: { name: '王小明', title: '设计师', company: '黄雀', phone: '13800138000' }, wechat_bound: false } });
   await inspirationDefinition.follow.call(context, { currentTarget: { dataset: { id: 'case-1' } } });
-  assert.deepStrictEqual(pages, ['/pages/my-card/my-card']);
+  assert.deepStrictEqual(tabs, ['/pages/my-card/my-card']);
+  assert.deepStrictEqual(pages, []);
 
   api.request = () => Promise.resolve({ statusCode: 200, data: { card: { name: '王小明', title: '设计师', company: '黄雀', phone: '13800138000' }, wechat_bound: true } });
   await inspirationDefinition.follow.call(context, { currentTarget: { dataset: { id: 'case-1' } } });
-  assert.deepStrictEqual(pages, ['/pages/my-card/my-card', '/pages/banana/banana']);
+  assert.deepStrictEqual(pages, ['/pages/banana/banana']);
 });
 
 const networkPage = require('../miniprogram/pages/network/network.js');

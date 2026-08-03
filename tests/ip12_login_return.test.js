@@ -22,7 +22,7 @@ api.navigateAfterLogin('', '/pages/my-card/my-card');
 assert.deepStrictEqual(calls, [
   ['redirectTo', { url: '/pages/ip12/ip12' }],
   ['switchTab', { url: '/pages/profile/profile' }],
-  ['redirectTo', { url: '/pages/my-card/my-card' }]
+  ['switchTab', { url: '/pages/my-card/my-card' }]
 ]);
 
 const loginPage = fs.readFileSync('miniprogram/pages/login/login.js', 'utf8');

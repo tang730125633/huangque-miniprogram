@@ -1,3 +1,4 @@
+.container { padding-bottom: calc(150rpx + env(safe-area-inset-bottom)); }
 .small { font-size: 22rpx; }
 .user-card { display: flex; align-items: center; gap: 24rpx; margin-top: 20rpx; }
 .avatar-ring {
