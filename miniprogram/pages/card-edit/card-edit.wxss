@@ -28,6 +28,8 @@
 .media-title-input { width: 100%; height: 68rpx; margin-top: 12rpx; padding: 0 14rpx; box-sizing: border-box; border: 1rpx solid var(--line); border-radius: 14rpx; color: var(--text); background: var(--surface-muted); font-size: 21rpx; }
 .video-list { display: flex; flex-direction: column; gap: 22rpx; margin-top: 20rpx; }
 .video-slot { height: 170rpx; }
+.video-slot video, .video-empty { width: 100%; height: 100%; }
+.video-empty { display: flex; align-items: center; justify-content: center; }
 .ai-section { border-color: rgba(240,165,75,.34); background: linear-gradient(160deg, rgba(240,165,75,.07), var(--surface) 45%); }
 .credential { padding-bottom: 18rpx; border-bottom: 1rpx solid var(--line); }
 .credential text:first-child { color: var(--text-muted); }

@@ -42,6 +42,9 @@ assert.deepStrictEqual(card.worksPayload(workSlots.images, workSlots.videos, wor
   { type: 'video', key: 'cards/works/video-1.mp4', title: '个人形象展示', slot: 1 },
   { type: 'legacy', value: 'preserve-me' }
 ]);
+const slottedVideo = card.workSlots([{ type: 'video', slot: 3, key: 'cards/1/work_video_3/demo.mp4', title: '第三条视频' }]);
+assert.strictEqual(slottedVideo.videos[0].url || '', '');
+assert.strictEqual(slottedVideo.videos[2].title, '第三条视频');
 const localWork = card.workSlots([{ type: 'image', url: 'wxfile://temporary.jpg', title: '待上传' }]);
 assert.deepStrictEqual(card.worksPayload(localWork.images, localWork.videos, localWork.other), [
   { type: 'image', title: '待上传', slot: 1 }
@@ -213,7 +216,11 @@ assert.match(editCardJs, /pendingMedia/);
 assert.match(editCardJs, /size > 4 \* 1024 \* 1024/);
 assert.match(editCardJs, /function uploadMedia\(filePath, field\)/);
 assert.match(editCardJs, /function uploadMediaRecord\(filePath, field\)/);
-assert.match(editCardJs, /data: \{ field, data: 'data:image\/jpeg;base64,' \+ result\.data/);
+assert.match(editCardJs, /chooseWorkVideo\(e\)/);
+assert.match(editCardJs, /mediaType: \['video'\]/);
+assert.match(editCardJs, /work_video_/);
+assert.doesNotMatch(editCardJs, /mediaComingSoon/);
+assert.match(editCardJs, /video \? 'video\/mp4' : 'image\/jpeg'/);
 assert.match(editCardJs, /uploadMediaRecord\(pendingMedia\[field\], field\)/);
 assert.doesNotMatch(editCardJs, /uploadPendingMedia[\s\S]*\/api\/auth\/card\/me/);
 assert.match(editCardJs, /invite_attribution_token/);
@@ -227,6 +234,8 @@ assert.match(editCard, /workImages/);
 assert.match(editCard, /data-work-index/);
 assert.match(editCard, /bindtap="chooseMedia"/);
 assert.match(editCard, /workVideos/);
+assert.match(editCard, /bindtap="chooseWorkVideo"/);
+assert.match(editCard, /<video wx:if="\{\{item\.url\}\}"/);
 assert.match(editCard, /bindinput="workTitleInput"/);
 assert.match(editCard, /maxlength="12"/);
 assert.match(editCard, /maxlength="16"/);
@@ -278,12 +287,18 @@ assert.match(myCardPage, /\/api\/auth\/card\/wechat\/bind/);
 assert.match(cardUtilSource, /card_unbound/);
 assert.match(myCardPage, /if \(this\.data\.binding\) return/);
 assert.match(myCardWxml, /已有黄雀 AI 账号/);
+assert.match(myCardWxml, /我的名片/);
+assert.match(myCardWxml, /公开中/);
+assert.match(myCardWxml, /class="header-edit" bindtap="editCard"/);
+assert.match(myCardWxml, /class="contact-grid"/);
 assert.match(myCardWxml, /workImages/);
 assert.match(myCardWxml, /作品与经历/);
 assert.match(myCardWxml, /添加长图/);
 assert.match(myCardWxml, /添加横版视频/);
 assert.match(myCardWxss, /\.image-placeholder \{ height: 760rpx; \}/);
 assert.match(myCardWxss, /\.video-placeholder \{ height: 350rpx; \}/);
+assert.match(myCardWxss, /\.business-card \{ position: relative; overflow: hidden; padding: 34rpx 28rpx 24rpx;/);
+assert.match(myCardWxss, /\.contact-grid \{ position: relative; display: grid; grid-template-columns: repeat\(3, 1fr\);/);
 assert.match(homePage, /backToCard\(\) \{ wx\.switchTab\(\{ url: '\/pages\/my-card\/my-card' \}\); \}/);
 assert.match(homeWxml, /我的名片/);
 assert.match(myCardWxml, /disabled="\{\{binding\}\}"/);
@@ -350,6 +365,35 @@ editModule.uploadMedia('/tmp/avatar.jpg', 'avatar').then((url) => {
     options: { method: 'POST', data: { field: 'avatar', data: 'data:image/jpeg;base64,QUJD' }, timeout: 60000 }
   });
 }).catch((error) => { throw error; });
+
+require('node:test')('work video upload uses the real MP4 media endpoint contract', async () => {
+  let request;
+  api.request = function (requestPath, options) {
+    request = { path: requestPath, options };
+    return Promise.resolve({ statusCode: 200, data: { url: 'https://example.test/work.mp4', key: 'cards/1/work_video_1/demo.mp4' } });
+  };
+  const uploaded = await editModule.uploadMediaRecord('/tmp/work.mp4', 'work_video_1');
+  assert.strictEqual(uploaded.url, 'https://example.test/work.mp4');
+  assert.strictEqual(request.path, '/api/auth/card/media');
+  assert.strictEqual(request.options.data.field, 'work_video_1');
+  assert.strictEqual(request.options.data.data, 'data:video/mp4;base64,QUJD');
+  assert.strictEqual(request.options.timeout, 120000);
+});
+
+require('node:test')('anonymous video selection keeps the slot and pending upload', () => {
+  let patch;
+  global.wx.chooseMedia = (options) => options.success({ tempFiles: [{ fileType: 'video', tempFilePath: 'wxfile://demo.mp4', size: 1024 }] });
+  global.wx.getFileSystemManager = () => ({ statSync: () => ({ size: 1024 }) });
+  cardEditDefinition.chooseWorkVideo.call({
+    data: { anonymous: true },
+    setData(next) { patch = next; }
+  }, { currentTarget: { dataset: { workIndex: 2 } } });
+  assert.deepStrictEqual(patch, {
+    'workVideos[2].url': 'wxfile://demo.mp4',
+    'pendingMedia.work_video_3': 'wxfile://demo.mp4',
+    error: ''
+  });
+});
 
 require('node:test')('registering a draft card publishes it before redirecting', { timeout: 1000 }, async () => {
   delete store.hq_token;
