@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const cardUtil = require('../../utils/card.js');
 const RAW = require('./inspirations-data.js');
 
 const IMG_BASE = 'https://huangquechuanmei.com/';
@@ -128,7 +129,16 @@ Page({
     const item = this._all.find((i) => i.id === id);
     if (!item) return;
     if (!api.getToken()) { wx.navigateTo({ url: '/pages/login/login' }); return; }
-    wx.setStorageSync('hq_followcreate', { prompt: item.prompt, engine: item.engineKey });
-    wx.navigateTo({ url: '/pages/banana/banana' });
+    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+      const data = res.data || {};
+      const ownerCard = data.card || {};
+      if (res.statusCode !== 200 || !cardUtil.isComplete(ownerCard) || !(data.wechat_bound || ownerCard.wechat_bound)) {
+        wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
+        wx.switchTab({ url: '/pages/my-card/my-card' });
+        return;
+      }
+      wx.setStorageSync('hq_followcreate', { prompt: item.prompt, engine: item.engineKey });
+      wx.navigateTo({ url: '/pages/banana/banana' });
+    }).catch(() => wx.showToast({ title: '名片状态读取失败', icon: 'none' }));
   }
 });

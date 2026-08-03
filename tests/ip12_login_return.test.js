@@ -28,7 +28,8 @@ assert.match(loginPage, /const redirect = api\.loginRedirect\(options && options
 assert.match(loginPage, /api\.navigateAfterLogin\(this\.data\.redirect/);
 
 calls.length = 0;
-global.getCurrentPages = () => [{ route: 'pages/ip12/ip12' }];
+let currentRoute = 'pages/ip12/ip12';
+global.getCurrentPages = () => [{ route: currentRoute }];
 global.wx.getStorageSync = () => 'expired-token';
 global.wx.removeStorageSync = () => {};
 global.wx.request = (options) => options.success({ statusCode: 401, data: {} });
@@ -38,5 +39,12 @@ api.request('/api/gen/digital-ip/projects').then(() => {
   assert.deepStrictEqual(calls, [
     ['reLaunch', { url: '/pages/login/login?redirect=ip12' }]
   ]);
-  console.log('ip12 login return checks passed');
+  calls.length = 0;
+  currentRoute = 'pages/my-card/my-card';
+  return api.request('/api/auth/card/me');
+}).then(() => {
+  assert.deepStrictEqual(calls, [
+    ['reLaunch', { url: '/pages/my-card/my-card' }]
+  ]);
+  console.log('ip12 and card login return checks passed');
 });

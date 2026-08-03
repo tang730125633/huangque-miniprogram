@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const cardUtil = require('../../utils/card.js');
 
 Page({
   data: {
@@ -6,6 +7,7 @@ Page({
     membershipActive: false,
     membershipEnforced: false,
     membershipReady: false,
+    cardReady: false,
     videoEntryChecking: false,
     videoIp12PromptVisible: false,
     bannerCurrent: 0,
@@ -40,7 +42,7 @@ Page({
     // 教程与创作案例
     tutorials: [
       { id: 't1', title: 'AI 灵感作图入门', image: '/assets/home/tutorial-image-creation.jpg', path: '/pages/banana/banana' },
-      { id: 't2', title: '创作灵感案例', image: '/assets/home/tutorial-video-analysis.jpg', path: '/pages/inspiration/inspiration', tab: true },
+      { id: 't2', title: '创作灵感案例', image: '/assets/home/tutorial-video-analysis.jpg', path: '/pages/inspiration/inspiration' },
       { id: 't3', title: '数字化 IP 制作', image: '/assets/home/tutorial-digital-human.jpg', path: '/pages/ip12/ip12' }
     ]
   },
@@ -48,8 +50,8 @@ Page({
   onShow() {
     // swiper 只在首页可见时运行，避免切到其它 tab 后后台定时切页造成卡顿。
     if (!this.data.bannerAutoplay) this.setData({ bannerAutoplay: true });
-    if (api.getToken()) { this.setData({ membershipReady: false }); this.refreshPoints(); }
-    else this.setData({ points: null, membershipReady: false });
+    if (api.getToken()) { this.setData({ membershipReady: false, cardReady: false }); this.refreshPoints(); }
+    else this.setData({ points: null, membershipReady: false, cardReady: false });
   },
 
   onHide() {
@@ -62,6 +64,11 @@ Page({
   _guardNav(path, onAllowed) {
     if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(path) }); return null; }
     if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return null; }
+    if (!this.data.cardReady) {
+      wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
+      wx.switchTab({ url: '/pages/my-card/my-card' });
+      return null;
+    }
     if (this.data.membershipEnforced && !this.data.membershipActive) {
       api.showMembershipRequired();
       return null;
@@ -114,7 +121,7 @@ Page({
   onTapImageCreation() { this._guardNav('/pages/banana/banana'); },
 
   // 现有可体验的一键跟创页；未完成的视频拆解能力不再对外占位。
-  onTapVideoAnalysis() { wx.switchTab({ url: '/pages/inspiration/inspiration' }); },
+  onTapVideoAnalysis() { wx.navigateTo({ url: '/pages/inspiration/inspiration' }); },
 
   // IP12 成长档案；旧口播功能仍在视频页，以“数字人口播”明确区分。
   onTapDigitalHuman() { this._guardNav('/pages/ip12/ip12'); },
@@ -131,25 +138,28 @@ Page({
     const id = e.currentTarget.dataset.id;
     const item = this.data.tutorials.find((x) => x.id === id);
     if (!item || !item.path) return;
-    if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(item.path) }); return; }
-    if (item.path === '/pages/ip12/ip12') { this._guardNav(item.path); return; }
-    if (item.tab) wx.switchTab({ url: item.path });
-    else wx.navigateTo({ url: item.path });
+    if (item.path === '/pages/inspiration/inspiration') { wx.navigateTo({ url: item.path }); return; }
+    this._guardNav(item.path);
   },
 
   onTapPoints() {
-    if (api.getToken()) wx.switchTab({ url: '/pages/profile/profile' });
+    if (api.getToken()) wx.navigateTo({ url: '/pages/profile/profile' });
     else wx.navigateTo({ url: '/pages/login/login' });
   },
 
   refreshPoints() {
-    api.request('/api/auth/me', { method: 'GET' }).then((res) => {
-      if (res.statusCode === 200 && res.data && res.data.user) {
+    Promise.all([
+      api.request('/api/auth/me', { method: 'GET' }),
+      api.request('/api/auth/card/me', { method: 'GET' })
+    ]).then(([res, cardRes]) => {
+      if (res.statusCode === 200 && res.data && res.data.user && cardRes.statusCode === 200 && cardRes.data && cardRes.data.card) {
+        const ownerCard = cardRes.data.card;
         this.setData({
           points: res.data.user.points,
           membershipActive: !!res.data.user.membership_active,
           membershipEnforced: !!res.data.membership_enforcement_enabled,
-          membershipReady: true
+          membershipReady: true,
+          cardReady: cardUtil.isComplete(ownerCard) && !!(cardRes.data.wechat_bound || ownerCard.wechat_bound)
         });
       }
     }).catch(() => {});
