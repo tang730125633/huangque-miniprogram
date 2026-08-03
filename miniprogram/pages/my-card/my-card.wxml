@@ -38,7 +38,35 @@
       <view class="name">{{card.name || '待填写姓名'}}</view>
       <view class="role">{{card.title || '待填写身份 / 职称'}}<text wx:if="{{card.company}}"> · {{card.company}}</text></view>
       <view wx:if="{{card.bio}}" class="bio">{{card.bio}}</view>
+      <view wx:if="{{tagsList.length}}" class="tags"><text class="tag" wx:for="{{tagsList}}" wx:key="*this">{{item}}</text></view>
       <view class="status-row"><text class="status {{published ? 'online' : ''}}">{{published ? '已公开' : '未公开'}}</text><text class="status">微信已绑定</text></view>
+    </view>
+
+    <view wx:if="{{wechatBound && (card.phone || card.email || card.address)}}" class="content-card detail-card">
+      <view class="section-heading">联系我</view>
+      <view wx:if="{{card.phone}}" class="detail-row"><text>手机</text><text>{{card.phone}}</text></view>
+      <view wx:if="{{card.email}}" class="detail-row"><text>邮箱</text><text>{{card.email}}</text></view>
+      <view wx:if="{{card.address}}" class="detail-row"><text>城市</text><text>{{card.address}}</text></view>
+    </view>
+
+    <view wx:if="{{workImages.length}}" class="content-card work-card">
+      <view class="section-heading">作品与经历</view>
+      <view class="work-image-grid">
+        <view class="work-media" wx:for="{{workImages}}" wx:key="slot">
+          <image src="{{item.url}}" mode="aspectFill" />
+          <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{workVideos.length}}" class="content-card work-card">
+      <view class="section-heading">我的视频</view>
+      <view class="work-video-list">
+        <view class="work-media video" wx:for="{{workVideos}}" wx:key="slot">
+          <video src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
+          <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{wechatBound}}" class="actions">

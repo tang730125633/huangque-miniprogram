@@ -1,5 +1,6 @@
 // 统一请求封装：拼接 API base、带上 Bearer token、401 自动跳登录
 const TOKEN_KEY = 'hq_token';
+const LEGACY_CARD_BIND_INTENT_KEY = 'hq_card_bind_intent';
 const LOGIN_PAGE = '/pages/login/login';
 const LOGIN_REDIRECTS = {
   ip12: '/pages/ip12/ip12',
@@ -7,6 +8,7 @@ const LOGIN_REDIRECTS = {
   'card-edit': '/pages/card-edit/card-edit'
 };
 let membershipPromptOpen = false;
+let cardBindIntent = false;
 
 function getBase() {
   const app = getApp();
@@ -20,6 +22,18 @@ function setToken(t) {
 }
 function clearToken() {
   wx.removeStorageSync(TOKEN_KEY);
+  wx.removeStorageSync(LEGACY_CARD_BIND_INTENT_KEY);
+  cardBindIntent = false;
+}
+function markCardBindIntent() {
+  cardBindIntent = true;
+}
+function hasCardBindIntent() {
+  return cardBindIntent;
+}
+function clearCardBindIntent() {
+  cardBindIntent = false;
+  wx.removeStorageSync(LEGACY_CARD_BIND_INTENT_KEY);
 }
 
 // 登录回跳只接受明确登记的小程序内部页面，避免把启动参数当成任意导航地址。
@@ -39,11 +53,13 @@ function loginUrl(value) {
 function navigateAfterLogin(value, fallback) {
   const target = LOGIN_REDIRECTS[loginRedirect(value)];
   if (target) {
-    if (target === '/pages/my-card/my-card') wx.switchTab({ url: target });
+    if (target === '/pages/my-card/my-card') { markCardBindIntent(); wx.switchTab({ url: target }); }
     else wx.redirectTo({ url: target });
     return;
   }
-  wx.switchTab({ url: fallback || '/pages/home/home' });
+  const destination = fallback || '/pages/home/home';
+  if (destination === '/pages/my-card/my-card') markCardBindIntent();
+  wx.switchTab({ url: destination });
 }
 
 function isMembershipRequired(res) {
@@ -145,6 +161,6 @@ function downloadProtected(url) {
 }
 
 module.exports = {
-  request, getToken, setToken, clearToken, getBase, absUrl, downloadProtected,
+  request, getToken, setToken, clearToken, markCardBindIntent, hasCardBindIntent, clearCardBindIntent, getBase, absUrl, downloadProtected,
   isMembershipRequired, showMembershipRequired, loginRedirect, loginUrl, navigateAfterLogin
 };

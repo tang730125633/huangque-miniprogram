@@ -1,13 +1,15 @@
 <view class="container">
+  <view class="login-close" bindtap="close">关闭</view>
   <view class="brand">
-    <text class="brand-title gold">黄雀作图</text>
-    <text class="brand-sub muted">AI 生图工作台</text>
+    <text class="brand-title gold">黄雀 AI 工作台</text>
+    <text class="brand-sub muted">已有账号登录</text>
   </view>
 
   <view class="card">
     <view class="tabs">
       <view class="tab active">已有黄雀 AI 账号登录</view>
     </view>
+    <view class="login-scope-note">登录只恢复黄雀 AI 账号；当前微信是否绑定名片，会在返回“我的名片”后单独确认。</view>
 
     <view class="field">
       <text class="field-label">账号</text>
@@ -49,5 +51,5 @@
     <view class="card-register-link" bindtap="openCardRegistration">还没有账号？先创建我的名片</view>
   </view>
 
-  <view class="foot muted">数据由黄雀传媒后端安全处理</view>
+  <view class="foot muted">密码只能在微信授权后的名片编辑页修改</view>
 </view>

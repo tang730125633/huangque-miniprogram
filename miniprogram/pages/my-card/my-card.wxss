@@ -17,9 +17,22 @@
 .name { position: relative; color: var(--text); font-size: 42rpx; font-weight: 700; }
 .role, .bio { position: relative; margin-top: 12rpx; color: var(--text-muted); font-size: 25rpx; line-height: 1.7; }
 .bio { color: var(--text); }
+.tags { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 10rpx; margin-top: 20rpx; }
+.tag { padding: 7rpx 15rpx; border-radius: 999rpx; color: var(--secondary); background: rgba(240,165,75,.1); font-size: 20rpx; }
 .status-row { position: relative; display: flex; justify-content: center; gap: 12rpx; margin-top: 28rpx; }
 .status { padding: 7rpx 16rpx; border: 1rpx solid var(--line); border-radius: 999rpx; color: var(--text-muted); font-size: 20rpx; }
 .status.online { border-color: rgba(43,213,118,.5); color: var(--success); }
+.content-card { margin-top: 20rpx; padding: 30rpx 28rpx; border: 1rpx solid var(--line); border-radius: 28rpx; background: var(--surface); }
+.section-heading { margin-bottom: 18rpx; color: var(--text); font-size: 29rpx; font-weight: 700; }
+.detail-row { display: flex; justify-content: space-between; gap: 24rpx; padding: 18rpx 0; border-bottom: 1rpx solid var(--line); color: var(--text); font-size: 23rpx; overflow-wrap: anywhere; }
+.detail-row:last-child { border-bottom: 0; }
+.detail-row text:first-child { flex: none; color: var(--text-muted); }
+.work-image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; }
+.work-video-list { display: flex; flex-direction: column; gap: 16rpx; }
+.work-media { position: relative; min-width: 0; overflow: hidden; border-radius: 18rpx; background: var(--surface-muted); }
+.work-media image { display: block; width: 100%; height: 190rpx; }
+.work-media.video video { display: block; width: 100%; height: 330rpx; }
+.work-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 28rpx 12rpx 11rpx; overflow: hidden; color: #fff; font-size: 20rpx; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; background: linear-gradient(transparent, rgba(4,3,8,.84)); }
 .actions { margin-top: 24rpx; }
 .primary, .secondary { width: 100%; margin-top: 18rpx; padding: 23rpx; box-sizing: border-box; border-radius: 999rpx; color: #fff; background: var(--grad); font-size: 28rpx; line-height: 1.2; }
 .secondary { border: 1rpx solid rgba(226,75,160,.55); color: var(--primary-ink); background: transparent; }

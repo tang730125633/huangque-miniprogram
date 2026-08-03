@@ -10,7 +10,12 @@ Page({
   },
 
   onShow() {
-    if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    const tabBar = this.getTabBar && this.getTabBar();
+    if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
+    if (!api.getToken()) {
+      wx.switchTab({ url: '/pages/home/home', success: () => wx.navigateTo({ url: '/pages/login/login' }) });
+      return;
+    }
     this.refresh();
   },
 

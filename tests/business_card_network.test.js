@@ -21,7 +21,10 @@ assert.deepStrictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_
 assert.strictEqual(card.lastValidInvite(validatedAt + card.ATTRIBUTION_TTL), 'ABCD23');
 assert.strictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_TTL + 1), null);
 assert.strictEqual(card.rememberValidInvite('ABCD23', 'server-token', validatedAt + card.ATTRIBUTION_TTL * 2, validatedAt), true);
-assert.strictEqual(store[card.ATTRIBUTION_KEY].expires_at, validatedAt + card.ATTRIBUTION_TTL);
+assert.strictEqual(store[card.ATTRIBUTION_KEY], undefined);
+assert.deepStrictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_TTL), { code: 'ABCD23', attribution_token: 'server-token' });
+card.clearValidAttribution();
+assert.strictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_TTL), null);
 assert.deepStrictEqual(card.privacy({}), { phone: false, email: false, address: false, wechat_qr: false });
 assert.deepStrictEqual(card.privacy({ privacy: { phone: 1, email: true, address: 'yes', wechat_qr: false } }), { phone: true, email: true, address: true, wechat_qr: false });
 const workSlots = card.workSlots([
@@ -38,6 +41,10 @@ assert.deepStrictEqual(card.worksPayload(workSlots.images, workSlots.videos, wor
   { type: 'image', key: 'cards/works/image-1.jpg', title: '品牌视觉', slot: 1 },
   { type: 'video', key: 'cards/works/video-1.mp4', title: '个人形象展示', slot: 1 },
   { type: 'legacy', value: 'preserve-me' }
+]);
+const localWork = card.workSlots([{ type: 'image', url: 'wxfile://temporary.jpg', title: '待上传' }]);
+assert.deepStrictEqual(card.worksPayload(localWork.images, localWork.videos, localWork.other), [
+  { type: 'image', title: '待上传', slot: 1 }
 ]);
 assert.strictEqual(card.isComplete({ name: '王小明', title: '设计师', company: '黄雀' }), false);
 assert.strictEqual(card.isComplete({ name: '王小明', title: '设计师', company: '黄雀', phone: '13800138000' }), true);
@@ -116,6 +123,7 @@ const myCardWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/my-card/my
 const rechargePage = fs.readFileSync(path.join(root, 'miniprogram/pages/recharge/recharge.js'), 'utf8');
 const loginPage = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.js'), 'utf8');
 const loginWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.wxml'), 'utf8');
+const cardUtilSource = fs.readFileSync(path.join(root, 'miniprogram/utils/card.js'), 'utf8');
 const customTabBar = require('../miniprogram/custom-tab-bar/index.js');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
 assert.match(myCardPage, /openAccount\(\) \{ wx\.switchTab\(\{ url: '\/pages\/profile\/profile' \}\); \}/);
@@ -148,10 +156,11 @@ assert.match(editCard, /legal\?type=terms/);
 assert.match(editCard, /openPrivacyContract/);
 assert.match(editCardJs, /indexOf\('yes'\) !== -1/);
 assert.match(editCardJs, /pendingMedia/);
-assert.match(editCardJs, /media\.size > 4 \* 1024 \* 1024/);
+assert.match(editCardJs, /size > 4 \* 1024 \* 1024/);
 assert.match(editCardJs, /function uploadMedia\(filePath, field\)/);
+assert.match(editCardJs, /function uploadMediaRecord\(filePath, field\)/);
 assert.match(editCardJs, /data: \{ field, data: 'data:image\/jpeg;base64,' \+ result\.data/);
-assert.match(editCardJs, /uploadMedia\(pendingMedia\[field\], field\)/);
+assert.match(editCardJs, /uploadMediaRecord\(pendingMedia\[field\], field\)/);
 assert.doesNotMatch(editCardJs, /uploadPendingMedia[\s\S]*\/api\/auth\/card\/me/);
 assert.match(editCardJs, /invite_attribution_token/);
 assert.match(editCardJs, /\/api\/auth\/miniprogram\/card-register/);
@@ -161,6 +170,8 @@ assert.match(editCardJs, /\/api\/auth\/change_password/);
 assert.doesNotMatch(editCard, /设置登录账号|设置登录密码/);
 assert.match(editCard, /手机号 \*/);
 assert.match(editCard, /workImages/);
+assert.match(editCard, /data-work-index/);
+assert.match(editCard, /bindtap="chooseMedia"/);
 assert.match(editCard, /workVideos/);
 assert.match(editCard, /bindinput="workTitleInput"/);
 assert.match(editCard, /maxlength="12"/);
@@ -203,11 +214,14 @@ assert.match(inviteWxss, /width: 100%; min-width: 0;/);
 assert.match(inviteWxss, /box-sizing: border-box;/);
 assert.match(profilePage, /goInvite\(\) \{ wx\.navigateTo/);
 assert.doesNotMatch(profilePage, /goInvite\(\)[\s\S]*membership\.status/);
-assert.match(myCardPage, /\/api\/auth\/miniprogram\/card-login/);
+assert.match(cardUtilSource, /\/api\/auth\/miniprogram\/card-login/);
+assert.match(cardUtilSource, /auth: false/);
 assert.match(myCardPage, /\/api\/auth\/card\/wechat\/bind/);
-assert.match(myCardPage, /card_unbound/);
+assert.match(cardUtilSource, /card_unbound/);
 assert.match(myCardPage, /if \(this\.data\.binding\) return/);
 assert.match(myCardWxml, /已有黄雀 AI 账号/);
+assert.match(myCardWxml, /workImages/);
+assert.match(myCardWxml, /作品与经历/);
 assert.match(myCardWxml, /disabled="\{\{binding\}\}"/);
 assert.match(rechargePage, /充值前先修改初始密码/);
 

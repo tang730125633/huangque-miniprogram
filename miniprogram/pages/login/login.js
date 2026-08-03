@@ -13,15 +13,16 @@ Page({
   onLoad(options) {
     const redirect = api.loginRedirect(options && options.redirect);
     this.setData({ redirect });
-    // 已登录直接进主页
-    if (api.getToken()) {
-      api.navigateAfterLogin(redirect);
-      return;
-    }
   },
   onUsername(e) { this.setData({ username: e.detail.value }); },
   onPassword(e) { this.setData({ password: e.detail.value }); },
   openCardRegistration() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
+  close() {
+    if (this.data && this.data.loading) return;
+    const pages = getCurrentPages();
+    if (pages.length > 1) wx.navigateBack();
+    else wx.switchTab({ url: '/pages/my-card/my-card' });
+  },
   onAgreementChange(e) {
     const values = (e.detail && e.detail.value) || [];
     this.setData({ agreed: values.indexOf('accepted') !== -1, err: '' });
