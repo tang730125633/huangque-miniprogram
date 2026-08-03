@@ -20,17 +20,20 @@ assert.match(view, /bindtap="continueToVideo"[^>]*>继续创作</);
 
 function pageWith(response) {
   const navigations = [];
+  const tabNavigations = [];
   const requests = [];
   global.wx.navigateTo = ({ url }) => navigations.push(url);
+  global.wx.switchTab = ({ url }) => tabNavigations.push(url);
+  global.wx.showToast = () => {};
   api.request = (requestPath, options) => {
     requests.push({ path: requestPath, method: options && options.method });
     return Promise.resolve(response);
   };
   const page = Object.assign({}, pageDefinition, {
-    data: Object.assign({}, pageDefinition.data, { membershipReady: true }),
+    data: Object.assign({}, pageDefinition.data, { membershipReady: true, cardReady: true }),
     setData(patch) { Object.assign(this.data, patch); }
   });
-  return { page, navigations, requests };
+  return { page, navigations, tabNavigations, requests };
 }
 
 function completeProject() { return { id: 'done', coach_state: { completed_modules: [1, 2, 3, 4, 5, 6] } }; }
@@ -41,6 +44,12 @@ function completeProject() { return { id: 'done', coach_state: { completed_modul
   assert.strictEqual(test.page.data.videoIp12PromptVisible, true);
   assert.deepStrictEqual(test.navigations, []);
   assert.deepStrictEqual(test.requests, [{ path: '/workbench/ip12/api/conversations', method: 'GET' }]);
+
+  test = pageWith({ statusCode: 200, data: [] });
+  test.page.data.cardReady = false;
+  await test.page.onTapPrimaryCreation.call(test.page);
+  assert.deepStrictEqual(test.tabNavigations, ['/pages/my-card/my-card']);
+  assert.deepStrictEqual(test.requests, []);
 
   test.page.skipVideoIp12Prompt.call(test.page);
   assert.strictEqual(test.page.data.videoIp12PromptVisible, false);

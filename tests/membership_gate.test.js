@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 let modal = null;
-let switched = '';
+let navigated = '';
 global.getApp = function () {
   return { globalData: { apiBase: 'https://example.test' } };
 };
@@ -25,7 +25,7 @@ global.wx = {
     options.success({ confirm: true });
     options.complete();
   },
-  switchTab(options) { switched = options.url; }
+  navigateTo(options) { navigated = options.url; }
 };
 
 const api = require('../miniprogram/utils/api.js');
@@ -35,7 +35,7 @@ const api = require('../miniprogram/utils/api.js');
   assert.strictEqual(api.isMembershipRequired(response), true);
   assert.ok(modal);
   assert.strictEqual(modal.title, '需要有效会员');
-  assert.strictEqual(switched, '/pages/profile/profile');
+  assert.strictEqual(navigated, '/pages/recharge/recharge');
 
   const root = path.resolve(__dirname, '..');
   const home = fs.readFileSync(path.join(root, 'miniprogram/pages/home/home.js'), 'utf8');

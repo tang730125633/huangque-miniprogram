@@ -29,9 +29,10 @@ const inviteJs = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invit
 const inviteWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.wxml'), 'utf8');
 
 assert.ok(appJson.pages.includes('pages/invite/invite'));
-assert.match(loginJs, /payload\.invite_code = inviteCode/);
 assert.match(loginJs, /device_id: device\.getDeviceId\(\)/);
-assert.match(loginWxml, /邀请码（选填）/);
+assert.doesNotMatch(loginJs, /miniprogram-register|invite_code/);
+assert.doesNotMatch(loginWxml, /邀请码（选填）|注册并登录/);
+assert.match(loginWxml, /先创建我的名片/);
 assert.match(profileWxml, /邀请中心/);
 assert.match(inviteJs, /\/api\/auth\/invite\/dashboard/);
 assert.match(inviteJs, /\/api\/auth\/invite\/reward-points/);

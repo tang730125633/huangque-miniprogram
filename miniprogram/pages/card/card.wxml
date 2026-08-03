@@ -1,7 +1,11 @@
 <view class="container card-page">
   <canvas canvas-id="cardShareCover" style="position:fixed;left:-600px;top:-500px;width:500px;height:400px;opacity:0;pointer-events:none;" />
   <view wx:if="{{loading}}" class="card state">正在加载名片…</view>
-  <view wx:elif="{{error}}" class="card state error">{{error}}<view class="primary-button" bindtap="goJoin">我也要一张</view></view>
+  <view wx:elif="{{error}}" class="card state error">
+    <view>{{error}}</view>
+    <view class="primary-button" bindtap="retry">重新加载</view>
+    <view class="join" bindtap="goJoin">我也要一张</view>
+  </view>
   <block wx:else>
     <view class="card hero">
       <image wx:if="{{card.avatar}}" class="avatar" src="{{card.avatar}}" mode="aspectFill" />
@@ -17,6 +21,24 @@
       <view wx:if="{{card.showEmail}}" class="row"><text>邮箱</text><text selectable="true">{{card.email}}</text></view>
       <view wx:if="{{card.showAddress}}" class="row"><text>地址</text><text selectable="true">{{card.address}}</text></view>
       <view wx:if="{{card.showQr}}" class="qr-wrap"><text>微信二维码</text><image class="qr" src="{{card.wechat_qr}}" mode="aspectFit" /></view>
+    </view>
+    <view wx:if="{{card.workImages.length}}" class="card work-section">
+      <view class="work-heading">作品与经历</view>
+      <view class="work-image-grid">
+        <view class="work-media" wx:for="{{card.workImages}}" wx:key="slot">
+          <image src="{{item.url}}" mode="aspectFill" />
+          <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{card.workVideos.length}}" class="card work-section">
+      <view class="work-heading">我的视频</view>
+      <view class="work-video-list">
+        <view class="work-media video" wx:for="{{card.workVideos}}" wx:key="slot">
+          <video src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
+          <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
+        </view>
+      </view>
     </view>
     <button wx:if="{{shareReady}}" class="primary-button" open-type="share">{{isMine ? '分享我的名片，邀请好友' : '分享这张名片'}}</button>
     <view wx:if="{{isMine && !shareReady}}" class="primary-button" bindtap="goEdit">完善并公开名片</view>

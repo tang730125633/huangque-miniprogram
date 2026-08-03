@@ -2,7 +2,9 @@
 const TOKEN_KEY = 'hq_token';
 const LOGIN_PAGE = '/pages/login/login';
 const LOGIN_REDIRECTS = {
-  ip12: '/pages/ip12/ip12'
+  ip12: '/pages/ip12/ip12',
+  'my-card': '/pages/my-card/my-card',
+  'card-edit': '/pages/card-edit/card-edit'
 };
 let membershipPromptOpen = false;
 
@@ -24,6 +26,8 @@ function clearToken() {
 function loginRedirect(value) {
   value = String(value || '');
   if (value === 'ip12' || value === '/pages/ip12/ip12' || value === 'pages/ip12/ip12') return 'ip12';
+  if (value === 'my-card' || value === '/pages/my-card/my-card' || value === 'pages/my-card/my-card') return 'my-card';
+  if (value === 'card-edit' || value === '/pages/card-edit/card-edit' || value === 'pages/card-edit/card-edit') return 'card-edit';
   return '';
 }
 
@@ -35,7 +39,8 @@ function loginUrl(value) {
 function navigateAfterLogin(value, fallback) {
   const target = LOGIN_REDIRECTS[loginRedirect(value)];
   if (target) {
-    wx.redirectTo({ url: target });
+    if (target === '/pages/my-card/my-card') wx.switchTab({ url: target });
+    else wx.redirectTo({ url: target });
     return;
   }
   wx.switchTab({ url: fallback || '/pages/home/home' });
@@ -58,7 +63,7 @@ function showMembershipRequired(detail) {
     cancelText: '稍后处理',
     confirmColor: '#b048c8',
     success: function (result) {
-      if (result.confirm) wx.switchTab({ url: '/pages/profile/profile' });
+      if (result.confirm) wx.navigateTo({ url: '/pages/recharge/recharge' });
     },
     complete: function () {
       membershipPromptOpen = false;
@@ -71,7 +76,7 @@ function request(path, options) {
   return new Promise(function (resolve, reject) {
     const header = { 'Content-Type': 'application/json' };
     const token = getToken();
-    if (token) header['Authorization'] = 'Bearer ' + token;
+    if (token && options.auth !== false) header['Authorization'] = 'Bearer ' + token;
     if (options.idempotencyKey) header['Idempotency-Key'] = String(options.idempotencyKey);
 
     wx.request({
@@ -81,11 +86,13 @@ function request(path, options) {
       header: header,
       timeout: options.timeout || 60000,
       success: function (res) {
-        if (res.statusCode === 401) {
+        if (res.statusCode === 401 && options.auth !== false) {
           clearToken();
           const pages = getCurrentPages();
           const cur = pages.length ? pages[pages.length - 1].route : '';
-          if (cur.indexOf('pages/login/login') === -1) {
+          if (cur === 'pages/my-card/my-card' || cur === 'pages/card-edit/card-edit') {
+            wx.reLaunch({ url: '/pages/my-card/my-card' });
+          } else if (cur.indexOf('pages/login/login') === -1) {
             wx.reLaunch({ url: loginUrl(cur) });
           }
         }

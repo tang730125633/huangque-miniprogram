@@ -14,19 +14,56 @@ function privacy(card) {
   };
 }
 
+function workSlots(works) {
+  const groups = { image: [], video: [] };
+  const other = [];
+  (Array.isArray(works) ? works : []).forEach((item) => {
+    if (item && typeof item === 'object' && !Array.isArray(item) && (item.type === 'image' || item.type === 'video')) groups[item.type].push(item);
+    else other.push(item);
+  });
+  const slots = (type, limit) => Array.from({ length: 3 }, (_, index) => Object.assign({}, groups[type][index] || {}, {
+    type, slot: index + 1, title: String((groups[type][index] || {}).title || '').trim().slice(0, limit)
+  }));
+  return { images: slots('image', 12), videos: slots('video', 16), other };
+}
+
+function worksPayload(images, videos, other) {
+  const visible = [].concat(images || [], videos || []).filter((item) => item && (item.title || item.key || item.url || item.cover_key || item.poster));
+  return visible.concat(Array.isArray(other) ? other : []);
+}
+
 function cardPayload(card) {
   card = card || {};
-  return {
+  const payload = {
     name: String(card.name || '').trim(), title: String(card.title || '').trim(),
     company: String(card.company || '').trim(), bio: String(card.bio || '').trim(), tags: String(card.tags || '').trim(),
     links: String(card.links || '').trim(), email: String(card.email || '').trim(), address: String(card.address || '').trim(),
     phone: String(card.phone || '').trim(), privacy: privacy(card)
   };
+  if (Object.prototype.hasOwnProperty.call(card, 'works')) payload.works = Array.isArray(card.works) ? card.works : [];
+  return payload;
 }
 
 function isComplete(card) {
   const value = cardPayload(card);
-  return !!(value.name && value.title && value.company);
+  return !!(value.name && value.title && value.company && validPhone(value.phone));
+}
+
+function validPhone(value) {
+  return /^1[3-9]\d{9}$/.test(String(value || '').trim());
+}
+
+function wechatLoginCode() {
+  return new Promise((resolve, reject) => {
+    wx.login({
+      timeout: 10000,
+      success(result) {
+        if (result && result.code) resolve(result.code);
+        else reject(new Error('未获取到微信授权凭证'));
+      },
+      fail: reject
+    });
+  });
 }
 
 function isPublished(card) {
@@ -112,6 +149,6 @@ function prepareShareImage(page, card) {
 
 module.exports = {
   ATTRIBUTION_KEY, ATTRIBUTION_TTL, DEFAULT_SHARE_IMAGE,
-  privacy, cardPayload, isComplete, isPublished, rememberValidInvite,
+  privacy, workSlots, worksPayload, cardPayload, isComplete, validPhone, wechatLoginCode, isPublished, rememberValidInvite,
   lastValidAttribution, lastValidInvite, prepareShareImage
 };

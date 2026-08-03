@@ -1,0 +1,51 @@
+<view class="container owner-page">
+  <canvas canvas-id="cardShareCover" class="share-canvas" />
+
+  <view wx:if="{{state === 'loading'}}" class="state-card">正在连接你的微信名片…</view>
+
+  <view wx:elif="{{state === 'guest'}}" class="welcome">
+    <view class="eyebrow">WECHAT BUSINESS CARD</view>
+    <view class="welcome-title">先创建一张属于你的名片</view>
+    <view class="welcome-copy">名片由微信授权管理。保存后会用手机号自动开通黄雀 AI；通过有效邀请进入可获 100 点。</view>
+    <button class="primary" bindtap="createCard">创建我的名片</button>
+    <button class="secondary" bindtap="loginExisting">已有黄雀 AI 账号</button>
+  </view>
+
+  <view wx:elif="{{state === 'error'}}" class="state-card error">
+    <view>{{error}}</view>
+    <button class="secondary compact" bindtap="retry">重新加载</button>
+  </view>
+
+  <block wx:else>
+    <view class="topline">
+      <view>
+        <view class="eyebrow">我的名片</view>
+        <view class="page-title">{{complete ? '你的公开形象' : '完善你的第一张名片'}}</view>
+      </view>
+      <view wx:if="{{aiAccount}}" class="account-link" bindtap="openAccount">账户与会员 ›</view>
+    </view>
+
+    <view wx:if="{{!wechatBound}}" class="notice">
+      <view class="notice-title">需要重新绑定微信</view>
+      <view class="notice-copy">你的黄雀 AI 原账号与权益都会保留；本次微信授权只绑定名片。</view>
+      <button class="primary" bindtap="bindAndEdit" loading="{{binding}}" disabled="{{binding}}">微信授权并完善名片</button>
+    </view>
+
+    <view wx:else class="business-card">
+      <view class="card-glow"></view>
+      <image wx:if="{{card.avatar}}" class="avatar" src="{{card.avatar}}" mode="aspectFill" />
+      <view wx:else class="avatar initial">{{initial}}</view>
+      <view class="name">{{card.name || '待填写姓名'}}</view>
+      <view class="role">{{card.title || '待填写身份 / 职称'}}<text wx:if="{{card.company}}"> · {{card.company}}</text></view>
+      <view wx:if="{{card.bio}}" class="bio">{{card.bio}}</view>
+      <view class="status-row"><text class="status {{published ? 'online' : ''}}">{{published ? '已公开' : '未公开'}}</text><text class="status">微信已绑定</text></view>
+    </view>
+
+    <view wx:if="{{wechatBound}}" class="actions">
+      <button class="primary" bindtap="editCard">{{complete ? '编辑名片' : '填写名片'}}</button>
+      <button wx:if="{{published}}" class="secondary" bindtap="openCard">预览公开页</button>
+      <button wx:if="{{shareReady}}" class="secondary" open-type="share">分享我的名片</button>
+    </view>
+    <view wx:if="{{error}}" class="inline-error">{{error}}</view>
+  </block>
+</view>

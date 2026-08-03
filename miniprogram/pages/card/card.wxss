@@ -14,6 +14,14 @@
 .row text:first-child, .qr-wrap > text { flex: none; color: var(--text-muted); }
 .qr-wrap { display: flex; flex-direction: column; gap: 16rpx; padding-top: 22rpx; color: var(--text); font-size: 25rpx; }
 .qr { width: 300rpx; height: 300rpx; }
+.work-section { margin-top: 18rpx; }
+.work-heading { margin-bottom: 18rpx; color: var(--text); font-size: 29rpx; font-weight: 650; }
+.work-image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; }
+.work-video-list { display: flex; flex-direction: column; gap: 16rpx; }
+.work-media { position: relative; min-width: 0; overflow: hidden; border-radius: 18rpx; background: var(--surface-muted); }
+.work-media image { display: block; width: 100%; height: 180rpx; }
+.work-media.video video { display: block; width: 100%; height: 330rpx; }
+.work-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 28rpx 14rpx 12rpx; overflow: hidden; color: #fff; font-size: 21rpx; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; background: linear-gradient(transparent, rgba(4,3,8,.82)); }
 .primary-button, .join { margin-top: 22rpx; padding: 25rpx; border-radius: 999rpx; text-align: center; color: #fff; background: var(--grad); font-size: 29rpx; }
 button.primary-button::after { border: 0; }
 .join { color: var(--primary); background: transparent; border: 1rpx solid var(--primary); }

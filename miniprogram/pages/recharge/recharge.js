@@ -127,6 +127,11 @@ const pageDefinition = {
     this.setData({ loading: true, statusText: '' });
     return api.request('/api/auth/me', { method: 'GET' }).then((me) => {
       const user = me.statusCode === 200 && me.data && me.data.user;
+      if (user && (user.initial_password || user.must_change)) {
+        this.setData({ loading: false, points: user.points });
+        this.promptPasswordChange();
+        return;
+      }
       if (!isMembershipActive(user)) {
         const next = Object.assign({ loading: false }, buildRechargeConfig(user));
         if (user) next.points = user.points;
@@ -145,6 +150,19 @@ const pageDefinition = {
       });
     }).catch(() => {
       this.setData({ loading: false, statusText: '网络异常，请稍后重试' });
+    });
+  },
+
+  promptPasswordChange() {
+    if (this.passwordPromptOpen) return;
+    this.passwordPromptOpen = true;
+    wx.showModal({
+      title: '充值前先修改初始密码',
+      content: '为保护点数和会员权益，请回到微信名片编辑页设置新密码后再充值。',
+      showCancel: false,
+      confirmText: '去修改',
+      success: () => wx.navigateTo({ url: '/pages/card-edit/card-edit?source=recharge' }),
+      complete: () => { this.passwordPromptOpen = false; }
     });
   },
 
