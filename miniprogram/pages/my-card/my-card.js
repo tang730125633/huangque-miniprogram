@@ -40,43 +40,53 @@ Page({
   },
 
   onShow() {
+    const loadId = Number(this._loadId || 0) + 1;
+    this._loadId = loadId;
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ state: 'loading', error: '', binding: false, shareReady: false });
-    this.loginByWechat();
+    this.loginByWechat(loadId);
   },
 
-  loginByWechat() {
+  loginByWechat(loadId) {
     return cardUtil.loginCardSession().then((session) => {
+      if (loadId && loadId !== this._loadId) return;
       if (session.state === 'guest') {
         this.setData({ state: 'guest' });
         return;
       }
-      if (session.state === 'pending-bind') return this.loadOwner();
+      if (session.state === 'pending-bind') return this.loadOwner(loadId);
       const data = session.data;
-      if (data.card) this.showOwner(data);
-      else this.loadOwner();
-    }).catch((error) => this.setData({ state: 'error', error: error.message || '名片加载失败' }));
+      if (data.card) this.showOwner(data, loadId);
+      else this.loadOwner(loadId);
+    }).catch((error) => {
+      if (!loadId || loadId === this._loadId) this.setData({ state: 'error', error: error.message || '名片加载失败' });
+    });
   },
 
-  loadOwner() {
+  loadOwner(loadId) {
     return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+      if (loadId && loadId !== this._loadId) return;
       const data = res.data || {};
       if (res.statusCode === 404 || (res.statusCode === 200 && !data.card)) {
-        this.showOwner({ card: {}, wechat_bound: false });
+        this.showOwner({ card: {}, wechat_bound: false }, loadId);
         return;
       }
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '名片读取失败');
-      this.showOwner(data);
-    }).catch((error) => this.setData({ state: 'error', error: error.message || '名片读取失败' }));
+      this.showOwner(data, loadId);
+    }).catch((error) => {
+      if (!loadId || loadId === this._loadId) this.setData({ state: 'error', error: error.message || '名片读取失败' });
+    });
   },
 
-  showOwner(data) {
+  showOwner(data, loadId) {
+    if (loadId && loadId !== this._loadId) return;
     const next = ownerState(data);
     this.setData(Object.assign({ state: 'owner', error: '', shareReady: false, shareImageUrl: '' }, next), () => {
       if (!next.published || !invite.validInviteCode(next.card.invite_code)) return;
       cardUtil.prepareShareImage(this, next.card).then((imageUrl) => {
+        if ((loadId && loadId !== this._loadId) || this.data.publicId !== next.publicId) return;
         this.setData({ shareImageUrl: imageUrl, shareReady: true });
         if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
       });
@@ -91,6 +101,16 @@ Page({
     wx.navigateTo({ url: '/pages/card/card?id=' + encodeURIComponent(this.data.publicId) + '&mine=1' });
   },
   openAccount() { wx.switchTab({ url: '/pages/profile/profile' }); },
+  callPhone() {
+    const phone = this.data.card && this.data.card.phone;
+    if (phone && wx.makePhoneCall) wx.makePhoneCall({ phoneNumber: String(phone) });
+  },
+  openWechat() {
+    const current = this.data.card && this.data.card.wechat_qr;
+    if (current && wx.previewImage) { wx.previewImage({ current, urls: [current] }); return; }
+    this.editCard();
+  },
+  videoError() { if (wx.showToast) wx.showToast({ title: '视频无法播放，请重新上传 MP4', icon: 'none' }); },
   retry() { this.onShow(); },
 
   bindAndEdit() {

@@ -5,8 +5,12 @@
     <view class="subtitle">名片由微信授权管理；带 * 的信息保存前必须填写。</view>
   </view>
 
-  <view wx:if="{{loading}}" class="loading">正在处理…</view>
+  <view wx:if="{{loading && !ready}}" class="loading">正在读取你的名片…</view>
+  <view wx:if="{{loading && ready}}" class="busy-banner">正在处理，请稍候…</view>
+  <view wx:if="{{loadFailed}}" class="error">{{error}}</view>
+  <button wx:if="{{loadFailed}}" class="secondary-action" bindtap="retryLoad">重新读取名片</button>
 
+  <block wx:if="{{ready}}">
   <view class="form-section">
     <view class="section-title">基本资料</view>
     <view class="section-tip">这些信息会组成你的公开名片。</view>
@@ -15,24 +19,24 @@
       <view wx:else class="avatar placeholder">头像</view>
       <view><view class="media-label">头像与封面</view><view class="media-hint">建议使用清晰正面照</view><view class="small-button" data-field="avatar" bindtap="chooseMedia">选择图片</view></view>
     </view>
-    <view class="field"><text>姓名 *</text><input value="{{card.name}}" data-field="name" bindinput="input" placeholder="你的姓名" /></view>
+    <view class="field"><text>姓名 *</text><input disabled="{{loading}}" value="{{card.name}}" data-field="name" bindinput="input" placeholder="你的姓名" /></view>
     <view class="field-grid">
-      <view class="field"><text>身份 / 职称 *</text><input value="{{card.title}}" data-field="title" bindinput="input" placeholder="品牌主理人" /></view>
-      <view class="field"><text>公司 / 机构 *</text><input value="{{card.company}}" data-field="company" bindinput="input" placeholder="所在机构" /></view>
+      <view class="field"><text>身份 / 职称 *</text><input disabled="{{loading}}" value="{{card.title}}" data-field="title" bindinput="input" placeholder="品牌主理人" /></view>
+      <view class="field"><text>公司 / 机构 *</text><input disabled="{{loading}}" value="{{card.company}}" data-field="company" bindinput="input" placeholder="所在机构" /></view>
     </view>
-    <view class="field"><text>一句介绍</text><textarea value="{{card.bio}}" data-field="bio" bindinput="input" placeholder="你正在做什么、擅长什么" maxlength="300" /></view>
+    <view class="field"><text>一句介绍</text><textarea disabled="{{loading}}" value="{{card.bio}}" data-field="bio" bindinput="input" placeholder="你正在做什么、擅长什么" maxlength="300" /></view>
     <view class="field-grid">
-      <view class="field"><text>手机号 *</text><input type="number" maxlength="11" value="{{card.phone}}" data-field="phone" bindinput="input" placeholder="请输入手机号" /></view>
-      <view class="field"><text>所在城市</text><input value="{{card.address}}" data-field="address" bindinput="input" placeholder="广州 · 天河" /></view>
+      <view class="field"><text>手机号 *</text><input disabled="{{loading}}" type="number" maxlength="11" value="{{card.phone}}" data-field="phone" bindinput="input" placeholder="请输入手机号" /></view>
+      <view class="field"><text>所在城市</text><input disabled="{{loading}}" value="{{card.address}}" data-field="address" bindinput="input" placeholder="广州 · 天河" /></view>
     </view>
-    <view class="switch-line"><text>在公开名片显示手机号</text><switch checked="{{card.privacy.phone}}" data-field="phone" bindchange="setPrivacy" color="#e24ba0" /></view>
-    <view class="field"><text>标签</text><input value="{{card.tags}}" data-field="tags" bindinput="input" placeholder="AI、品牌、摄影（逗号分隔）" /></view>
-    <view class="field"><text>作品集 / 官网</text><input value="{{card.links}}" data-field="links" bindinput="input" placeholder="选填链接" /></view>
-    <view class="field"><text>邮箱</text><input value="{{card.email}}" data-field="email" bindinput="input" placeholder="选填" /></view>
-    <view class="switch-line"><text>在公开名片显示邮箱</text><switch checked="{{card.privacy.email}}" data-field="email" bindchange="setPrivacy" color="#e24ba0" /></view>
-    <view class="switch-line"><text>在公开名片显示城市 / 地址</text><switch checked="{{card.privacy.address}}" data-field="address" bindchange="setPrivacy" color="#e24ba0" /></view>
+    <view class="switch-line"><text>在公开名片显示手机号</text><switch disabled="{{loading}}" checked="{{card.privacy.phone}}" data-field="phone" bindchange="setPrivacy" color="#e24ba0" /></view>
+    <view class="field"><text>标签</text><input disabled="{{loading}}" value="{{card.tags}}" data-field="tags" bindinput="input" placeholder="AI、品牌、摄影（逗号分隔）" /></view>
+    <view class="field"><text>作品集 / 官网</text><input disabled="{{loading}}" value="{{card.links}}" data-field="links" bindinput="input" placeholder="选填链接" /></view>
+    <view class="field"><text>邮箱</text><input disabled="{{loading}}" value="{{card.email}}" data-field="email" bindinput="input" placeholder="选填" /></view>
+    <view class="switch-line"><text>在公开名片显示邮箱</text><switch disabled="{{loading}}" checked="{{card.privacy.email}}" data-field="email" bindchange="setPrivacy" color="#e24ba0" /></view>
+    <view class="switch-line"><text>在公开名片显示城市 / 地址</text><switch disabled="{{loading}}" checked="{{card.privacy.address}}" data-field="address" bindchange="setPrivacy" color="#e24ba0" /></view>
     <view class="qr-line"><view><view>微信二维码</view><view class="media-hint">选填，公开状态可单独控制</view></view><view class="small-button" data-field="wechat_qr" bindtap="chooseMedia">{{card.wechat_qr ? '重新选择' : '选择图片'}}</view></view>
-    <view class="switch-line"><text>在公开名片显示微信二维码</text><switch checked="{{card.privacy.wechat_qr}}" data-field="wechat_qr" bindchange="setPrivacy" color="#e24ba0" /></view>
+    <view class="switch-line"><text>在公开名片显示微信二维码</text><switch disabled="{{loading}}" checked="{{card.privacy.wechat_qr}}" data-field="wechat_qr" bindchange="setPrivacy" color="#e24ba0" /></view>
   </view>
 
   <view class="form-section">
@@ -45,17 +49,17 @@
           <text wx:else>＋ 图片 {{item.slot}}</text>
           <text wx:if="{{item.url}}" class="replace-tip">更换</text>
         </view>
-        <input id="work-image-title-{{index}}" class="media-title-input" value="{{item.title}}" data-type="image" data-index="{{index}}" bindinput="workTitleInput" maxlength="12" placeholder="图片标题（选填）" />
+        <input disabled="{{loading}}" id="work-image-title-{{index}}" class="media-title-input" value="{{item.title}}" data-type="image" data-index="{{index}}" bindinput="workTitleInput" maxlength="12" placeholder="图片标题（选填）" />
       </view>
     </view>
     <view class="video-list">
       <view class="media-title-item" wx:for="{{workVideos}}" wx:key="slot">
         <view id="work-video-{{index}}" class="upload-slot video-slot">
-          <video wx:if="{{item.url}}" src="{{item.url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
+          <video wx:if="{{item.url}}" src="{{item.url}}" controls="true" show-center-play-btn="true" object-fit="cover" binderror="videoError" />
           <view wx:else class="video-empty" data-work-index="{{index}}" bindtap="chooseWorkVideo">▷ 添加个人视频 {{item.slot}}</view>
-          <text wx:if="{{item.url}}" class="replace-tip" data-work-index="{{index}}" catchtap="chooseWorkVideo">更换</text>
+          <cover-view wx:if="{{item.url}}" class="video-replace" data-work-index="{{index}}" catchtap="chooseWorkVideo" role="button" aria-label="更换视频">更换视频</cover-view>
         </view>
-        <input class="media-title-input" value="{{item.title}}" data-type="video" data-index="{{index}}" bindinput="workTitleInput" maxlength="16" placeholder="视频标题（选填）" />
+        <input disabled="{{loading}}" class="media-title-input" value="{{item.title}}" data-type="video" data-index="{{index}}" bindinput="workTitleInput" maxlength="16" placeholder="视频标题（选填）" />
       </view>
     </view>
   </view>
@@ -69,10 +73,10 @@
     <view wx:elif="{{initialPassword}}" class="credential-note">当前账号仍需修改初始密码，首次充值或开通会员前必须完成。</view>
     <view class="small-button password-button" bindtap="togglePasswordForm">{{showPasswordForm ? '收起修改密码' : '修改黄雀 AI 密码'}}</view>
     <view wx:if="{{showPasswordForm}}" class="password-form">
-      <view class="field"><text>当前密码</text><input password="true" value="{{oldPassword}}" data-field="oldPassword" bindinput="passwordInput" placeholder="初始密码为手机号" /></view>
-      <view class="field"><text>新密码</text><input password="true" value="{{newPassword}}" data-field="newPassword" bindinput="passwordInput" placeholder="至少 6 位" /></view>
-      <view class="field"><text>确认新密码</text><input password="true" value="{{confirmPassword}}" data-field="confirmPassword" bindinput="passwordInput" placeholder="再次输入新密码" /></view>
-      <button class="secondary-action" bindtap="changePassword">确认修改密码</button>
+      <view class="field"><text>当前密码</text><input disabled="{{loading}}" password="true" value="{{oldPassword}}" data-field="oldPassword" bindinput="passwordInput" placeholder="初始密码为手机号" /></view>
+      <view class="field"><text>新密码</text><input disabled="{{loading}}" password="true" value="{{newPassword}}" data-field="newPassword" bindinput="passwordInput" placeholder="至少 6 位" /></view>
+      <view class="field"><text>确认新密码</text><input disabled="{{loading}}" password="true" value="{{confirmPassword}}" data-field="confirmPassword" bindinput="passwordInput" placeholder="再次输入新密码" /></view>
+      <button class="secondary-action" bindtap="changePassword" disabled="{{loading}}">确认修改密码</button>
     </view>
   </view>
 
@@ -80,14 +84,14 @@
     <view class="section-title">保存后自动开通黄雀 AI</view>
     <view class="section-tip">无需另填账号密码；手机号会同时成为黄雀 AI 登录账号和初始密码。首次充值前必须修改密码。</view>
     <view class="credential-note">若本次来自有效名片邀请，注册成功后赠送 100 点；未通过邀请进入则不赠送。</view>
-    <checkbox-group bindchange="agreement"><label class="agreement"><checkbox value="yes" checked="{{agreed}}" color="#e24ba0" />我已阅读并同意</label></checkbox-group>
+    <checkbox-group bindchange="agreement"><label class="agreement"><checkbox disabled="{{loading}}" value="yes" checked="{{agreed}}" color="#e24ba0" />我已阅读并同意</label></checkbox-group>
     <navigator class="agreement-link" url="/pages/legal/legal?type=terms">《用户服务协议》</navigator>
     <text class="agreement-link" bindtap="openPrivacyContract">《隐私保护指引》</text>
   </view>
 
   <view wx:if="{{error}}" class="error">{{error}}</view>
-  <button wx:if="{{loadFailed}}" class="secondary-action" bindtap="retryLoad">重新读取名片</button>
-  <button wx:else class="save-button" bindtap="save" loading="{{loading}}" disabled="{{loading}}">{{anonymous ? '保存名片并开通黄雀 AI' : (published ? '保存修改' : '保存并公开名片')}}</button>
-  <view wx:if="{{!loadFailed && !anonymous && published}}" class="unpublish" bindtap="unpublish">取消公开名片</view>
+  <button class="save-button" bindtap="save" loading="{{loading}}" disabled="{{loading}}">{{anonymous ? '保存名片并开通黄雀 AI' : (published ? '保存修改' : '保存并公开名片')}}</button>
+  <view wx:if="{{!anonymous && published}}" class="unpublish" bindtap="unpublish">取消公开名片</view>
   <navigator wx:if="{{anonymous}}" class="existing" url="/pages/login/login?redirect=my-card">已有黄雀 AI 账号？先登录原账号</navigator>
+  </block>
 </view>

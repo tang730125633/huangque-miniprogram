@@ -4,11 +4,10 @@ const cardUtil = require('../../utils/card.js');
 const drafts = require('../../utils/drafts.js');
 
 const EDIT_DRAFT_KEY = 'hq_draft_card_edit_v1';
-const ANONYMOUS_DRAFT_SCOPE = 'anonymous-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
 const MAX_WORK_VIDEO_BYTES = 20 * 1024 * 1024;
 
 function editDraftKey(owner) {
-  return drafts.scopedKey(EDIT_DRAFT_KEY, owner || ANONYMOUS_DRAFT_SCOPE);
+  return drafts.scopedKey(EDIT_DRAFT_KEY, owner || ('anonymous-' + device.getDeviceId()));
 }
 
 function blankCard() {
@@ -22,12 +21,13 @@ function draftPatch(saved, owner) {
   const savedPhone = String(saved.card.phone || '');
   if ((savedOwner && savedOwner !== owner) || (!savedOwner && owner && savedPhone !== owner)) return null;
   const card = Object.assign(blankCard(), saved.card, { privacy: cardUtil.privacy(saved.card) });
-  const works = cardUtil.workSlots(card.works);
+  const draftWorks = [].concat(saved.workImages || [], saved.workVideos || [], saved.otherWorks || []);
+  const works = cardUtil.workSlots(draftWorks.length ? draftWorks : card.works);
   return {
     card,
-    workImages: Array.isArray(saved.workImages) ? saved.workImages : works.images,
-    workVideos: Array.isArray(saved.workVideos) ? saved.workVideos : works.videos,
-    otherWorks: Array.isArray(saved.otherWorks) ? saved.otherWorks : works.other,
+    workImages: works.images,
+    workVideos: works.videos,
+    otherWorks: works.other,
     pendingMedia: saved.pendingMedia || {},
     agreed: !!saved.agreed
   };
@@ -74,6 +74,7 @@ Page({
     pendingMedia: {},
     agreed: false,
     anonymous: true,
+    ready: false,
     loading: false,
     loadFailed: false,
     error: '',
@@ -93,13 +94,13 @@ Page({
   },
 
   checkWechatSession() {
-    this.setData({ loading: true, loadFailed: false, error: '' });
+    this.setData({ ready: false, loading: true, loadFailed: false, error: '' });
     return cardUtil.loginCardSession().then((session) => {
       if (session.state !== 'guest') return this.loadOwner();
       const restored = this.restoreDraft('');
-      this.setData(Object.assign({ anonymous: true, loading: false, loadFailed: false }, restored || {}));
+      this.setData(Object.assign({ anonymous: true, ready: true, loading: false, loadFailed: false }, restored || {}));
       return null;
-    }).catch((error) => this.setData({ loading: false, loadFailed: true, error: error.message || '微信名片登录失败' }));
+    }).catch((error) => this.setData({ ready: false, loading: false, loadFailed: true, error: error.message || '微信名片登录失败' }));
   },
 
   restoreDraft(owner) {
@@ -117,14 +118,14 @@ Page({
       otherWorks: this.data.otherWorks,
       pendingMedia: this.data.pendingMedia,
       agreed: this.data.agreed
-    }, []);
+    }, Object.keys(this.data.pendingMedia || {}).map((field) => this.data.pendingMedia[field]));
   },
 
-  retryLoad() { this.checkWechatSession(); },
+  retryLoad() { if (!this.data.loading) this.checkWechatSession(); },
 
   loadOwner() {
     this.setData({ anonymous: false, loading: true, loadFailed: false, error: '' });
-    api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '名片读取失败');
       const card = Object.assign(blankCard(), data.card, { privacy: cardUtil.privacy(data.card) });
@@ -141,23 +142,36 @@ Page({
         wechatBound: !!(data.wechat_bound || card.wechat_bound),
         aiAccount,
         initialPassword: !!(data.initial_password || card.initial_password),
+        ready: true,
         loading: false,
         loadFailed: false
       }, restored || {}));
       if (restored && wx.showToast) wx.showToast({ title: '已恢复未保存内容', icon: 'none' });
-    }).catch((error) => this.setData({ loading: false, loadFailed: true, error: error.message || '名片读取失败' }));
+    }).catch((error) => this.setData({ ready: false, loading: false, loadFailed: true, error: error.message || '名片读取失败' }));
   },
 
-  input(e) { this.setData({ ['card.' + e.currentTarget.dataset.field]: e.detail.value, error: '' }); },
+  busyGuard() {
+    if (!this.data.loading) return false;
+    if (wx.showToast) wx.showToast({ title: '正在处理，请稍候', icon: 'none' });
+    return true;
+  },
+
+  mediaError(message) {
+    this.setData({ loading: false, error: message });
+    if (wx.showToast) wx.showToast({ title: message, icon: 'none' });
+  },
+
+  input(e) { if (!this.data.loading) this.setData({ ['card.' + e.currentTarget.dataset.field]: e.detail.value, error: '' }); },
   workTitleInput(e) {
+    if (this.data.loading) return;
     const list = e.currentTarget.dataset.type === 'video' ? 'workVideos' : 'workImages';
     const index = Number(e.currentTarget.dataset.index);
     this.setData({ [list + '[' + index + '].title']: e.detail.value, error: '' });
   },
-  passwordInput(e) { this.setData({ [e.currentTarget.dataset.field]: e.detail.value, error: '' }); },
-  setPrivacy(e) { this.setData({ ['card.privacy.' + e.currentTarget.dataset.field]: !!e.detail.value, error: '' }); },
-  agreement(e) { this.setData({ agreed: ((e.detail && e.detail.value) || []).indexOf('yes') !== -1, error: '' }); },
-  togglePasswordForm() { this.setData({ showPasswordForm: !this.data.showPasswordForm, error: '' }); },
+  passwordInput(e) { if (!this.data.loading) this.setData({ [e.currentTarget.dataset.field]: e.detail.value, error: '' }); },
+  setPrivacy(e) { if (!this.data.loading) this.setData({ ['card.privacy.' + e.currentTarget.dataset.field]: !!e.detail.value, error: '' }); },
+  agreement(e) { if (!this.data.loading) this.setData({ agreed: ((e.detail && e.detail.value) || []).indexOf('yes') !== -1, error: '' }); },
+  togglePasswordForm() { if (!this.data.loading) this.setData({ showPasswordForm: !this.data.showPasswordForm, error: '' }); },
   openPrivacyContract() {
     const fallback = () => wx.navigateTo({ url: '/pages/legal/legal?type=privacy' });
     if (!wx.openPrivacyContract) { fallback(); return; }
@@ -165,68 +179,74 @@ Page({
   },
 
   chooseMedia(e) {
+    if (this.busyGuard()) return;
     const field = e.currentTarget.dataset.field;
     const workIndex = e.currentTarget.dataset.workIndex;
     wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'], success: (result) => {
       const media = result.tempFiles && result.tempFiles[0];
-      if (!media || (media.fileType && media.fileType !== 'image')) { this.setData({ error: '只支持图片格式' }); return; }
+      if (!media || (media.fileType && media.fileType !== 'image')) { this.mediaError('只支持图片格式'); return; }
+      this.setData({ loading: true, error: '' });
       let filePath = media.tempFilePath;
       const proceed = () => {
         const fs = wx.getFileSystemManager && wx.getFileSystemManager();
         let size = Number(media.size || 0);
         try { if (fs && fs.statSync) size = Number(fs.statSync(filePath).size || size); } catch (_) {}
-        if (size > 4 * 1024 * 1024) { this.setData({ error: '请上传 4MB 以内的图片' }); return; }
+        if (size > 4 * 1024 * 1024) { this.mediaError('请上传 4MB 以内的图片'); return; }
         if (workIndex !== undefined) {
           const index = Number(workIndex);
           const workField = 'work_image_' + (index + 1);
           if (this.data.anonymous) {
-            this.setData({ ['workImages[' + index + '].url']: filePath, ['pendingMedia.' + workField]: filePath, error: '' });
+            drafts.persistFile(filePath).then((savedPath) => this.setData({ ['workImages[' + index + '].url']: savedPath, ['pendingMedia.' + workField]: savedPath, loading: false, error: '' }))
+              .catch(() => this.mediaError('图片暂存失败，请重试'));
             return;
           }
-          this.setData({ loading: true, error: '' });
           uploadMediaRecord(filePath, workField).then((uploaded) => this.setData({
             ['workImages[' + index + '].url']: uploaded.url,
             ['workImages[' + index + '].key']: uploaded.key,
             loading: false
-          })).catch((error) => this.setData({ loading: false, error: error.message || '作品图片上传失败' }));
+          })).catch((error) => this.mediaError(error.message || '作品图片上传失败'));
           return;
         }
         if (this.data.anonymous) {
-          this.setData({ ['card.' + field]: filePath, ['pendingMedia.' + field]: filePath, error: '' });
+          drafts.persistFile(filePath).then((savedPath) => this.setData({ ['card.' + field]: savedPath, ['pendingMedia.' + field]: savedPath, loading: false, error: '' }))
+            .catch(() => this.mediaError('图片暂存失败，请重试'));
           return;
         }
-        this.setData({ loading: true, error: '' });
         uploadMedia(filePath, field).then((url) => this.setData({ ['card.' + field]: url, loading: false }))
-          .catch((error) => this.setData({ loading: false, error: error.message || '图片上传失败' }));
+          .catch((error) => this.mediaError(error.message || '图片上传失败'));
       };
       if (wx.compressImage) wx.compressImage({ src: filePath, quality: 80, success: (compressed) => { filePath = compressed.tempFilePath || filePath; proceed(); }, fail: proceed });
       else proceed();
-    }, fail: () => {} });
+    }, fail: (error) => { if (!/cancel/i.test(String(error && error.errMsg))) this.mediaError('图片选择失败，请检查微信权限'); } });
   },
 
   chooseWorkVideo(e) {
+    if (this.busyGuard()) return;
     const index = Number(e.currentTarget.dataset.workIndex);
     wx.chooseMedia({ count: 1, mediaType: ['video'], sourceType: ['album', 'camera'], maxDuration: 60, success: (result) => {
       const media = result.tempFiles && result.tempFiles[0];
-      if (!media || (media.fileType && media.fileType !== 'video')) { this.setData({ error: '请选择 MP4 视频' }); return; }
+      if (!media || (media.fileType && media.fileType !== 'video')) { this.mediaError('请选择 MP4 视频'); return; }
       const filePath = media.tempFilePath;
       const fs = wx.getFileSystemManager && wx.getFileSystemManager();
       let size = Number(media.size || 0);
       try { if (fs && fs.statSync) size = Number(fs.statSync(filePath).size || size); } catch (_) {}
-      if (size > MAX_WORK_VIDEO_BYTES) { this.setData({ error: '请上传 20MB 以内的视频' }); return; }
+      if (size > MAX_WORK_VIDEO_BYTES) { this.mediaError('请上传 20MB 以内的视频'); return; }
+      this.setData({ loading: true, error: '' });
       const field = 'work_video_' + (index + 1);
       if (this.data.anonymous) {
-        this.setData({ ['workVideos[' + index + '].url']: filePath, ['pendingMedia.' + field]: filePath, error: '' });
+        drafts.persistFile(filePath).then((savedPath) => this.setData({ ['workVideos[' + index + '].url']: savedPath, ['pendingMedia.' + field]: savedPath, loading: false, error: '' }))
+          .catch(() => this.mediaError('视频暂存失败，请重试'));
         return;
       }
-      this.setData({ loading: true, error: '' });
       uploadMediaRecord(filePath, field).then((uploaded) => this.setData({
         ['workVideos[' + index + '].url']: uploaded.url,
         ['workVideos[' + index + '].key']: uploaded.key,
         loading: false
-      })).catch((error) => this.setData({ loading: false, error: error.message || '作品视频上传失败' }));
-    }, fail: () => {} });
+      })).catch((error) => this.mediaError(error.message || '作品视频上传失败'));
+    }, fail: (error) => { if (!/cancel/i.test(String(error && error.errMsg))) this.mediaError('视频选择失败，请检查微信权限'); } });
   },
+
+  videoError() { if (wx.showToast) wx.showToast({ title: '视频无法播放，请重新上传 MP4', icon: 'none' }); },
 
   ensureWechatBound() {
     if (this.data.wechatBound) return Promise.resolve();
@@ -300,14 +320,14 @@ Page({
     request.then((data) => {
       const saved = Object.assign({}, payload, data.card || {});
       const continueSave = () => {
-        const finish = (card, warning) => {
+        const finish = (card) => {
           const publicId = card.public_id || data.public_id || this.data.publicId || '';
           const published = cardUtil.isPublished(card);
           const works = cardUtil.workSlots(card.works);
           this.setData({
             loading: false,
             anonymous: false,
-            pendingMedia: warning ? pendingMedia : {},
+            pendingMedia: {},
             card: Object.assign({}, this.data.card, card),
             workImages: works.images,
             workVideos: works.videos,
@@ -317,14 +337,25 @@ Page({
             wechatBound: true,
             aiAccount: data.ai_account || (data.user && data.user.username) || this.data.aiAccount || payload.phone,
             initialPassword: data.initial_password === undefined ? wasAnonymous : !!data.initial_password,
-            error: warning || ''
+            error: ''
           });
-          if (!warning) drafts.clear(editDraftKey(wasAnonymous ? '' : this.data.aiAccount));
-          if (published) { this.openCard(publicId, warning ? '文字名片已保存' : '修改已保存'); return; }
-          this.publish(warning);
+          drafts.clear(editDraftKey(this.data.aiAccount));
+          if (wasAnonymous || Object.keys(pendingMedia).length) drafts.clear(editDraftKey(''));
+          if (published) { this.openCard(publicId, '修改已保存'); return; }
+          this.publish();
         };
-        if (wasAnonymous && Object.keys(pendingMedia).length) {
-          this.uploadPendingMedia(saved, pendingMedia).then((updated) => finish(updated)).catch(() => finish(saved, '账号和文字名片已保存，请稍后重试图片或视频'));
+        if (Object.keys(pendingMedia).length) {
+          this.uploadPendingMedia(saved, pendingMedia).then(finish).catch((error) => {
+            this.setData({
+              loading: false,
+              anonymous: false,
+              publicId: saved.public_id || data.public_id || this.data.publicId || '',
+              wechatBound: true,
+              aiAccount: data.ai_account || (data.user && data.user.username) || this.data.aiAccount || payload.phone,
+              initialPassword: data.initial_password === undefined ? wasAnonymous : !!data.initial_password,
+              error: '账号和文字资料已保存；媒体上传失败，请点击保存重试：' + (error.message || '网络异常')
+            });
+          });
           return;
         }
         finish(saved);

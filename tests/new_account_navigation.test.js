@@ -72,6 +72,25 @@ function context(definition) {
   assert.strictEqual(storage.hq_token, 'current-wechat-token');
   assert.strictEqual(api.hasCardBindIntent(), false);
 
+  const originalPrepareShareImage = card.prepareShareImage;
+  let resolveOldShare;
+  let shareCall = 0;
+  card.prepareShareImage = () => {
+    shareCall += 1;
+    return shareCall === 1 ? new Promise((resolve) => { resolveOldShare = resolve; }) : Promise.resolve('new-share.jpg');
+  };
+  page = context(myCardDefinition);
+  page._loadId = 1;
+  myCardDefinition.showOwner.call(page, { card: { public_id: 'old-card', status: 'published', invite_code: 'ABCD23' } }, 1);
+  page._loadId = 2;
+  myCardDefinition.showOwner.call(page, { card: { public_id: 'new-card', status: 'published', invite_code: 'EFGH45' } }, 2);
+  await new Promise((resolve) => setImmediate(resolve));
+  resolveOldShare('old-share.jpg');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.strictEqual(page.data.publicId, 'new-card');
+  assert.strictEqual(page.data.shareImageUrl, 'new-share.jpg');
+  card.prepareShareImage = originalPrepareShareImage;
+
   api.request = () => Promise.resolve({ statusCode: 404, data: { code: 'card_not_found' } });
   page = context(myCardDefinition);
   await page.loadOwner.call(page);

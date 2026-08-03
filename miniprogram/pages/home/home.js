@@ -72,7 +72,7 @@ Page({
       this.ensureWorkbenchSession();
       return null;
     }
-    if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return null; }
+    if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.ensureWorkbenchSession(); return null; }
     if (!this.data.cardReady) {
       wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
       wx.switchTab({ url: '/pages/my-card/my-card' });
@@ -157,8 +157,9 @@ Page({
   },
 
   ensureWorkbenchSession() {
+    if (this._sessionPromise) return this._sessionPromise;
     this.setData({ membershipReady: false, cardReady: false, accountStateError: false });
-    return cardUtil.loginCardSession().then((session) => {
+    this._sessionPromise = cardUtil.loginCardSession().then((session) => {
       if (session.state === 'owner') {
         return this.refreshPoints().then((result) => {
           if (result && !result.cardReady) wx.switchTab({ url: '/pages/my-card/my-card' });
@@ -176,7 +177,10 @@ Page({
     }).catch(() => {
       this.setData({ points: null, membershipReady: true, cardReady: false, accountStateError: true });
       return null;
+    }).finally(() => {
+      this._sessionPromise = null;
     });
+    return this._sessionPromise;
   },
 
   refreshPoints() {

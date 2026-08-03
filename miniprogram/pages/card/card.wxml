@@ -5,7 +5,7 @@
   <view wx:elif="{{error}}" class="state-card error">
     <view>{{error}}</view>
     <view class="state-action" bindtap="retry">重新加载</view>
-    <view wx:if="{{!isMine}}" class="state-link" bindtap="goJoin">我也要一张</view>
+    <view wx:if="{{!ownerHint}}" class="state-link {{joining ? 'disabled' : ''}}" bindtap="goJoin">{{joining ? '正在打开…' : '我也要一张'}}</view>
   </view>
 
   <block wx:else>
@@ -61,7 +61,7 @@
       <view class="section-rule"></view>
       <view class="work-video-list">
         <view class="work-media video" wx:for="{{card.workVideos}}" wx:key="slot">
-          <video wx:if="{{item.url}}" src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
+          <video wx:if="{{item.url}}" src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" binderror="videoError" />
           <view wx:else class="work-placeholder video-placeholder" bindtap="goEdit">▷ 添加横版视频 {{item.slot}}</view>
           <view wx:if="{{item.url}}" class="video-meta"><text>{{item.title || '个人视频'}}</text><text wx:if="{{item.duration}}">{{item.duration}}</text></view>
         </view>
@@ -72,7 +72,7 @@
       <button wx:if="{{isMine && shareReady}}" class="dock-button primary" open-type="share">分享我的名片，邀请好友</button>
       <view wx:if="{{isMine && !shareReady}}" class="dock-button primary" bindtap="goEdit">完善并公开名片</view>
       <view wx:if="{{isMine}}" class="dock-button secondary" bindtap="goEdit">编辑名片</view>
-      <view wx:else class="dock-button primary join-button" bindtap="goJoin">我也要一张</view>
+      <view wx:else class="dock-button primary join-button {{joining ? 'disabled' : ''}}" bindtap="goJoin">{{joining ? '正在打开…' : '我也要一张'}}</view>
     </view>
   </block>
 </view>
