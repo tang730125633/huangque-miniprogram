@@ -5,6 +5,7 @@ const drafts = require('../../utils/drafts.js');
 
 const EDIT_DRAFT_KEY = 'hq_draft_card_edit_v1';
 const ANONYMOUS_DRAFT_SCOPE = 'anonymous-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+const MAX_WORK_VIDEO_BYTES = 20 * 1024 * 1024;
 
 function editDraftKey(owner) {
   return drafts.scopedKey(EDIT_DRAFT_KEY, owner || ANONYMOUS_DRAFT_SCOPE);
@@ -46,16 +47,17 @@ function registrationNotice(data, payload) {
 function uploadMediaRecord(filePath, field) {
   return new Promise((resolve, reject) => {
     const fs = wx.getFileSystemManager && wx.getFileSystemManager();
-    if (!fs) { reject(new Error('当前微信版本不支持图片上传')); return; }
+    const video = /^work_video_[1-3]$/.test(field);
+    if (!fs) { reject(new Error('当前微信版本不支持媒体上传')); return; }
     fs.readFile({ filePath, encoding: 'base64', success: (result) => {
-      api.request('/api/auth/card/media', { method: 'POST', data: { field, data: 'data:image/jpeg;base64,' + result.data }, timeout: 60000 })
+      api.request('/api/auth/card/media', { method: 'POST', data: { field, data: 'data:' + (video ? 'video/mp4' : 'image/jpeg') + ';base64,' + result.data }, timeout: video ? 120000 : 60000 })
         .then((res) => {
           const data = res.data || {};
           const url = data.url || (data.media && data.media.url);
-          if (res.statusCode !== 200 || !url) throw new Error(data.detail || '图片上传失败');
+          if (res.statusCode !== 200 || !url) throw new Error(data.detail || '媒体上传失败');
           resolve({ url, key: data.key || (data.media && data.media.key) || '', card: data.card || null });
         }).catch(reject);
-    }, fail: () => reject(new Error('图片读取失败')) });
+    }, fail: () => reject(new Error('媒体读取失败')) });
   });
 }
 
@@ -156,8 +158,6 @@ Page({
   setPrivacy(e) { this.setData({ ['card.privacy.' + e.currentTarget.dataset.field]: !!e.detail.value, error: '' }); },
   agreement(e) { this.setData({ agreed: ((e.detail && e.detail.value) || []).indexOf('yes') !== -1, error: '' }); },
   togglePasswordForm() { this.setData({ showPasswordForm: !this.data.showPasswordForm, error: '' }); },
-  mediaComingSoon() { wx.showToast({ title: '作品媒体存储接口接入后开放', icon: 'none' }); },
-
   openPrivacyContract() {
     const fallback = () => wx.navigateTo({ url: '/pages/legal/legal?type=privacy' });
     if (!wx.openPrivacyContract) { fallback(); return; }
@@ -201,6 +201,30 @@ Page({
       };
       if (wx.compressImage) wx.compressImage({ src: filePath, quality: 80, success: (compressed) => { filePath = compressed.tempFilePath || filePath; proceed(); }, fail: proceed });
       else proceed();
+    }, fail: () => {} });
+  },
+
+  chooseWorkVideo(e) {
+    const index = Number(e.currentTarget.dataset.workIndex);
+    wx.chooseMedia({ count: 1, mediaType: ['video'], sourceType: ['album', 'camera'], maxDuration: 60, success: (result) => {
+      const media = result.tempFiles && result.tempFiles[0];
+      if (!media || (media.fileType && media.fileType !== 'video')) { this.setData({ error: '请选择 MP4 视频' }); return; }
+      const filePath = media.tempFilePath;
+      const fs = wx.getFileSystemManager && wx.getFileSystemManager();
+      let size = Number(media.size || 0);
+      try { if (fs && fs.statSync) size = Number(fs.statSync(filePath).size || size); } catch (_) {}
+      if (size > MAX_WORK_VIDEO_BYTES) { this.setData({ error: '请上传 20MB 以内的视频' }); return; }
+      const field = 'work_video_' + (index + 1);
+      if (this.data.anonymous) {
+        this.setData({ ['workVideos[' + index + '].url']: filePath, ['pendingMedia.' + field]: filePath, error: '' });
+        return;
+      }
+      this.setData({ loading: true, error: '' });
+      uploadMediaRecord(filePath, field).then((uploaded) => this.setData({
+        ['workVideos[' + index + '].url']: uploaded.url,
+        ['workVideos[' + index + '].key']: uploaded.key,
+        loading: false
+      })).catch((error) => this.setData({ loading: false, error: error.message || '作品视频上传失败' }));
     }, fail: () => {} });
   },
 
@@ -300,7 +324,7 @@ Page({
           this.publish(warning);
         };
         if (wasAnonymous && Object.keys(pendingMedia).length) {
-          this.uploadPendingMedia(saved, pendingMedia).then((updated) => finish(updated)).catch(() => finish(saved, '账号和文字名片已保存，请稍后重试图片'));
+          this.uploadPendingMedia(saved, pendingMedia).then((updated) => finish(updated)).catch(() => finish(saved, '账号和文字名片已保存，请稍后重试图片或视频'));
           return;
         }
         finish(saved);

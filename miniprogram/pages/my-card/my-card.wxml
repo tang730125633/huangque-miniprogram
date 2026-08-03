@@ -18,11 +18,13 @@
 
   <block wx:else>
     <view class="topline">
-      <view>
-        <view class="eyebrow">我的名片</view>
-        <view class="page-title">{{complete ? '你的公开形象' : '完善你的第一张名片'}}</view>
+      <view class="header-copy">
+        <view class="page-title">我的名片</view>
+        <view wx:if="{{wechatBound}}" class="public-state {{published ? 'online' : ''}}">● {{published ? '公开中' : '仅自己可见'}}</view>
+        <view wx:else class="public-state">● 等待微信绑定</view>
       </view>
-      <view wx:if="{{aiAccount}}" class="account-link" bindtap="openAccount">账户与会员 ›</view>
+      <view wx:if="{{wechatBound}}" class="header-edit" bindtap="editCard">✎ 编辑</view>
+      <view wx:elif="{{aiAccount}}" class="account-link" bindtap="openAccount">账户与会员 ›</view>
     </view>
 
     <view wx:if="{{!wechatBound}}" class="notice">
@@ -32,25 +34,29 @@
     </view>
 
     <view wx:else class="business-card">
-      <view class="card-glow"></view>
-      <image wx:if="{{card.avatar}}" class="avatar" src="{{card.avatar}}" mode="aspectFill" />
-      <view wx:else class="avatar initial">{{initial}}</view>
-      <view class="name">{{card.name || '待填写姓名'}}</view>
-      <view class="role">{{card.title || '待填写身份 / 职称'}}<text wx:if="{{card.company}}"> · {{card.company}}</text></view>
-      <view wx:if="{{card.bio}}" class="bio">{{card.bio}}</view>
-      <view wx:if="{{tagsList.length}}" class="tags"><text class="tag" wx:for="{{tagsList}}" wx:key="*this">{{item}}</text></view>
-      <view class="status-row"><text class="status {{published ? 'online' : ''}}">{{published ? '已公开' : '未公开'}}</text><text class="status">微信已绑定</text></view>
-    </view>
-
-    <view wx:if="{{wechatBound && (card.phone || card.email || card.address)}}" class="content-card detail-card">
-      <view class="section-heading">联系我</view>
-      <view wx:if="{{card.phone}}" class="detail-row"><text>手机</text><text>{{card.phone}}</text></view>
-      <view wx:if="{{card.email}}" class="detail-row"><text>邮箱</text><text>{{card.email}}</text></view>
-      <view wx:if="{{card.address}}" class="detail-row"><text>城市</text><text>{{card.address}}</text></view>
+      <view class="card-mark">雀</view>
+      <view class="card-profile">
+        <view class="avatar-shell">
+          <image wx:if="{{card.avatar}}" class="avatar" src="{{card.avatar}}" mode="aspectFill" />
+          <view wx:else class="avatar initial">{{initial}}</view>
+          <view class="brand-badge">雀</view>
+        </view>
+        <view class="profile-copy">
+          <view class="name">{{card.name || '待填写姓名'}}</view>
+          <view class="role">{{card.title || '待填写身份 / 职称'}}<text wx:if="{{card.company}}"> · {{card.company}}</text></view>
+          <view wx:if="{{card.bio}}" class="bio">{{card.bio}}</view>
+          <view wx:if="{{tagsList.length}}" class="tags"><text class="tag" wx:for="{{tagsList}}" wx:key="*this">{{item}}</text></view>
+        </view>
+      </view>
+      <view class="contact-grid">
+        <view class="contact-item"><text class="contact-icon">☎</text><text class="contact-value">{{card.phone || '待补充'}}</text></view>
+        <view class="contact-item"><text class="contact-icon">⌖</text><text class="contact-value">{{card.address || '待补充'}}</text></view>
+        <view class="contact-item" bindtap="editCard"><text class="contact-icon">◎</text><text class="contact-value">{{card.wechat_qr ? '微信联系' : '待补充'}}</text></view>
+      </view>
     </view>
 
     <view wx:if="{{wechatBound}}" class="content-card work-card">
-      <view class="section-heading">作品与经历</view>
+      <view class="section-head"><view class="section-heading">作品与经历</view><view class="manage-link" bindtap="editCard">管理内容</view></view>
       <view class="work-image-list">
         <view class="work-media image" wx:for="{{workImages}}" wx:key="slot">
           <image wx:if="{{item.url}}" src="{{item.url}}" mode="aspectFill" />
@@ -61,7 +67,7 @@
     </view>
 
     <view wx:if="{{wechatBound}}" class="content-card work-card">
-      <view class="section-heading">我的视频</view>
+      <view class="section-head"><view class="section-heading">我的视频</view><view class="manage-link" bindtap="editCard">管理内容</view></view>
       <view class="work-video-list">
         <view class="work-media video" wx:for="{{workVideos}}" wx:key="slot">
           <video wx:if="{{item.url}}" src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />

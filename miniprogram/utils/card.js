@@ -23,9 +23,19 @@ function workSlots(works) {
     if (item && typeof item === 'object' && !Array.isArray(item) && (item.type === 'image' || item.type === 'video')) groups[item.type].push(item);
     else other.push(item);
   });
-  const slots = (type, limit) => Array.from({ length: 3 }, (_, index) => Object.assign({}, groups[type][index] || {}, {
-    type, slot: index + 1, title: String((groups[type][index] || {}).title || '').trim().slice(0, limit)
-  }));
+  const slots = (type, limit) => {
+    const result = Array.from({ length: 3 }, (_, index) => ({ type, slot: index + 1, title: '' }));
+    const used = {};
+    groups[type].forEach((item) => {
+      let index = Number(item.slot) - 1;
+      if (!Number.isInteger(index) || index < 0 || index > 2 || used[index]) index = result.findIndex((_, slot) => !used[slot]);
+      if (index >= 0) {
+        used[index] = true;
+        result[index] = Object.assign({}, item, { type, slot: index + 1, title: String(item.title || '').trim().slice(0, limit) });
+      }
+    });
+    return result;
+  };
   return { images: slots('image', 12), videos: slots('video', 16), other };
 }
 

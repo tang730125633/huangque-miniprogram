@@ -50,7 +50,11 @@
     </view>
     <view class="video-list">
       <view class="media-title-item" wx:for="{{workVideos}}" wx:key="slot">
-        <view class="upload-slot video-slot" bindtap="mediaComingSoon">▷ 添加个人视频 {{item.slot}}</view>
+        <view id="work-video-{{index}}" class="upload-slot video-slot">
+          <video wx:if="{{item.url}}" src="{{item.url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
+          <view wx:else class="video-empty" data-work-index="{{index}}" bindtap="chooseWorkVideo">▷ 添加个人视频 {{item.slot}}</view>
+          <text wx:if="{{item.url}}" class="replace-tip" data-work-index="{{index}}" catchtap="chooseWorkVideo">更换</text>
+        </view>
         <input class="media-title-input" value="{{item.title}}" data-type="video" data-index="{{index}}" bindinput="workTitleInput" maxlength="16" placeholder="视频标题（选填）" />
       </view>
     </view>
