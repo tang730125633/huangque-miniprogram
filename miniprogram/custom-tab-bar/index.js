@@ -1,13 +1,14 @@
 const OUTER_ITEMS = [
-  { pagePath: '/pages/my-card/my-card', text: '我的名片', iconPath: '/assets/tabbar/profile.png', selectedIconPath: '/assets/tabbar/profile_on.png' },
-  { pagePath: '/pages/home/home', text: '黄雀AI工作台', iconPath: '/assets/tabbar/home.png', selectedIconPath: '/assets/tabbar/home_on.png' }
+  { pagePath: '/pages/my-card/my-card', text: '我的名片', symbol: '▣' },
+  { pagePath: '/pages/home/home', text: '黄雀AI工作台', symbol: '⌂' }
 ];
 
 const WORKBENCH_ITEMS = [
-  { pagePath: '/pages/home/home', text: '首页', iconPath: '/assets/tabbar/home.png', selectedIconPath: '/assets/tabbar/home_on.png' },
-  { pagePath: '/pages/inspiration/inspiration', text: '一键跟创', iconPath: '/assets/tabbar/idea.png', selectedIconPath: '/assets/tabbar/idea_on.png' },
-  { pagePath: '/pages/assets/assets', text: '历史作品', iconPath: '/assets/tabbar/history.png', selectedIconPath: '/assets/tabbar/history_on.png' },
-  { pagePath: '/pages/profile/profile', text: '我的', iconPath: '/assets/tabbar/profile.png', selectedIconPath: '/assets/tabbar/profile_on.png' }
+  { pagePath: '/pages/my-card/my-card', text: '我的名片', symbol: '▣' },
+  { pagePath: '/pages/home/home', text: '首页', symbol: '⌂' },
+  { pagePath: '/pages/inspiration/inspiration', text: '一键跟创', symbol: '✦' },
+  { pagePath: '/pages/assets/assets', text: '历史作品', symbol: '◷' },
+  { pagePath: '/pages/profile/profile', text: '我的', symbol: '○' }
 ];
 
 const LOGIN_REQUIRED = {

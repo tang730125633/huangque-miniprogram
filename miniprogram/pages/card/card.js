@@ -2,7 +2,7 @@ const api = require('../../utils/api.js');
 const invite = require('../../utils/invite.js');
 const cardUtil = require('../../utils/card.js');
 
-function cardView(source) {
+function cardView(source, includeEmpty) {
   const card = source || {};
   const privacy = cardUtil.privacy(card);
   const works = cardUtil.workSlots(card.works);
@@ -14,26 +14,45 @@ function cardView(source) {
     showEmail: privacy.email && !!card.email,
     showAddress: privacy.address && !!card.address,
     showQr: privacy.wechat_qr && !!card.wechat_qr,
-    workImages: publicMedia(works.images),
-    workVideos: publicMedia(works.videos)
+    workImages: includeEmpty ? works.images : publicMedia(works.images),
+    workVideos: includeEmpty ? works.videos : publicMedia(works.videos)
   });
 }
 
 Page({
-  data: { loading: true, error: '', card: {}, isMine: false, shareReady: false, shareImageUrl: '', publicId: '', inviteCode: '', attributionToken: '' },
+  data: { loading: true, error: '', card: {}, isMine: false, ownerHint: false, shareReady: false, shareImageUrl: '', publicId: '', inviteCode: '', attributionToken: '' },
 
   onLoad(options) {
     if (wx.hideShareMenu) wx.hideShareMenu();
     const id = String((options && options.id) || '').trim();
     const code = invite.extractLaunchInvite({ query: options || {} });
-    this.setData({ publicId: id, inviteCode: code, isMine: String((options && options.mine) || '') === '1' });
-    if (id) this.loadPublic(id, code);
-    else this.loadMine();
+    const ownerHint = String((options && options.mine) || '') === '1' || !id;
+    this.setData({ publicId: id, inviteCode: code, isMine: false, ownerHint });
+    if (ownerHint) this.loadOwnerPreview(id, code);
+    else this.loadPublic(id, code);
+  },
+
+  loadOwnerPreview(id, code) {
+    this.setData({ loading: true, error: '', isMine: false, shareReady: false });
+    return cardUtil.loginCardSession().then((session) => {
+      const data = session.data || {};
+      const current = data.card;
+      if (session.state !== 'owner') {
+        if (id) { this.loadPublic(id, code); return; }
+        throw new Error('当前微信还没有名片');
+      }
+      if (!current) { this.loadMine(id, code); return; }
+      if (id && current.public_id !== id) { this.loadPublic(id, code); return; }
+      this.showMine(current);
+    }).catch((error) => {
+      if (id) { this.loadPublic(id, code); return; }
+      this.setData({ loading: false, error: error.message || '名片读取失败' });
+    });
   },
 
   loadPublic(id, code) {
     if (wx.hideShareMenu) wx.hideShareMenu();
-    this.setData({ loading: true, error: '', shareReady: false, attributionToken: '' });
+    this.setData({ loading: true, error: '', isMine: false, ownerHint: false, shareReady: false, attributionToken: '' });
     const query = '?id=' + encodeURIComponent(id) + (code ? '&invite=' + encodeURIComponent(code) : '');
     api.request('/api/auth/card/public' + query, { method: 'GET', auth: false }).then((res) => {
       const data = res.data || {};
@@ -47,25 +66,30 @@ Page({
       const source = data.card || data;
       const shareReady = invite.validInviteCode(source.invite_code);
       const card = cardView(source);
-      this.setData({ loading: false, card: card, publicId: source.public_id || id, shareReady: false, shareImageUrl: '', attributionToken: inviteValid ? attributionToken : '' }, () => {
+      this.setData({ loading: false, card: card, isMine: false, ownerHint: false, publicId: source.public_id || id, shareReady: false, shareImageUrl: '', attributionToken: inviteValid ? attributionToken : '' }, () => {
         if (shareReady) this.enableShare(card);
       });
     }).catch((error) => this.setData({ loading: false, error: error.message || '名片加载失败' }));
   },
 
-  loadMine() {
+  loadMine(expectedId, code) {
     if (!api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', shareReady: false });
     api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '你还没有完成名片');
-      const shareReady = cardUtil.isPublished(data.card) && invite.validInviteCode(data.card.invite_code);
-      const card = cardView(data.card);
-      this.setData({ loading: false, card: card, isMine: true, shareReady: false, shareImageUrl: '', publicId: data.card.public_id || '' }, () => {
-        if (shareReady) this.enableShare(card);
-      });
+      if (expectedId && data.card.public_id !== expectedId) { this.loadPublic(expectedId, code); return; }
+      this.showMine(data.card);
     }).catch((error) => this.setData({ loading: false, error: error.message || '名片读取失败' }));
+  },
+
+  showMine(source) {
+    const shareReady = cardUtil.isPublished(source) && invite.validInviteCode(source.invite_code);
+    const card = cardView(source, true);
+    this.setData({ loading: false, card, isMine: true, ownerHint: true, shareReady: false, shareImageUrl: '', publicId: source.public_id || '' }, () => {
+      if (shareReady) this.enableShare(card);
+    });
   },
 
   goJoin() {
@@ -75,9 +99,24 @@ Page({
     wx.navigateTo({ url: '/pages/card-edit/card-edit?source=invite' });
   },
   goEdit() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
+  callPhone() {
+    const phone = this.data.card && this.data.card.phone;
+    if (phone && wx.makePhoneCall) wx.makePhoneCall({ phoneNumber: String(phone) });
+  },
+  previewQr() {
+    const current = this.data.card && this.data.card.wechat_qr;
+    if (current && wx.previewImage) wx.previewImage({ current, urls: [current] });
+  },
+  copyLink() { this.copyContact(this.data.card && this.data.card.links, '链接已复制'); },
+  copyEmail() { this.copyContact(this.data.card && this.data.card.email, '邮箱已复制'); },
+  copyContact(value, title) {
+    if (!value || !wx.setClipboardData) return;
+    wx.setClipboardData({ data: String(value), success: () => wx.showToast({ title, icon: 'success' }) });
+  },
   retry() {
-    if (this.data.publicId) this.loadPublic(this.data.publicId, this.data.inviteCode);
-    else this.loadMine();
+    if (this.data.ownerHint) this.loadOwnerPreview(this.data.publicId, this.data.inviteCode);
+    else if (this.data.publicId) this.loadPublic(this.data.publicId, this.data.inviteCode);
+    else this.loadOwnerPreview('', this.data.inviteCode);
   },
   enableShare(card) {
     cardUtil.prepareShareImage(this, card).then((imageUrl) => {

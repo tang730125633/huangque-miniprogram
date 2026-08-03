@@ -6,7 +6,6 @@ function ownerState(data) {
   data = data || {};
   const card = data.card || {};
   const works = cardUtil.workSlots(card.works);
-  const visible = (items) => items.filter((item) => /^https:\/\//.test(String(item.url || '')));
   return {
     card,
     initial: String(card.name || '黄').slice(0, 1),
@@ -16,8 +15,8 @@ function ownerState(data) {
     publicId: card.public_id || '',
     aiAccount: data.ai_account || card.ai_account || '',
     tagsList: String(card.tags || '').split(/[,，\s]+/).filter(Boolean),
-    workImages: visible(works.images),
-    workVideos: visible(works.videos)
+    workImages: works.images,
+    workVideos: works.videos
   };
 }
 

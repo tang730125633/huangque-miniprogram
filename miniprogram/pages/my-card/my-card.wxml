@@ -49,22 +49,24 @@
       <view wx:if="{{card.address}}" class="detail-row"><text>城市</text><text>{{card.address}}</text></view>
     </view>
 
-    <view wx:if="{{workImages.length}}" class="content-card work-card">
+    <view wx:if="{{wechatBound}}" class="content-card work-card">
       <view class="section-heading">作品与经历</view>
-      <view class="work-image-grid">
-        <view class="work-media" wx:for="{{workImages}}" wx:key="slot">
-          <image src="{{item.url}}" mode="aspectFill" />
+      <view class="work-image-list">
+        <view class="work-media image" wx:for="{{workImages}}" wx:key="slot">
+          <image wx:if="{{item.url}}" src="{{item.url}}" mode="aspectFill" />
+          <view wx:else class="work-placeholder image-placeholder" bindtap="editCard">＋ 添加长图 {{item.slot}}</view>
           <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
         </view>
       </view>
     </view>
 
-    <view wx:if="{{workVideos.length}}" class="content-card work-card">
+    <view wx:if="{{wechatBound}}" class="content-card work-card">
       <view class="section-heading">我的视频</view>
       <view class="work-video-list">
         <view class="work-media video" wx:for="{{workVideos}}" wx:key="slot">
-          <video src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
-          <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
+          <video wx:if="{{item.url}}" src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
+          <view wx:else class="work-placeholder video-placeholder" bindtap="editCard">▷ 添加横版视频 {{item.slot}}</view>
+          <view wx:if="{{item.url && item.title}}" class="work-caption">{{item.title}}</view>
         </view>
       </view>
     </view>

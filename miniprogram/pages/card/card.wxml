@@ -1,48 +1,78 @@
 <view class="container card-page">
-  <canvas canvas-id="cardShareCover" style="position:fixed;left:-600px;top:-500px;width:500px;height:400px;opacity:0;pointer-events:none;" />
-  <view wx:if="{{loading}}" class="card state">正在加载名片…</view>
-  <view wx:elif="{{error}}" class="card state error">
+  <canvas canvas-id="cardShareCover" class="share-canvas" />
+
+  <view wx:if="{{loading}}" class="state-card">正在加载名片…</view>
+  <view wx:elif="{{error}}" class="state-card error">
     <view>{{error}}</view>
-    <view class="primary-button" bindtap="retry">重新加载</view>
-    <view class="join" bindtap="goJoin">我也要一张</view>
+    <view class="state-action" bindtap="retry">重新加载</view>
+    <view wx:if="{{!isMine}}" class="state-link" bindtap="goJoin">我也要一张</view>
   </view>
+
   <block wx:else>
-    <view class="card hero">
-      <image wx:if="{{card.avatar}}" class="avatar" src="{{card.avatar}}" mode="aspectFill" />
-      <view wx:else class="avatar initials">{{card.initial}}</view>
-      <view class="name">{{card.name}}</view>
-      <view class="role">{{card.title}} · {{card.company}}</view>
-      <view wx:if="{{card.bio}}" class="bio">{{card.bio}}</view>
-      <view wx:if="{{card.tagsList.length}}" class="tags"><text wx:for="{{card.tagsList}}" wx:key="*this" class="tag">{{item}}</text></view>
+    <view class="identity-hero">
+      <image wx:if="{{card.avatar}}" class="hero-cover" src="{{card.avatar}}" mode="aspectFill" />
+      <view class="hero-shade"></view>
+      <view class="hero-glow glow-one"></view>
+      <view class="hero-glow glow-two"></view>
+
+      <view class="hero-kicker">
+        <text>HUANGQUE AI CARD</text>
+        <text>{{isMine ? '公开中' : '只读公开页'}}</text>
+      </view>
+
+      <view class="identity-body">
+        <image wx:if="{{card.avatar}}" class="avatar" src="{{card.avatar}}" mode="aspectFill" />
+        <view wx:else class="avatar initials">{{card.initial}}</view>
+        <view wx:if="{{!isMine}}" class="invite-context">{{card.name}} 邀请你认识 TA</view>
+        <view class="name">{{card.name}}</view>
+        <view class="role">{{card.title}}<text wx:if="{{card.company}}"> · {{card.company}}</text></view>
+        <view wx:if="{{card.bio}}" class="bio">{{card.bio}}</view>
+        <view wx:if="{{card.tagsList.length}}" class="tags"><text wx:for="{{card.tagsList}}" wx:key="*this" class="tag">{{item}}</text></view>
+      </view>
+
+      <view wx:if="{{card.showPhone || card.showQr || card.showAddress}}" class="quick-actions">
+        <view wx:if="{{card.showPhone}}" class="quick-action" bindtap="callPhone"><text class="quick-icon">☎</text><text>电话</text></view>
+        <view wx:if="{{card.showQr}}" class="quick-action" bindtap="previewQr"><text class="quick-icon">◎</text><text>微信</text></view>
+        <view wx:if="{{card.showAddress}}" class="quick-action"><text class="quick-icon">⌖</text><text class="quick-value">{{card.address}}</text></view>
+      </view>
     </view>
-    <view class="card detail">
-      <view wx:if="{{card.links}}" class="row"><text>链接</text><text selectable="true">{{card.links}}</text></view>
-      <view wx:if="{{card.showPhone}}" class="row"><text>电话</text><text selectable="true">{{card.phone}}</text></view>
-      <view wx:if="{{card.showEmail}}" class="row"><text>邮箱</text><text selectable="true">{{card.email}}</text></view>
-      <view wx:if="{{card.showAddress}}" class="row"><text>地址</text><text selectable="true">{{card.address}}</text></view>
-      <view wx:if="{{card.showQr}}" class="qr-wrap"><text>微信二维码</text><image class="qr" src="{{card.wechat_qr}}" mode="aspectFit" /></view>
+
+    <view wx:if="{{card.links || card.showEmail || card.showQr}}" class="content-card contact-card">
+      <view class="section-heading">联系与合作</view>
+      <view wx:if="{{card.links}}" class="contact-row" bindtap="copyLink"><text>作品集 / 官网</text><text class="contact-value">{{card.links}}</text><text class="copy-mark">复制</text></view>
+      <view wx:if="{{card.showEmail}}" class="contact-row" bindtap="copyEmail"><text>邮箱</text><text class="contact-value">{{card.email}}</text><text class="copy-mark">复制</text></view>
+      <view wx:if="{{card.showQr}}" class="qr-card" bindtap="previewQr"><image class="qr" src="{{card.wechat_qr}}" mode="aspectFit" /><view><view>添加微信</view><view class="qr-tip">点击查看二维码</view></view></view>
     </view>
-    <view wx:if="{{card.workImages.length}}" class="card work-section">
-      <view class="work-heading">作品与经历</view>
-      <view class="work-image-grid">
-        <view class="work-media" wx:for="{{card.workImages}}" wx:key="slot">
-          <image src="{{item.url}}" mode="aspectFill" />
+
+    <view wx:if="{{isMine || card.workImages.length}}" class="content-card work-section">
+      <view class="section-heading">作品与经历</view>
+      <view class="section-rule"></view>
+      <view class="work-image-list">
+        <view class="work-media image" wx:for="{{card.workImages}}" wx:key="slot">
+          <image wx:if="{{item.url}}" src="{{item.url}}" mode="aspectFill" />
+          <view wx:else class="work-placeholder image-placeholder" bindtap="goEdit">＋ 添加长图 {{item.slot}}</view>
           <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
         </view>
       </view>
     </view>
-    <view wx:if="{{card.workVideos.length}}" class="card work-section">
-      <view class="work-heading">我的视频</view>
+
+    <view wx:if="{{isMine || card.workVideos.length}}" class="content-card work-section">
+      <view class="section-heading">我的视频</view>
+      <view class="section-rule"></view>
       <view class="work-video-list">
         <view class="work-media video" wx:for="{{card.workVideos}}" wx:key="slot">
-          <video src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
-          <view wx:if="{{item.title}}" class="work-caption">{{item.title}}</view>
+          <video wx:if="{{item.url}}" src="{{item.url}}" poster="{{item.poster || item.cover_url}}" controls="true" show-center-play-btn="true" object-fit="cover" />
+          <view wx:else class="work-placeholder video-placeholder" bindtap="goEdit">▷ 添加横版视频 {{item.slot}}</view>
+          <view wx:if="{{item.url}}" class="video-meta"><text>{{item.title || '个人视频'}}</text><text wx:if="{{item.duration}}">{{item.duration}}</text></view>
         </view>
       </view>
     </view>
-    <button wx:if="{{shareReady}}" class="primary-button" open-type="share">{{isMine ? '分享我的名片，邀请好友' : '分享这张名片'}}</button>
-    <view wx:if="{{isMine && !shareReady}}" class="primary-button" bindtap="goEdit">完善并公开名片</view>
-    <view wx:if="{{isMine}}" class="join" bindtap="goEdit">编辑名片</view>
-    <view wx:else class="join" bindtap="goJoin">我也要一张</view>
+
+    <view class="action-dock {{isMine ? 'mine' : ''}}">
+      <button wx:if="{{isMine && shareReady}}" class="dock-button primary" open-type="share">分享我的名片，邀请好友</button>
+      <view wx:if="{{isMine && !shareReady}}" class="dock-button primary" bindtap="goEdit">完善并公开名片</view>
+      <view wx:if="{{isMine}}" class="dock-button secondary" bindtap="goEdit">编辑名片</view>
+      <view wx:else class="dock-button primary join-button" bindtap="goJoin">我也要一张</view>
+    </view>
   </block>
 </view>

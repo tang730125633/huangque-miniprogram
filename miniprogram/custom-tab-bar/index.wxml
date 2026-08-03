@@ -6,7 +6,7 @@
     data-path="{{item.pagePath}}"
     bindtap="switchTab"
   >
-    <cover-image class="tab-icon" src="{{selected === item.pagePath ? item.selectedIconPath : item.iconPath}}" />
+    <cover-view class="tab-icon-symbol">{{item.symbol}}</cover-view>
     <cover-view class="tab-label">{{item.text}}</cover-view>
   </cover-view>
 </cover-view>

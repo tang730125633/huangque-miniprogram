@@ -40,12 +40,12 @@
     <view class="section-tip">版式固定为 3 张图片与 3 个视频；标题选填，会显示在公开名片中。</view>
     <view class="image-grid">
       <view class="media-title-item" wx:for="{{workImages}}" wx:key="slot">
-        <view class="upload-slot image-slot" data-work-index="{{index}}" bindtap="chooseMedia">
+        <view id="work-image-{{index}}" class="upload-slot image-slot" data-work-index="{{index}}" bindtap="chooseMedia">
           <image wx:if="{{item.url}}" src="{{item.url}}" mode="aspectFill" />
           <text wx:else>＋ 图片 {{item.slot}}</text>
           <text wx:if="{{item.url}}" class="replace-tip">更换</text>
         </view>
-        <input class="media-title-input" value="{{item.title}}" data-type="image" data-index="{{index}}" bindinput="workTitleInput" maxlength="12" placeholder="图片标题（选填）" />
+        <input id="work-image-title-{{index}}" class="media-title-input" value="{{item.title}}" data-type="image" data-index="{{index}}" bindinput="workTitleInput" maxlength="12" placeholder="图片标题（选填）" />
       </view>
     </view>
     <view class="video-list">
