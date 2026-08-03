@@ -134,7 +134,7 @@ Page({
       const ownerCard = data.card || {};
       if (res.statusCode !== 200 || !cardUtil.isComplete(ownerCard) || !(data.wechat_bound || ownerCard.wechat_bound)) {
         wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
-        wx.navigateTo({ url: '/pages/my-card/my-card' });
+        wx.switchTab({ url: '/pages/my-card/my-card' });
         return;
       }
       wx.setStorageSync('hq_followcreate', { prompt: item.prompt, engine: item.engineKey });

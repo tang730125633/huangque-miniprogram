@@ -279,4 +279,4 @@
 }
 .ip12-prompt-secondary::after { border: 0; }
 
-.bottom-safe { height: calc(40rpx + constant(safe-area-inset-bottom)); height: calc(40rpx + env(safe-area-inset-bottom)); }
+.bottom-safe { height: calc(150rpx + constant(safe-area-inset-bottom)); height: calc(150rpx + env(safe-area-inset-bottom)); }

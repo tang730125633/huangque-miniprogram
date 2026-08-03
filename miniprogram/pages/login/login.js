@@ -21,7 +21,7 @@ Page({
   },
   onUsername(e) { this.setData({ username: e.detail.value }); },
   onPassword(e) { this.setData({ password: e.detail.value }); },
-  openCardRegistration() { wx.reLaunch({ url: '/pages/my-card/my-card' }); },
+  openCardRegistration() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
   onAgreementChange(e) {
     const values = (e.detail && e.detail.value) || [];
     this.setData({ agreed: values.indexOf('accepted') !== -1, err: '' });

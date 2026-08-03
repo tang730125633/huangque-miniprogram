@@ -33,7 +33,7 @@ Page({
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); },
   goClone() { wx.navigateTo({ url: '/pages/clone/clone' }); },
   goRecharge() { wx.navigateTo({ url: '/pages/recharge/recharge' }); },
-  goCard() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
+  goCard() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
   goNetwork() { wx.navigateTo({ url: '/pages/network/network' }); },
   goInvite() { wx.navigateTo({ url: '/pages/invite/invite' }); },
   goAdmin() {

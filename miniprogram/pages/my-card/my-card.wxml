@@ -49,14 +49,4 @@
     <view wx:if="{{error}}" class="inline-error">{{error}}</view>
   </block>
 
-  <view class="card-entry-dock">
-    <view class="card-entry-item active">
-      <image class="card-entry-icon" src="../../assets/tabbar/profile_on.png" />
-      <text>我的名片</text>
-    </view>
-    <view class="card-entry-item" bindtap="openWorkbench">
-      <image class="card-entry-icon" src="../../assets/tabbar/home.png" />
-      <text>黄雀 AI 工作台</text>
-    </view>
-  </view>
 </view>

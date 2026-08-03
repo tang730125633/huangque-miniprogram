@@ -66,7 +66,7 @@ Page({
     if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return null; }
     if (!this.data.cardReady) {
       wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
-      wx.navigateTo({ url: '/pages/my-card/my-card' });
+      wx.switchTab({ url: '/pages/my-card/my-card' });
       return null;
     }
     if (this.data.membershipEnforced && !this.data.membershipActive) {
