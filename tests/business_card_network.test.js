@@ -98,6 +98,26 @@ require('node:test')('owner hint falls back to the shared card after a WeChat ac
     card.loginCardSession = originalLogin;
   }
 });
+require('node:test')('owner hint falls back when the current account has no card yet', async () => {
+  const cardApi = require('../miniprogram/utils/api.js');
+  const originalRequest = cardApi.request;
+  const originalToken = store.hq_token;
+  let fallback;
+  store.hq_token = 'token';
+  cardApi.request = () => Promise.resolve({ statusCode: 404, data: { detail: '你还没有名片' } });
+  try {
+    await cardPageDefinition.loadMine.call({
+      setData() {},
+      loadPublic(id, code) { fallback = { id, code }; },
+      showMine() { throw new Error('missing card cannot be claimed'); }
+    }, 'old-card', 'ABCD23');
+    assert.deepStrictEqual(fallback, { id: 'old-card', code: 'ABCD23' });
+  } finally {
+    cardApi.request = originalRequest;
+    if (originalToken === undefined) delete store.hq_token;
+    else store.hq_token = originalToken;
+  }
+});
 require('node:test')('joining records the server-validated journey without blocking navigation', () => {
   const cardApi = require('../miniprogram/utils/api.js');
   let request;

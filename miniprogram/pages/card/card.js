@@ -76,12 +76,15 @@ Page({
     if (!api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', shareReady: false });
-    api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '你还没有完成名片');
       if (expectedId && data.card.public_id !== expectedId) { this.loadPublic(expectedId, code); return; }
       this.showMine(data.card);
-    }).catch((error) => this.setData({ loading: false, error: error.message || '名片读取失败' }));
+    }).catch((error) => {
+      if (expectedId) { this.loadPublic(expectedId, code); return; }
+      this.setData({ loading: false, error: error.message || '名片读取失败' });
+    });
   },
 
   showMine(source) {
