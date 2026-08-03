@@ -53,8 +53,8 @@ async function videoMembershipErrorDoesNotShowPasswordMessage() {
 
 async function invitePartialFailureDoesNotRenderZeroData() {
   api.request = function (requestPath) {
-    if (requestPath.indexOf('/reward-points') >= 0) {
-      return Promise.resolve({ statusCode: 500, data: { detail: 'reward ledger unavailable' } });
+    if (requestPath.indexOf('/downlines') >= 0) {
+      return Promise.resolve({ statusCode: 500, data: { detail: 'downline data unavailable' } });
     }
     if (requestPath.indexOf('/code') >= 0) {
       return Promise.resolve({ statusCode: 200, data: { code: 'ABC123' } });
@@ -73,7 +73,7 @@ async function invitePartialFailureDoesNotRenderZeroData() {
 
   await page.load.call(page);
 
-  assert.strictEqual(page.data.error, 'reward ledger unavailable');
+  assert.strictEqual(page.data.error, 'downline data unavailable');
   assert.strictEqual(
     updates.some((patch) => Object.prototype.hasOwnProperty.call(patch, 'rewardTotal')),
     false,
