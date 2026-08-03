@@ -58,6 +58,11 @@ Page({
     this._applyCategory('全部');
   },
 
+  onShow() {
+    const tabBar = this.getTabBar && this.getTabBar();
+    if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
+  },
+
   _filtered() {
     return this.data.category === '全部'
       ? this._all

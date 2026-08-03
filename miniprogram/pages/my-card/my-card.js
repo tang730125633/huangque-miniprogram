@@ -5,6 +5,8 @@ const invite = require('../../utils/invite.js');
 function ownerState(data) {
   data = data || {};
   const card = data.card || {};
+  const works = cardUtil.workSlots(card.works);
+  const visible = (items) => items.filter((item) => /^https:\/\//.test(String(item.url || '')));
   return {
     card,
     initial: String(card.name || '黄').slice(0, 1),
@@ -12,7 +14,10 @@ function ownerState(data) {
     published: cardUtil.isPublished(card),
     wechatBound: !!(data.wechat_bound || card.wechat_bound),
     publicId: card.public_id || '',
-    aiAccount: data.ai_account || card.ai_account || ''
+    aiAccount: data.ai_account || card.ai_account || '',
+    tagsList: String(card.tags || '').split(/[,，\s]+/).filter(Boolean),
+    workImages: visible(works.images),
+    workVideos: visible(works.videos)
   };
 }
 
@@ -27,37 +32,42 @@ Page({
     wechatBound: false,
     publicId: '',
     aiAccount: '',
+    tagsList: [],
+    workImages: [],
+    workVideos: [],
     binding: false,
     shareReady: false,
     shareImageUrl: ''
   },
 
   onShow() {
+    const tabBar = this.getTabBar && this.getTabBar();
+    if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ state: 'loading', error: '', binding: false, shareReady: false });
-    if (api.getToken()) this.loadOwner();
-    else this.loginByWechat();
+    this.loginByWechat();
   },
 
   loginByWechat() {
-    cardUtil.wechatLoginCode().then((code) => api.request('/api/auth/miniprogram/card-login', {
-      method: 'POST', data: { wx_code: code }
-    })).then((res) => {
-      const data = res.data || {};
-      if (res.statusCode === 404 && data.code === 'card_unbound') {
+    return cardUtil.loginCardSession().then((session) => {
+      if (session.state === 'guest') {
         this.setData({ state: 'guest' });
         return;
       }
-      if (res.statusCode !== 200 || !data.token) throw new Error(data.detail || '微信名片登录失败');
-      api.setToken(data.token);
+      if (session.state === 'pending-bind') return this.loadOwner();
+      const data = session.data;
       if (data.card) this.showOwner(data);
       else this.loadOwner();
     }).catch((error) => this.setData({ state: 'error', error: error.message || '名片加载失败' }));
   },
 
   loadOwner() {
-    api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
       const data = res.data || {};
+      if (res.statusCode === 404 || (res.statusCode === 200 && !data.card)) {
+        this.showOwner({ card: {}, wechat_bound: false });
+        return;
+      }
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '名片读取失败');
       this.showOwner(data);
     }).catch((error) => this.setData({ state: 'error', error: error.message || '名片读取失败' }));
@@ -93,6 +103,7 @@ Page({
     })).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200) throw new Error(data.detail || '微信授权失败');
+      api.clearCardBindIntent();
       wx.navigateTo({ url: '/pages/card-edit/card-edit' });
     }).catch((error) => this.setData({ binding: false, error: error.message || '微信授权失败' }));
   },

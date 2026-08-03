@@ -8,6 +8,7 @@ Page({
     membershipEnforced: false,
     membershipReady: false,
     cardReady: false,
+    accountStateError: false,
     videoEntryChecking: false,
     videoIp12PromptVisible: false,
     bannerCurrent: 0,
@@ -48,10 +49,11 @@ Page({
   },
 
   onShow() {
+    const tabBar = this.getTabBar && this.getTabBar();
+    if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
     // swiper 只在首页可见时运行，避免切到其它 tab 后后台定时切页造成卡顿。
     if (!this.data.bannerAutoplay) this.setData({ bannerAutoplay: true });
-    if (api.getToken()) { this.setData({ membershipReady: false, cardReady: false }); this.refreshPoints(); }
-    else this.setData({ points: null, membershipReady: false, cardReady: false });
+    this.ensureWorkbenchSession();
   },
 
   onHide() {
@@ -63,6 +65,11 @@ Page({
   // 受保护功能：未登录先去登录
   _guardNav(path, onAllowed) {
     if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(path) }); return null; }
+    if (this.data.accountStateError) {
+      wx.showToast({ title: '账号状态读取失败，请稍后重试', icon: 'none' });
+      this.ensureWorkbenchSession();
+      return null;
+    }
     if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return null; }
     if (!this.data.cardReady) {
       wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
@@ -147,21 +154,49 @@ Page({
     else wx.navigateTo({ url: '/pages/login/login' });
   },
 
+  ensureWorkbenchSession() {
+    this.setData({ membershipReady: false, cardReady: false, accountStateError: false });
+    return cardUtil.loginCardSession().then((session) => {
+      if (session.state === 'owner') {
+        return this.refreshPoints().then((result) => {
+          if (result && !result.cardReady) wx.switchTab({ url: '/pages/my-card/my-card' });
+          return result;
+        });
+      }
+      this.setData({ points: null, membershipReady: true, cardReady: false });
+      wx.switchTab({
+        url: '/pages/my-card/my-card',
+        success: () => {
+          if (session.state === 'guest') wx.navigateTo({ url: '/pages/login/login' });
+        }
+      });
+      return session;
+    }).catch(() => {
+      this.setData({ points: null, membershipReady: true, cardReady: false, accountStateError: true });
+      return null;
+    });
+  },
+
   refreshPoints() {
-    Promise.all([
+    return Promise.all([
       api.request('/api/auth/me', { method: 'GET' }),
       api.request('/api/auth/card/me', { method: 'GET' })
     ]).then(([res, cardRes]) => {
-      if (res.statusCode === 200 && res.data && res.data.user && cardRes.statusCode === 200 && cardRes.data && cardRes.data.card) {
-        const ownerCard = cardRes.data.card;
-        this.setData({
-          points: res.data.user.points,
-          membershipActive: !!res.data.user.membership_active,
-          membershipEnforced: !!res.data.membership_enforcement_enabled,
-          membershipReady: true,
-          cardReady: cardUtil.isComplete(ownerCard) && !!(cardRes.data.wechat_bound || ownerCard.wechat_bound)
-        });
-      }
-    }).catch(() => {});
+      if (res.statusCode !== 200 || !res.data || !res.data.user) throw new Error('账号状态读取失败');
+      const ownerCard = cardRes.statusCode === 200 && cardRes.data && cardRes.data.card || {};
+      const cardReady = cardUtil.isComplete(ownerCard) && !!(cardRes.data && (cardRes.data.wechat_bound || ownerCard.wechat_bound));
+      this.setData({
+        points: res.data.user.points,
+        membershipActive: !!res.data.user.membership_active,
+        membershipEnforced: !!res.data.membership_enforcement_enabled,
+        membershipReady: true,
+        cardReady,
+        accountStateError: false
+      });
+      return { cardReady };
+    }).catch(() => {
+      this.setData({ membershipReady: true, cardReady: false, accountStateError: true });
+      return null;
+    });
   }
 });

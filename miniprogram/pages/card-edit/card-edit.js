@@ -4,9 +4,10 @@ const cardUtil = require('../../utils/card.js');
 const drafts = require('../../utils/drafts.js');
 
 const EDIT_DRAFT_KEY = 'hq_draft_card_edit_v1';
+const ANONYMOUS_DRAFT_SCOPE = 'anonymous-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
 
 function editDraftKey(owner) {
-  return drafts.scopedKey(EDIT_DRAFT_KEY, owner || 'anonymous');
+  return drafts.scopedKey(EDIT_DRAFT_KEY, owner || ANONYMOUS_DRAFT_SCOPE);
 }
 
 function blankCard() {
@@ -42,7 +43,7 @@ function registrationNotice(data, payload) {
   };
 }
 
-function uploadMedia(filePath, field) {
+function uploadMediaRecord(filePath, field) {
   return new Promise((resolve, reject) => {
     const fs = wx.getFileSystemManager && wx.getFileSystemManager();
     if (!fs) { reject(new Error('当前微信版本不支持图片上传')); return; }
@@ -52,10 +53,14 @@ function uploadMedia(filePath, field) {
           const data = res.data || {};
           const url = data.url || (data.media && data.media.url);
           if (res.statusCode !== 200 || !url) throw new Error(data.detail || '图片上传失败');
-          resolve(url);
+          resolve({ url, key: data.key || (data.media && data.media.key) || '', card: data.card || null });
         }).catch(reject);
     }, fail: () => reject(new Error('图片读取失败')) });
   });
+}
+
+function uploadMedia(filePath, field) {
+  return uploadMediaRecord(filePath, field).then((media) => media.url);
 }
 
 Page({
@@ -82,12 +87,17 @@ Page({
   },
 
   onLoad() {
-    if (!api.getToken()) {
+    this.checkWechatSession();
+  },
+
+  checkWechatSession() {
+    this.setData({ loading: true, loadFailed: false, error: '' });
+    return cardUtil.loginCardSession().then((session) => {
+      if (session.state !== 'guest') return this.loadOwner();
       const restored = this.restoreDraft('');
-      if (restored) this.setData(restored);
-      return;
-    }
-    this.loadOwner();
+      this.setData(Object.assign({ anonymous: true, loading: false, loadFailed: false }, restored || {}));
+      return null;
+    }).catch((error) => this.setData({ loading: false, loadFailed: true, error: error.message || '微信名片登录失败' }));
   },
 
   restoreDraft(owner) {
@@ -108,7 +118,7 @@ Page({
     }, []);
   },
 
-  retryLoad() { this.loadOwner(); },
+  retryLoad() { this.checkWechatSession(); },
 
   loadOwner() {
     this.setData({ anonymous: false, loading: true, loadFailed: false, error: '' });
@@ -156,12 +166,31 @@ Page({
 
   chooseMedia(e) {
     const field = e.currentTarget.dataset.field;
-    wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], success: (result) => {
+    const workIndex = e.currentTarget.dataset.workIndex;
+    wx.chooseMedia({ count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'], success: (result) => {
       const media = result.tempFiles && result.tempFiles[0];
       if (!media || (media.fileType && media.fileType !== 'image')) { this.setData({ error: '只支持图片格式' }); return; }
-      if (media.size > 4 * 1024 * 1024) { this.setData({ error: '请上传 4MB 以内的图片' }); return; }
       let filePath = media.tempFilePath;
       const proceed = () => {
+        const fs = wx.getFileSystemManager && wx.getFileSystemManager();
+        let size = Number(media.size || 0);
+        try { if (fs && fs.statSync) size = Number(fs.statSync(filePath).size || size); } catch (_) {}
+        if (size > 4 * 1024 * 1024) { this.setData({ error: '请上传 4MB 以内的图片' }); return; }
+        if (workIndex !== undefined) {
+          const index = Number(workIndex);
+          const workField = 'work_image_' + (index + 1);
+          if (this.data.anonymous) {
+            this.setData({ ['workImages[' + index + '].url']: filePath, ['pendingMedia.' + workField]: filePath, error: '' });
+            return;
+          }
+          this.setData({ loading: true, error: '' });
+          uploadMediaRecord(filePath, workField).then((uploaded) => this.setData({
+            ['workImages[' + index + '].url']: uploaded.url,
+            ['workImages[' + index + '].key']: uploaded.key,
+            loading: false
+          })).catch((error) => this.setData({ loading: false, error: error.message || '作品图片上传失败' }));
+          return;
+        }
         if (this.data.anonymous) {
           this.setData({ ['card.' + field]: filePath, ['pendingMedia.' + field]: filePath, error: '' });
           return;
@@ -182,6 +211,7 @@ Page({
     })).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200) throw new Error(data.detail || '微信名片授权失败');
+      api.clearCardBindIntent();
       this.setData({ wechatBound: true });
     });
   },
@@ -201,10 +231,13 @@ Page({
     })).then((res) => {
       const data = res.data || {};
       if (res.statusCode === 409 && data.code === 'account_exists') {
+        cardUtil.clearValidAttribution();
         throw new Error('该手机号已有黄雀 AI 账号，请先用原账号登录，再绑定微信名片');
       }
       if (res.statusCode !== 200 || !data.token) throw new Error(data.detail || '名片与黄雀 AI 开通失败');
       api.setToken(data.token);
+      api.clearCardBindIntent();
+      cardUtil.clearValidAttribution();
       if (data.created !== false) return data;
       return api.request('/api/auth/card/me', { method: 'PUT', data: payload }).then((update) => {
         const updated = update.data || {};
@@ -246,11 +279,15 @@ Page({
         const finish = (card, warning) => {
           const publicId = card.public_id || data.public_id || this.data.publicId || '';
           const published = cardUtil.isPublished(card);
+          const works = cardUtil.workSlots(card.works);
           this.setData({
             loading: false,
             anonymous: false,
             pendingMedia: warning ? pendingMedia : {},
             card: Object.assign({}, this.data.card, card),
+            workImages: works.images,
+            workVideos: works.videos,
+            otherWorks: works.other,
             publicId,
             published,
             wechatBound: true,
@@ -284,7 +321,10 @@ Page({
 
   uploadPendingMedia(saved, pendingMedia) {
     const updated = Object.assign({}, saved);
-    return Object.keys(pendingMedia).reduce((chain, field) => chain.then(() => uploadMedia(pendingMedia[field], field).then((url) => { updated[field] = url; })), Promise.resolve())
+    return Object.keys(pendingMedia).reduce((chain, field) => chain.then(() => uploadMediaRecord(pendingMedia[field], field).then((media) => {
+      if (media.card) Object.assign(updated, media.card);
+      else updated[field] = media.url;
+    })), Promise.resolve())
       .then(() => updated);
   },
 
@@ -344,4 +384,4 @@ Page({
   }
 });
 
-if (typeof module !== 'undefined') module.exports = { blankCard, uploadMedia, draftPatch, registrationNotice, editDraftKey, EDIT_DRAFT_KEY };
+if (typeof module !== 'undefined') module.exports = { blankCard, uploadMedia, uploadMediaRecord, draftPatch, registrationNotice, editDraftKey, EDIT_DRAFT_KEY };

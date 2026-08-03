@@ -2,8 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 
 const calls = [];
+const storage = {};
 global.getApp = () => ({ globalData: { apiBase: 'https://huangquechuanmei.com' } });
 global.wx = {
+  getStorageSync(key) { return storage[key]; },
+  setStorageSync(key, value) { storage[key] = value; },
+  removeStorageSync(key) { delete storage[key]; },
   redirectTo(value) { calls.push(['redirectTo', value]); },
   switchTab(value) { calls.push(['switchTab', value]); }
 };
@@ -24,6 +28,10 @@ assert.deepStrictEqual(calls, [
   ['switchTab', { url: '/pages/profile/profile' }],
   ['switchTab', { url: '/pages/my-card/my-card' }]
 ]);
+assert.strictEqual(api.hasCardBindIntent(), true);
+assert.strictEqual(storage.hq_card_bind_intent, undefined);
+api.clearCardBindIntent();
+assert.strictEqual(api.hasCardBindIntent(), false);
 
 const loginPage = fs.readFileSync('miniprogram/pages/login/login.js', 'utf8');
 assert.match(loginPage, /const redirect = api\.loginRedirect\(options && options\.redirect\)/);

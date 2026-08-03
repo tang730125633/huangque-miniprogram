@@ -1,8 +1,10 @@
 const invite = require('./invite.js');
+const api = require('./api.js');
 const ATTRIBUTION_KEY = 'hq_card_last_valid_invite';
 const ATTRIBUTION_TTL = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_SHARE_IMAGE = '/assets/share/invite-card.jpg';
 const SHARE_CANVAS_ID = 'cardShareCover';
+let validAttribution = null;
 
 function privacy(card) {
   const source = (card && card.privacy) || {};
@@ -28,7 +30,12 @@ function workSlots(works) {
 }
 
 function worksPayload(images, videos, other) {
-  const visible = [].concat(images || [], videos || []).filter((item) => item && (item.title || item.key || item.url || item.cover_key || item.poster));
+  const visible = [].concat(images || [], videos || []).map((item) => {
+    if (!item || typeof item !== 'object') return item;
+    const clean = Object.assign({}, item);
+    if (clean.key || !/^https:\/\//.test(String(clean.url || ''))) delete clean.url;
+    return clean;
+  }).filter((item) => item && (item.title || item.key || item.url || item.cover_key || item.poster));
   return visible.concat(Array.isArray(other) ? other : []);
 }
 
@@ -66,6 +73,23 @@ function wechatLoginCode() {
   });
 }
 
+function loginCardSession() {
+  return wechatLoginCode().then((code) => api.request('/api/auth/miniprogram/card-login', {
+    method: 'POST', auth: false, data: { wx_code: code }
+  })).then((res) => {
+    const data = res.data || {};
+    if (res.statusCode === 404 && data.code === 'card_unbound') {
+      if (api.getToken() && api.hasCardBindIntent()) return { state: 'pending-bind', data: {} };
+      api.clearToken();
+      return { state: 'guest', data: {} };
+    }
+    if (res.statusCode !== 200 || !data.token) throw new Error(data.detail || '微信名片登录失败');
+    api.setToken(data.token);
+    api.clearCardBindIntent();
+    return { state: 'owner', data };
+  });
+}
+
 function isPublished(card) {
   return !!(card && (card.published === true || card.is_published === true || card.status === 'published'));
 }
@@ -85,17 +109,23 @@ function rememberValidInvite(code, attributionToken, expiresAt, serverValidatedA
   const serverExpires = serverTime(expiresAt);
   const expires = validatedAt ? Math.min(serverExpires || (validatedAt + ATTRIBUTION_TTL), validatedAt + ATTRIBUTION_TTL) : serverExpires;
   if (!expires) return false;
-  wx.setStorageSync(ATTRIBUTION_KEY, { code: code, attribution_token: String(attributionToken), expires_at: expires, validated_at: validatedAt });
+  validAttribution = { code: code, attribution_token: String(attributionToken), expires_at: expires, validated_at: validatedAt };
+  wx.removeStorageSync(ATTRIBUTION_KEY);
   return true;
 }
 
 function lastValidAttribution(now) {
-  const record = wx.getStorageSync(ATTRIBUTION_KEY) || {};
+  const record = validAttribution || {};
   if (!invite.validInviteCode(record.code) || !record.attribution_token || !Number(record.expires_at) || Number(now || Date.now()) > Number(record.expires_at)) {
-    wx.removeStorageSync(ATTRIBUTION_KEY);
+    clearValidAttribution();
     return null;
   }
   return { code: record.code, attribution_token: record.attribution_token };
+}
+
+function clearValidAttribution() {
+  validAttribution = null;
+  wx.removeStorageSync(ATTRIBUTION_KEY);
 }
 
 function lastValidInvite(now) {
@@ -149,6 +179,6 @@ function prepareShareImage(page, card) {
 
 module.exports = {
   ATTRIBUTION_KEY, ATTRIBUTION_TTL, DEFAULT_SHARE_IMAGE,
-  privacy, workSlots, worksPayload, cardPayload, isComplete, validPhone, wechatLoginCode, isPublished, rememberValidInvite,
-  lastValidAttribution, lastValidInvite, prepareShareImage
+  privacy, workSlots, worksPayload, cardPayload, isComplete, validPhone, wechatLoginCode, loginCardSession, isPublished, rememberValidInvite,
+  lastValidAttribution, lastValidInvite, clearValidAttribution, prepareShareImage
 };

@@ -10,6 +10,11 @@ const WORKBENCH_ITEMS = [
   { pagePath: '/pages/profile/profile', text: '我的', iconPath: '/assets/tabbar/profile.png', selectedIconPath: '/assets/tabbar/profile_on.png' }
 ];
 
+const LOGIN_REQUIRED = {
+  '/pages/assets/assets': true,
+  '/pages/profile/profile': true
+};
+
 function navigationForRoute(route) {
   return route === 'pages/my-card/my-card' ? OUTER_ITEMS : WORKBENCH_ITEMS;
 }
@@ -37,9 +42,14 @@ if (typeof Component === 'function') Component({
 
     switchTab(e) {
       const url = e.currentTarget.dataset.path;
-      if (url && url !== this.data.selected) wx.switchTab({ url });
+      if (!url || url === this.data.selected) return;
+      if (LOGIN_REQUIRED[url] && !wx.getStorageSync('hq_token')) {
+        wx.navigateTo({ url: '/pages/login/login' });
+        return;
+      }
+      wx.switchTab({ url });
     }
   }
 });
 
-if (typeof module !== 'undefined') module.exports = { OUTER_ITEMS, WORKBENCH_ITEMS, navigationForRoute };
+if (typeof module !== 'undefined') module.exports = { OUTER_ITEMS, WORKBENCH_ITEMS, LOGIN_REQUIRED, navigationForRoute };
