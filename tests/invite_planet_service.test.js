@@ -1,0 +1,75 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const service = require('../miniprogram/services/invite-planet.js');
+const fixture = require('./fixtures/invite_planet_fixture.js');
+
+test('uses the unified planet endpoint and normalizes one direct upline plus direct downlines', async () => {
+  const calls = [];
+  const client = service.createPlanetService((path) => {
+    calls.push(path);
+    return Promise.resolve({ statusCode: 200, data: fixture.getPlanet({ limit: 50 }) });
+  });
+  const planet = await client.getPlanet({ limit: 50 });
+  assert.deepEqual(calls, ['/api/auth/invite/planet?limit=50']);
+  assert.equal(planet.center.name, '岳雷');
+  assert.equal(planet.upline.name, '陆沉舟');
+  assert.equal(planet.downlines.length, 50);
+  assert.deepEqual(planet.stats, { direct: 50, indirect: 26, total: 76 });
+});
+
+test('falls back to the deployed secure invite endpoints while the unified endpoint is rolling out', async () => {
+  const calls = [];
+  const responses = {
+    '/api/auth/me': { statusCode: 200, data: { user: { username: '13800000000', display_name: '', membership_tier: 'experience' } } },
+    '/api/auth/card/me': { statusCode: 200, data: { card: { name: '完整客户姓名', public_id: 'card-self', avatar: '/avatar.jpg' } } },
+    '/api/auth/invite/dashboard': { statusCode: 200, data: { direct_invites: 1, indirect_invites: 2 } }
+  };
+  const client = service.createPlanetService((path) => {
+    calls.push(path);
+    if (path.startsWith('/api/auth/invite/planet')) return Promise.resolve({ statusCode: 404, data: {} });
+    if (path.startsWith('/api/auth/invite/downlines')) {
+      return Promise.resolve({
+        statusCode: 200,
+        data: {
+          membership_tier: 'experience', can_browse_network: true, next_cursor: '',
+          parent: { name: '直接上线', node_grant: 'grant-up', membership_tier: 'partner' },
+          items: [{ name: '直接下线', node_grant: 'grant-down', membership_tier: 'experience' }]
+        }
+      });
+    }
+    return Promise.resolve(responses[path]);
+  });
+  const planet = await client.getPlanet({ limit: 50 });
+  assert.equal(calls.length, 5);
+  assert.equal(planet.center.name, '完整客户姓名');
+  assert.equal(planet.center.avatar, '/avatar.jpg');
+  assert.equal(planet.viewer.can_explore_others, true);
+  assert.deepEqual(planet.stats, { direct: 1, indirect: 2, total: 3 });
+});
+
+test('never exposes a raw login username as a planet display name', () => {
+  const person = service.publicPerson({
+    username: '13800000000', membership_tier: 'experience', membership_name: '体验官', card_available: false
+  });
+  assert.equal(person.name, '匿名用户');
+  assert.equal(JSON.stringify(person).includes('13800000000'), false);
+});
+
+test('returns the exact experience-tier permission message', async () => {
+  const client = service.createPlanetService(() => Promise.resolve({
+    statusCode: 403,
+    data: { code: 'membership_required', detail: 'old message' }
+  }));
+  await assert.rejects(
+    client.getPlanet({ grant: 'some-grant' }),
+    (error) => error.code === 'planet_membership_required' && error.message === '权限不够，需要体验官及以上权限'
+  );
+});
+
+test('keeps local fixture data outside the miniprogram package', () => {
+  const planet = fixture.getPlanet({ limit: 50 });
+  assert.equal(planet.meta.source, 'isolated_local_fixture');
+  assert.equal(planet.downlines.length, 50);
+  assert.ok(planet.downlines.every((node) => node.name.length >= 2));
+});

@@ -68,6 +68,7 @@
       </view>
     </view>
 
+    <view wx:if="{{!isMine}}" class="view-only-note">仅可查看，名片只允许本人分享</view>
     <view class="action-dock {{isMine ? 'mine' : ''}}">
       <button wx:if="{{isMine && shareReady}}" class="dock-button primary" open-type="share">分享我的名片，邀请好友</button>
       <view wx:if="{{isMine && !shareReady}}" class="dock-button primary" bindtap="goEdit">完善并公开名片</view>

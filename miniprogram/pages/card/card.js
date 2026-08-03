@@ -19,6 +19,10 @@ function cardView(source, includeEmpty) {
   });
 }
 
+function canShareCard(state) {
+  return !!(state && state.isMine === true && state.shareReady === true);
+}
+
 Page({
   data: { loading: true, error: '', card: {}, isMine: false, ownerHint: false, joining: false, shareReady: false, shareImageUrl: '', publicId: '', inviteCode: '', attributionToken: '' },
 
@@ -68,11 +72,8 @@ Page({
         cardUtil.rememberValidInvite(code, attributionToken, data.invite_expires_at || data.attribution_expires_at, data.invite_validated_at || data.server_time);
       }
       const source = data.card || data;
-      const shareReady = invite.validInviteCode(source.invite_code);
       const card = cardView(source);
-      this.setData({ loading: false, card: card, isMine: false, ownerHint: false, publicId: source.public_id || id, shareReady: false, shareImageUrl: '', attributionToken: inviteValid ? attributionToken : '' }, () => {
-        if (shareReady) this.enableShare(card);
-      });
+      this.setData({ loading: false, card: card, isMine: false, ownerHint: false, publicId: source.public_id || id, shareReady: false, shareImageUrl: '', attributionToken: inviteValid ? attributionToken : '' });
     }).catch((error) => this.setData({ loading: false, error: error.message || '名片加载失败' }));
   },
 
@@ -130,21 +131,27 @@ Page({
     else this.loadOwnerPreview('', this.data.inviteCode);
   },
   enableShare(card) {
+    if (this.data.isMine !== true) {
+      this.setData({ shareReady: false, shareImageUrl: '' });
+      if (wx.hideShareMenu) wx.hideShareMenu();
+      return Promise.resolve(false);
+    }
     const shareId = Number(this._shareId || 0) + 1;
     this._shareId = shareId;
     const publicId = this.data.publicId;
-    cardUtil.prepareShareImage(this, card).then((imageUrl) => {
-      if (shareId !== this._shareId || publicId !== this.data.publicId) return;
+    return cardUtil.prepareShareImage(this, card).then((imageUrl) => {
+      if (shareId !== this._shareId || publicId !== this.data.publicId || this.data.isMine !== true) return false;
       this.setData({ shareImageUrl: imageUrl, shareReady: true });
       if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
+      return true;
     });
   },
   onShareAppMessage() {
-    if (!this.data.shareReady) return { title: '黄雀 AI', path: '/pages/home/home', imageUrl: cardUtil.DEFAULT_SHARE_IMAGE };
+    if (!canShareCard(this.data)) return { title: '黄雀 AI', path: '/pages/home/home', imageUrl: cardUtil.DEFAULT_SHARE_IMAGE };
     const id = this.data.publicId || this.data.card.public_id;
     if (!id) return { title: '黄雀 AI 公开名片', path: '/pages/card-edit/card-edit', imageUrl: cardUtil.DEFAULT_SHARE_IMAGE };
     return { title: (this.data.card.name || '我') + '的黄雀公开名片', path: invite.cardSharePath(id, this.data.card.invite_code), imageUrl: this.data.shareImageUrl };
   }
 });
 
-if (typeof module !== 'undefined') module.exports = { cardView };
+if (typeof module !== 'undefined') module.exports = { cardView, canShareCard };
