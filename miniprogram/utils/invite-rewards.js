@@ -55,6 +55,18 @@ function noticeCopy(notice) {
   };
 }
 
+function noticeAction(notice) {
+  notice = notice || {};
+  const type = notice.notice_type || notice.type;
+  if (type === 'reward_unlocked') {
+    return { confirmText: '查看我的下线', url: '/pages/invite/invite' };
+  }
+  return {
+    confirmText: notice.required_tier === 'experience' ? '去开通体验官' : '联系管理员',
+    url: '/pages/recharge/recharge'
+  };
+}
+
 function acknowledge(id) {
   if (!id) return Promise.resolve();
   return api.request('/api/auth/invite/notices/' + encodeURIComponent(id) + '/read', { method: 'POST', data: {} });
@@ -68,15 +80,16 @@ function showNextRewardNotice(options) {
     const notice = res.statusCode === 200 && res.data && res.data.notice;
     if (!notice) return null;
     const copy = noticeCopy(notice);
+    const action = noticeAction(notice);
     return new Promise((resolve) => {
       wx.showModal({
         title: copy.title,
         content: copy.content,
-        confirmText: '查看我的下线',
+        confirmText: action.confirmText,
         cancelText: '知道了',
         success(result) {
           acknowledge(notice.id).finally(() => {
-            if (result.confirm && options.navigate !== false) wx.navigateTo({ url: '/pages/invite/invite' });
+            if (result.confirm && options.navigate !== false) wx.navigateTo({ url: action.url });
             resolve(notice);
           });
         },
@@ -87,4 +100,4 @@ function showNextRewardNotice(options) {
   return noticePromise;
 }
 
-module.exports = { countdownText, rewardStatusText, downlineView, noticeCopy, showNextRewardNotice };
+module.exports = { countdownText, rewardStatusText, downlineView, noticeCopy, noticeAction, showNextRewardNotice };

@@ -74,6 +74,13 @@ Page({
   },
   stopCountdown() { if (this._countdownTimer) clearInterval(this._countdownTimer); this._countdownTimer = null; },
 
+  syncServerTime(value) {
+    const serverTime = Number(value || 0);
+    if (!serverTime) return Number(this.data.serverTime || 0);
+    this._serverTickAt = Date.now();
+    return serverTime;
+  },
+
   loadMore() {
     if (!this.data.nextCursor || this.data.loadingMore) return;
     this.setData({ loadingMore: true });
@@ -81,9 +88,10 @@ Page({
       const data = res.data || {};
       if (res.statusCode !== 200) throw new Error(data.detail || '下线数据加载失败');
       this._rawDownlines = (this._rawDownlines || []).concat(data.items || []);
+      const serverTime = this.syncServerTime(data.server_time);
       this.setData({
-        loadingMore: false, nextCursor: Number(data.next_cursor || 0), serverTime: Number(data.server_time || this.data.serverTime),
-        downlines: this._rawDownlines.map((item) => inviteRewards.downlineView(item, data.server_time || this.data.serverTime))
+        loadingMore: false, nextCursor: Number(data.next_cursor || 0), serverTime,
+        downlines: this._rawDownlines.map((item) => inviteRewards.downlineView(item, serverTime))
       });
     }).catch((error) => this.setData({ loadingMore: false, error: error.message || '下线数据加载失败' }));
   },
