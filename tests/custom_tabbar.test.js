@@ -9,8 +9,8 @@ const pages = [];
 let token = '';
 global.wx = {
   getStorageSync: () => token,
-  navigateTo: ({ url }) => pages.push(url),
-  switchTab: ({ url }) => switches.push(url)
+  navigateTo: ({ url, complete }) => { pages.push(url); if (complete) complete(); },
+  switchTab: ({ url, complete }) => { switches.push(url); if (complete) complete(); }
 };
 
 delete require.cache[require.resolve('../miniprogram/custom-tab-bar/index.js')];
@@ -38,7 +38,7 @@ assert.deepStrictEqual(switches, ['/pages/home/home', '/pages/profile/profile'])
 
 route = 'pages/home/home';
 context.syncNavigation();
-assert.deepStrictEqual(context.data.items.map((item) => item.text), ['我的名片', '首页', '一键跟创', '历史作品', '我的']);
+assert.deepStrictEqual(context.data.items.map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
 assert.ok(context.data.items.every((item) => item.symbol));
 context.switchTab({ currentTarget: { dataset: { path: '/pages/home/home' } } });
 assert.deepStrictEqual(switches, ['/pages/home/home', '/pages/profile/profile']);

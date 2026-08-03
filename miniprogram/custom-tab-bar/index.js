@@ -4,7 +4,6 @@ const OUTER_ITEMS = [
 ];
 
 const WORKBENCH_ITEMS = [
-  { pagePath: '/pages/my-card/my-card', text: '我的名片', symbol: '▣' },
   { pagePath: '/pages/home/home', text: '首页', symbol: '⌂' },
   { pagePath: '/pages/inspiration/inspiration', text: '一键跟创', symbol: '✦' },
   { pagePath: '/pages/assets/assets', text: '历史作品', symbol: '◷' },
@@ -23,7 +22,8 @@ function navigationForRoute(route) {
 if (typeof Component === 'function') Component({
   data: {
     selected: '/pages/my-card/my-card',
-    items: OUTER_ITEMS
+    items: OUTER_ITEMS,
+    switching: false
   },
 
   lifetimes: {
@@ -43,12 +43,14 @@ if (typeof Component === 'function') Component({
 
     switchTab(e) {
       const url = e.currentTarget.dataset.path;
-      if (!url || url === this.data.selected) return;
+      if (!url || url === this.data.selected || this.data.switching) return;
+      this.setData({ switching: true });
+      const done = () => this.setData({ switching: false });
       if (LOGIN_REQUIRED[url] && !wx.getStorageSync('hq_token')) {
-        wx.navigateTo({ url: '/pages/login/login' });
+        wx.navigateTo({ url: '/pages/login/login', complete: done });
         return;
       }
-      wx.switchTab({ url });
+      wx.switchTab({ url, complete: done });
     }
   }
 });

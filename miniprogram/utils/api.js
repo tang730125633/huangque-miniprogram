@@ -9,6 +9,7 @@ const LOGIN_REDIRECTS = {
 };
 let membershipPromptOpen = false;
 let cardBindIntent = false;
+let authRedirecting = false;
 
 function getBase() {
   const app = getApp();
@@ -19,6 +20,7 @@ function getToken() {
 }
 function setToken(t) {
   wx.setStorageSync(TOKEN_KEY, t || '');
+  if (t) authRedirecting = false;
 }
 function clearToken() {
   wx.removeStorageSync(TOKEN_KEY);
@@ -106,10 +108,12 @@ function request(path, options) {
           clearToken();
           const pages = getCurrentPages();
           const cur = pages.length ? pages[pages.length - 1].route : '';
-          if (cur === 'pages/my-card/my-card' || cur === 'pages/card-edit/card-edit') {
-            wx.reLaunch({ url: '/pages/my-card/my-card' });
-          } else if (cur.indexOf('pages/login/login') === -1) {
-            wx.reLaunch({ url: loginUrl(cur) });
+          if (!authRedirecting && cur.indexOf('pages/login/login') === -1) {
+            authRedirecting = true;
+            const url = cur === 'pages/my-card/my-card' || cur === 'pages/card-edit/card-edit'
+              ? '/pages/my-card/my-card'
+              : loginUrl(cur);
+            wx.reLaunch({ url, fail: () => { authRedirecting = false; } });
           }
         }
         if (isMembershipRequired(res)) {

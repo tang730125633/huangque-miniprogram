@@ -124,17 +124,25 @@ require('node:test')('owner hint falls back when the current account has no card
 require('node:test')('joining records the server-validated journey without blocking navigation', () => {
   const cardApi = require('../miniprogram/utils/api.js');
   let request;
+  let requestCount = 0;
   let target;
   cardApi.request = function (requestPath, options) {
+    requestCount += 1;
     request = { path: requestPath, options };
     return Promise.reject(new Error('analytics unavailable'));
   };
   global.wx.navigateTo = function (options) { target = options.url; };
-  cardPageDefinition.goJoin.call({ data: { attributionToken: 'signed-token' } });
+  const context = {
+    data: { attributionToken: 'signed-token', joining: false },
+    setData(patch) { Object.assign(this.data, patch); }
+  };
+  cardPageDefinition.goJoin.call(context);
+  cardPageDefinition.goJoin.call(context);
   assert.deepStrictEqual(request, {
     path: '/api/auth/invite/journey/start',
     options: { method: 'POST', auth: false, data: { invite_attribution_token: 'signed-token' } }
   });
+  assert.strictEqual(requestCount, 1);
   assert.strictEqual(target, '/pages/card-edit/card-edit?source=invite');
 });
 const recharge = require('../miniprogram/pages/recharge/recharge.js');
@@ -184,7 +192,7 @@ const customTabBar = require('../miniprogram/custom-tab-bar/index.js');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
 assert.match(myCardPage, /openAccount\(\) \{ wx\.switchTab\(\{ url: '\/pages\/profile\/profile' \}\); \}/);
 assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['我的名片', '黄雀AI工作台']);
-assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['我的名片', '首页', '一键跟创', '历史作品', '我的']);
+assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
 assert.match(publicCard, /auth: false/);
 assert.match(publicCard, /retry\(\)/);
 assert.match(publicCard, /data\.invite_valid === true/);
@@ -217,6 +225,7 @@ assert.match(editCardJs, /size > 4 \* 1024 \* 1024/);
 assert.match(editCardJs, /function uploadMedia\(filePath, field\)/);
 assert.match(editCardJs, /function uploadMediaRecord\(filePath, field\)/);
 assert.match(editCardJs, /chooseWorkVideo\(e\)/);
+assert.match(editCardJs, /if \(this\.busyGuard\(\)\) return;/);
 assert.match(editCardJs, /mediaType: \['video'\]/);
 assert.match(editCardJs, /work_video_/);
 assert.doesNotMatch(editCardJs, /mediaComingSoon/);
@@ -236,6 +245,8 @@ assert.match(editCard, /bindtap="chooseMedia"/);
 assert.match(editCard, /workVideos/);
 assert.match(editCard, /bindtap="chooseWorkVideo"/);
 assert.match(editCard, /<video wx:if="\{\{item\.url\}\}"/);
+assert.match(editCard, /<cover-view wx:if="\{\{item\.url\}\}" class="video-replace"/);
+assert.match(editCard, /<block wx:if="\{\{ready\}\}">/);
 assert.match(editCard, /bindinput="workTitleInput"/);
 assert.match(editCard, /maxlength="12"/);
 assert.match(editCard, /maxlength="16"/);
@@ -252,9 +263,13 @@ assert.match(publicCardWxss, /\.work-media\.video video \{[^}]*height: 350rpx;/)
 assert.match(editCard, /初始密码与手机号一致/);
 assert.match(editCardJs, /\/api\/auth\/card\/unpublish/);
 assert.match(editCardJs, /published: cardUtil\.isPublished\(card\)/);
-assert.match(editCardJs, /this\.publish\(warning\)/);
+assert.match(editCardJs, /this\.publish\(\)/);
 assert.match(editCardJs, /&mine=1/);
-assert.match(editCardJs, /账号和文字名片已保存，请稍后重试图片/);
+assert.match(editCardJs, /媒体上传失败，请点击保存重试/);
+assert.match(editCardJs, /anonymous-' \+ device\.getDeviceId\(\)/);
+assert.match(editCardJs, /drafts\.persistFile/);
+assert.match(editCard, /binderror="videoError"/);
+assert.match(editCard, /disabled="\{\{loading\}\}"/);
 assert.match(editCard, /保存名片并开通黄雀 AI/);
 assert.match(editCard, /!anonymous && published/);
 assert.match(editCardWxss, /\.field input \{ height: 84rpx; padding: 0 20rpx; line-height: 84rpx; \}/);
@@ -291,6 +306,8 @@ assert.match(myCardWxml, /我的名片/);
 assert.match(myCardWxml, /公开中/);
 assert.match(myCardWxml, /class="header-edit" bindtap="editCard"/);
 assert.match(myCardWxml, /class="contact-grid"/);
+assert.match(myCardWxml, /bindtap="callPhone"/);
+assert.match(myCardWxml, /bindtap="openWechat"/);
 assert.match(myCardWxml, /workImages/);
 assert.match(myCardWxml, /作品与经历/);
 assert.match(myCardWxml, /添加长图/);
@@ -315,8 +332,12 @@ assert.doesNotMatch(recoveredNotice.content, /13900000000|100 点已到账|初�
 const rewardedNotice = editModule.registrationNotice({ created: true, invite_rewarded: true, ai_account: '13800138000' }, { phone: '13800138000' });
 assert.match(rewardedNotice.content, /100 点已到账/);
 assert.notStrictEqual(editModule.editDraftKey('account-a'), editModule.editDraftKey('account-b'));
+assert.strictEqual(editModule.editDraftKey(''), editModule.editDraftKey(''));
 const recoveredDraft = editModule.draftPatch({ owner: '13800138000', card: { name: '草稿姓名', phone: '13800138000' } }, '13800138000');
 assert.strictEqual(recoveredDraft.card.name, '草稿姓名');
+const slottedDraft = editModule.draftPatch({ owner: '13800138000', card: { phone: '13800138000' }, workVideos: [{ type: 'video', slot: 3, url: 'wxfile://third.mp4' }] }, '13800138000');
+assert.strictEqual(slottedDraft.workVideos[0].url || '', '');
+assert.strictEqual(slottedDraft.workVideos[2].url, 'wxfile://third.mp4');
 assert.strictEqual(editModule.draftPatch({ owner: 'other', card: { phone: '13800138000' } }, '13800138000'), null);
 const editContext = { data: Object.assign({}, editDefinition.data), setData(patch) { Object.assign(this.data, patch); } };
 editDefinition.agreement.call(editContext, { detail: { value: ['yes'] } });
@@ -324,7 +345,7 @@ assert.strictEqual(editContext.data.agreed, true);
 editDefinition.agreement.call(editContext, { detail: { value: [] } });
 assert.strictEqual(editContext.data.agreed, false);
 let titlePatch;
-editDefinition.workTitleInput.call({ setData(patch) { titlePatch = patch; } }, { currentTarget: { dataset: { type: 'video', index: 1 } }, detail: { value: '我的品牌故事' } });
+editDefinition.workTitleInput.call({ data: { loading: false }, setData(patch) { titlePatch = patch; } }, { currentTarget: { dataset: { type: 'video', index: 1 } }, detail: { value: '我的品牌故事' } });
 assert.deepStrictEqual(titlePatch, { 'workVideos[1].title': '我的品牌故事', error: '' });
 
 require('node:test')('card save stops when the recovery draft cannot be stored', () => {
@@ -380,17 +401,22 @@ require('node:test')('work video upload uses the real MP4 media endpoint contrac
   assert.strictEqual(request.options.timeout, 120000);
 });
 
-require('node:test')('anonymous video selection keeps the slot and pending upload', () => {
+require('node:test')('anonymous video selection persists the selected slot for a retry', async () => {
   let patch;
   global.wx.chooseMedia = (options) => options.success({ tempFiles: [{ fileType: 'video', tempFilePath: 'wxfile://demo.mp4', size: 1024 }] });
   global.wx.getFileSystemManager = () => ({ statSync: () => ({ size: 1024 }) });
+  global.wx.saveFile = (options) => options.success({ savedFilePath: 'wxfile://saved-demo.mp4' });
   cardEditDefinition.chooseWorkVideo.call({
-    data: { anonymous: true },
+    data: { anonymous: true, loading: false },
+    busyGuard: cardEditDefinition.busyGuard,
+    mediaError: cardEditDefinition.mediaError,
     setData(next) { patch = next; }
   }, { currentTarget: { dataset: { workIndex: 2 } } });
+  await new Promise((resolve) => setImmediate(resolve));
   assert.deepStrictEqual(patch, {
-    'workVideos[2].url': 'wxfile://demo.mp4',
-    'pendingMedia.work_video_3': 'wxfile://demo.mp4',
+    'workVideos[2].url': 'wxfile://saved-demo.mp4',
+    'pendingMedia.work_video_3': 'wxfile://saved-demo.mp4',
+    loading: false,
     error: ''
   });
 });

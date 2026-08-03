@@ -20,7 +20,9 @@ function cardView(source, includeEmpty) {
 }
 
 Page({
-  data: { loading: true, error: '', card: {}, isMine: false, ownerHint: false, shareReady: false, shareImageUrl: '', publicId: '', inviteCode: '', attributionToken: '' },
+  data: { loading: true, error: '', card: {}, isMine: false, ownerHint: false, joining: false, shareReady: false, shareImageUrl: '', publicId: '', inviteCode: '', attributionToken: '' },
+
+  onShow() { if (this.data.joining) this.setData({ joining: false }); },
 
   onLoad(options) {
     if (wx.hideShareMenu) wx.hideShareMenu();
@@ -33,6 +35,7 @@ Page({
   },
 
   loadOwnerPreview(id, code) {
+    this._shareId = Number(this._shareId || 0) + 1;
     this.setData({ loading: true, error: '', isMine: false, shareReady: false });
     return cardUtil.loginCardSession().then((session) => {
       const data = session.data || {};
@@ -51,6 +54,7 @@ Page({
   },
 
   loadPublic(id, code) {
+    this._shareId = Number(this._shareId || 0) + 1;
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', isMine: false, ownerHint: false, shareReady: false, attributionToken: '' });
     const query = '?id=' + encodeURIComponent(id) + (code ? '&invite=' + encodeURIComponent(code) : '');
@@ -73,6 +77,7 @@ Page({
   },
 
   loadMine(expectedId, code) {
+    this._shareId = Number(this._shareId || 0) + 1;
     if (!api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', shareReady: false });
@@ -96,10 +101,12 @@ Page({
   },
 
   goJoin() {
+    if (this.data.joining) return;
+    this.setData({ joining: true });
     if (this.data.attributionToken) {
       api.request('/api/auth/invite/journey/start', { method: 'POST', auth: false, data: { invite_attribution_token: this.data.attributionToken } }).catch(() => {});
     }
-    wx.navigateTo({ url: '/pages/card-edit/card-edit?source=invite' });
+    wx.navigateTo({ url: '/pages/card-edit/card-edit?source=invite', fail: () => this.setData({ joining: false }) });
   },
   goEdit() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
   callPhone() {
@@ -110,6 +117,7 @@ Page({
     const current = this.data.card && this.data.card.wechat_qr;
     if (current && wx.previewImage) wx.previewImage({ current, urls: [current] });
   },
+  videoError() { if (wx.showToast) wx.showToast({ title: '视频暂时无法播放，请稍后重试', icon: 'none' }); },
   copyLink() { this.copyContact(this.data.card && this.data.card.links, '链接已复制'); },
   copyEmail() { this.copyContact(this.data.card && this.data.card.email, '邮箱已复制'); },
   copyContact(value, title) {
@@ -122,7 +130,11 @@ Page({
     else this.loadOwnerPreview('', this.data.inviteCode);
   },
   enableShare(card) {
+    const shareId = Number(this._shareId || 0) + 1;
+    this._shareId = shareId;
+    const publicId = this.data.publicId;
     cardUtil.prepareShareImage(this, card).then((imageUrl) => {
+      if (shareId !== this._shareId || publicId !== this.data.publicId) return;
       this.setData({ shareImageUrl: imageUrl, shareReady: true });
       if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
     });

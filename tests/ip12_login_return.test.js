@@ -46,15 +46,19 @@ global.wx.request = (options) => options.success({ statusCode: 401, data: {} });
 global.wx.reLaunch = (value) => calls.push(['reLaunch', value]);
 
 api.request('/api/gen/digital-ip/projects').then(() => {
-  assert.deepStrictEqual(calls, [
-    ['reLaunch', { url: '/pages/login/login?redirect=ip12' }]
+  assert.deepStrictEqual(calls.map((item) => [item[0], item[1].url]), [
+    ['reLaunch', '/pages/login/login?redirect=ip12']
   ]);
-  calls.length = 0;
   currentRoute = 'pages/my-card/my-card';
   return api.request('/api/auth/card/me');
 }).then(() => {
-  assert.deepStrictEqual(calls, [
-    ['reLaunch', { url: '/pages/my-card/my-card' }]
+  assert.strictEqual(calls.length, 1);
+  api.setToken('new-session');
+  return api.request('/api/auth/card/me');
+}).then(() => {
+  assert.deepStrictEqual(calls.map((item) => [item[0], item[1].url]), [
+    ['reLaunch', '/pages/login/login?redirect=ip12'],
+    ['reLaunch', '/pages/my-card/my-card']
   ]);
   console.log('ip12 and card login return checks passed');
 });
