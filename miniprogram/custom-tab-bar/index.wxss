@@ -23,5 +23,5 @@
 }
 
 .tab-item.active { color: #e24ba0; }
-.tab-icon { width: 42rpx; height: 42rpx; margin-bottom: 4rpx; }
+.tab-icon-symbol { height: 42rpx; margin-bottom: 4rpx; font-size: 34rpx; line-height: 42rpx; }
 .tab-label { line-height: 28rpx; }

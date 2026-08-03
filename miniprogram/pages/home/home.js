@@ -62,6 +62,8 @@ Page({
     if (this.data.bannerAutoplay) this.setData({ bannerAutoplay: false });
   },
 
+  backToCard() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
+
   // 受保护功能：未登录先去登录
   _guardNav(path, onAllowed) {
     if (!api.getToken()) { wx.navigateTo({ url: api.loginUrl(path) }); return null; }

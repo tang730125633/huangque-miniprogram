@@ -69,6 +69,35 @@ const mediaCard = cardPage.cardView({
 });
 assert.deepStrictEqual(mediaCard.workImages.map((item) => item.title), ['品牌发布会']);
 assert.deepStrictEqual(mediaCard.workVideos, []);
+const ownerMediaCard = cardPage.cardView({ works: [] }, true);
+assert.strictEqual(ownerMediaCard.workImages.length, 3);
+assert.strictEqual(ownerMediaCard.workVideos.length, 3);
+let cardLoadMode;
+const cardLoadContext = {
+  setData() {},
+  loadOwnerPreview() { cardLoadMode = 'owner-preview'; },
+  loadPublic() { cardLoadMode = 'public'; }
+};
+cardPageDefinition.onLoad.call(cardLoadContext, { id: 'another-users-card', mine: '1' });
+assert.strictEqual(cardLoadMode, 'owner-preview');
+cardPageDefinition.onLoad.call(cardLoadContext, { id: 'another-users-card' });
+assert.strictEqual(cardLoadMode, 'public');
+require('node:test')('owner hint falls back to the shared card after a WeChat account change', async () => {
+  const originalLogin = card.loginCardSession;
+  card.loginCardSession = () => Promise.resolve({ state: 'owner', data: { card: { public_id: 'current-card' } } });
+  let fallback;
+  try {
+    await cardPageDefinition.loadOwnerPreview.call({
+      setData() {},
+      loadPublic(id, code) { fallback = { id, code }; },
+      loadMine() { throw new Error('should not load stale owner'); },
+      showMine() { throw new Error('should not claim another card'); }
+    }, 'old-card', 'ABCD23');
+    assert.deepStrictEqual(fallback, { id: 'old-card', code: 'ABCD23' });
+  } finally {
+    card.loginCardSession = originalLogin;
+  }
+});
 require('node:test')('joining records the server-validated journey without blocking navigation', () => {
   const cardApi = require('../miniprogram/utils/api.js');
   let request;
@@ -109,6 +138,7 @@ assert.deepStrictEqual(appJson.tabBar.list.map((item) => [item.pagePath, item.te
 ]);
 const publicCard = fs.readFileSync(path.join(root, 'miniprogram/pages/card/card.js'), 'utf8');
 const publicCardWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/card/card.wxml'), 'utf8');
+const publicCardWxss = fs.readFileSync(path.join(root, 'miniprogram/pages/card/card.wxss'), 'utf8');
 const editCard = fs.readFileSync(path.join(root, 'miniprogram/pages/card-edit/card-edit.wxml'), 'utf8');
 const editCardJs = fs.readFileSync(path.join(root, 'miniprogram/pages/card-edit/card-edit.js'), 'utf8');
 const editCardWxss = fs.readFileSync(path.join(root, 'miniprogram/pages/card-edit/card-edit.wxss'), 'utf8');
@@ -120,6 +150,9 @@ const inviteWxss = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/inv
 const profilePage = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/profile.js'), 'utf8');
 const myCardPage = fs.readFileSync(path.join(root, 'miniprogram/pages/my-card/my-card.js'), 'utf8');
 const myCardWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/my-card/my-card.wxml'), 'utf8');
+const myCardWxss = fs.readFileSync(path.join(root, 'miniprogram/pages/my-card/my-card.wxss'), 'utf8');
+const homePage = fs.readFileSync(path.join(root, 'miniprogram/pages/home/home.js'), 'utf8');
+const homeWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/home/home.wxml'), 'utf8');
 const rechargePage = fs.readFileSync(path.join(root, 'miniprogram/pages/recharge/recharge.js'), 'utf8');
 const loginPage = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.js'), 'utf8');
 const loginWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login.wxml'), 'utf8');
@@ -128,7 +161,7 @@ const customTabBar = require('../miniprogram/custom-tab-bar/index.js');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
 assert.match(myCardPage, /openAccount\(\) \{ wx\.switchTab\(\{ url: '\/pages\/profile\/profile' \}\); \}/);
 assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['我的名片', '黄雀AI工作台']);
-assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
+assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['我的名片', '首页', '一键跟创', '历史作品', '我的']);
 assert.match(publicCard, /auth: false/);
 assert.match(publicCard, /retry\(\)/);
 assert.match(publicCard, /data\.invite_valid === true/);
@@ -142,6 +175,7 @@ assert.match(publicCard, /wx\.showShareMenu\(\{ menus: \['shareAppMessage'\] \}\
 assert.match(publicCard, /if \(!this\.data\.shareReady\)/);
 assert.match(publicCardWxml, /open-type="share"/);
 assert.match(publicCardWxml, /分享我的名片，邀请好友/);
+assert.doesNotMatch(publicCardWxml, /分享这张名片/);
 assert.match(publicCardWxml, /重新加载/);
 assert.doesNotMatch(publicCardWxml, /初始密码|登录账号|黄雀 AI 登录信息/);
 assert.doesNotMatch(loginPage, /miniprogram-register|buildRegistrationPayload/);
@@ -182,6 +216,10 @@ assert.match(editCard, /loadFailed/);
 assert.match(publicCardWxml, /card\.workImages/);
 assert.match(publicCardWxml, /card\.workVideos/);
 assert.match(publicCardWxml, /work-caption/);
+assert.match(publicCardWxml, /work-image-list/);
+assert.doesNotMatch(publicCardWxml, /work-image-grid/);
+assert.match(publicCardWxss, /\.work-media\.image image \{[^}]*height: 760rpx;/);
+assert.match(publicCardWxss, /\.work-media\.video video \{[^}]*height: 350rpx;/);
 assert.match(editCard, /初始密码与手机号一致/);
 assert.match(editCardJs, /\/api\/auth\/card\/unpublish/);
 assert.match(editCardJs, /published: cardUtil\.isPublished\(card\)/);
@@ -222,6 +260,12 @@ assert.match(myCardPage, /if \(this\.data\.binding\) return/);
 assert.match(myCardWxml, /已有黄雀 AI 账号/);
 assert.match(myCardWxml, /workImages/);
 assert.match(myCardWxml, /作品与经历/);
+assert.match(myCardWxml, /添加长图/);
+assert.match(myCardWxml, /添加横版视频/);
+assert.match(myCardWxss, /\.image-placeholder \{ height: 760rpx; \}/);
+assert.match(myCardWxss, /\.video-placeholder \{ height: 350rpx; \}/);
+assert.match(homePage, /backToCard\(\) \{ wx\.switchTab\(\{ url: '\/pages\/my-card\/my-card' \}\); \}/);
+assert.match(homeWxml, /我的名片/);
 assert.match(myCardWxml, /disabled="\{\{binding\}\}"/);
 assert.match(rechargePage, /充值前先修改初始密码/);
 
