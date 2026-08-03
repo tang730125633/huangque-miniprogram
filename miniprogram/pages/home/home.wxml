@@ -4,14 +4,49 @@
   <view class="top-spacer">
     <view class="back-card" bindtap="backToCard"><text class="back-card-arrow">‹</text><text>我的名片</text></view>
     <!-- 纯 WXSS 动效：不依赖 GIF / 定时器，页面离开后由渲染层自动停止 -->
-    <view class="hero-motion" aria-hidden="true">
-      <view class="hero-aurora"></view>
-      <view class="hero-orbit hero-orbit-back"></view>
-      <view class="hero-orbit hero-orbit-front"></view>
-      <view class="hero-core"><view class="hero-core-dot"></view></view>
-      <view class="hero-spark hero-spark-one"></view>
-      <view class="hero-spark hero-spark-two"></view>
-      <view class="hero-spark hero-spark-three"></view>
+    <view class="hero-motion cosmic-rift" aria-hidden="true">
+      <image class="rift-art" src="../../assets/home/ai-energy-flow-hero.webp" mode="aspectFill"></image>
+      <image class="rift-art rift-art-echo" src="../../assets/home/ai-energy-flow-hero.webp" mode="aspectFill"></image>
+      <view class="rift-depth"></view>
+      <view class="rift-glow rift-glow-left"></view>
+      <view class="rift-glow rift-glow-right"></view>
+      <view class="energy-volume">
+        <view class="energy-sheet energy-sheet-back"></view>
+        <view class="energy-sheet energy-sheet-mid"></view>
+        <view class="energy-sheet energy-sheet-front"></view>
+      </view>
+      <view class="energy-caustic"></view>
+      <view class="energy-prism"></view>
+      <view class="energy-flare"></view>
+      <view class="energy-rift-frame">
+        <view class="rift-arc rift-arc-left"></view>
+        <view class="rift-arc rift-arc-right"></view>
+        <view class="rift-arc rift-arc-crown"></view>
+      </view>
+      <view class="energy-axis"></view>
+      <view class="portal-rings">
+        <view class="portal-ring portal-ring-horizontal"></view>
+        <view class="portal-ring portal-ring-vertical"></view>
+      </view>
+      <view class="energy-shockwaves">
+        <view class="shockwave shockwave-one"></view>
+        <view class="shockwave shockwave-two"></view>
+        <view class="shockwave shockwave-three"></view>
+      </view>
+      <view class="warp-streak warp-streak-one"></view>
+      <view class="warp-streak warp-streak-two"></view>
+      <view class="warp-streak warp-streak-three"></view>
+      <view class="warp-streak warp-streak-four"></view>
+      <view class="warp-streak warp-streak-five"></view>
+      <view class="warp-streak warp-streak-six"></view>
+      <view class="rift-particle-field"></view>
+      <view class="rift-stars"></view>
+      <view class="rift-vignette"></view>
+      <view class="hero-center-logo">
+        <view class="hero-center-logo-aura"></view>
+        <image class="hero-center-logo-image" src="../../assets/home/huangque-sparrow-logo.png" mode="aspectFit"></image>
+        <view class="hero-center-logo-shimmer"></view>
+      </view>
     </view>
     <view class="brandbar">
       <view class="brand-lockup">
@@ -26,6 +61,7 @@
   </view>
 
   <view class="content">
+    <view class="hero-content-blend" aria-hidden="true"></view>
 
     <!-- 功能矩阵：左大 + 右上下双卡 -->
     <view class="mosaic">
