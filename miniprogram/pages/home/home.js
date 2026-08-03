@@ -66,7 +66,7 @@ Page({
     if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.refreshPoints(); return null; }
     if (!this.data.cardReady) {
       wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
-      wx.switchTab({ url: '/pages/my-card/my-card' });
+      wx.navigateTo({ url: '/pages/my-card/my-card' });
       return null;
     }
     if (this.data.membershipEnforced && !this.data.membershipActive) {
@@ -121,7 +121,7 @@ Page({
   onTapImageCreation() { this._guardNav('/pages/banana/banana'); },
 
   // 现有可体验的一键跟创页；未完成的视频拆解能力不再对外占位。
-  onTapVideoAnalysis() { wx.navigateTo({ url: '/pages/inspiration/inspiration' }); },
+  onTapVideoAnalysis() { wx.switchTab({ url: '/pages/inspiration/inspiration' }); },
 
   // IP12 成长档案；旧口播功能仍在视频页，以“数字人口播”明确区分。
   onTapDigitalHuman() { this._guardNav('/pages/ip12/ip12'); },
@@ -138,12 +138,12 @@ Page({
     const id = e.currentTarget.dataset.id;
     const item = this.data.tutorials.find((x) => x.id === id);
     if (!item || !item.path) return;
-    if (item.path === '/pages/inspiration/inspiration') { wx.navigateTo({ url: item.path }); return; }
+    if (item.path === '/pages/inspiration/inspiration') { wx.switchTab({ url: item.path }); return; }
     this._guardNav(item.path);
   },
 
   onTapPoints() {
-    if (api.getToken()) wx.navigateTo({ url: '/pages/profile/profile' });
+    if (api.getToken()) wx.switchTab({ url: '/pages/profile/profile' });
     else wx.navigateTo({ url: '/pages/login/login' });
   },
 

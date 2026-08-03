@@ -29,7 +29,7 @@ Page({
     }).catch(() => {});
   },
 
-  goAssets() { wx.navigateTo({ url: '/pages/assets/assets' }); },
+  goAssets() { wx.switchTab({ url: '/pages/assets/assets' }); },
   goAudio() { wx.navigateTo({ url: '/pages/audio/audio' }); },
   goClone() { wx.navigateTo({ url: '/pages/clone/clone' }); },
   goRecharge() { wx.navigateTo({ url: '/pages/recharge/recharge' }); },
