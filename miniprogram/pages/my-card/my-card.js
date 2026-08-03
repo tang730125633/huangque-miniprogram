@@ -81,7 +81,8 @@ Page({
     if (!this.data.publicId) return;
     wx.navigateTo({ url: '/pages/card/card?id=' + encodeURIComponent(this.data.publicId) + '&mine=1' });
   },
-  openAccount() { wx.navigateTo({ url: '/pages/profile/profile' }); },
+  openAccount() { wx.switchTab({ url: '/pages/profile/profile' }); },
+  openWorkbench() { wx.switchTab({ url: '/pages/home/home' }); },
   retry() { this.onShow(); },
 
   bindAndEdit() {

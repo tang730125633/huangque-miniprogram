@@ -18,9 +18,11 @@ assert.strictEqual(api.loginUrl('https://example.com'), '/pages/login/login');
 
 api.navigateAfterLogin('ip12');
 api.navigateAfterLogin('', '/pages/profile/profile');
+api.navigateAfterLogin('', '/pages/my-card/my-card');
 assert.deepStrictEqual(calls, [
   ['redirectTo', { url: '/pages/ip12/ip12' }],
-  ['switchTab', { url: '/pages/profile/profile' }]
+  ['switchTab', { url: '/pages/profile/profile' }],
+  ['redirectTo', { url: '/pages/my-card/my-card' }]
 ]);
 
 const loginPage = fs.readFileSync('miniprogram/pages/login/login.js', 'utf8');
