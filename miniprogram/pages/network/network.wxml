@@ -1,19 +1,94 @@
-<view class="container network-page">
-  <view wx:if="{{loading}}" class="card state">正在绘制人脉星球…</view>
-  <view wx:elif="{{error}}" class="card state error">{{error}}<view class="retry" bindtap="load">重试</view></view>
-  <block wx:else>
-    <view class="card orbit" aria-label="人脉星球，仅显示完整祖先链和自己的后代">
-      <view class="ring outer"></view><view class="ring inner"></view><view class="self">我</view>
-      <view wx:for="{{ancestors}}" wx:key="node_id" class="planet ancestor" data-id="{{item.public_id}}" bindtap="openCard">{{item.initial}}</view>
-      <view wx:for="{{children}}" wx:key="node_id" class="planet child" data-id="{{item.public_id}}" bindtap="openCard">{{item.initial}}</view>
+<view class="network-page {{graphNodes.length > 30 ? 'dense-network' : ''}} {{graphInteracting ? 'graph-interacting' : ''}}">
+  <view class="page-space"><image class="galaxy-background" src="/assets/network-galaxy-v1.jpg" mode="aspectFill"/><view class="galaxy-vignette"></view><view class="page-starfield starfield-far"></view><view class="page-starfield starfield-near"></view><view class="page-nebula"></view></view>
+  <view class="network-hero">
+    <view class="eyebrow">HUANGQUE STARLINK</view>
+    <view class="hero-title">我的邀请星球</view>
+    <view class="hero-subtitle">每一条星链，都代表一次真实邀请</view>
+    <view class="stats-row">
+      <view class="stat"><text class="stat-number">{{stats.direct}}</text><text class="stat-label">直接下线</text></view>
+      <view class="stat"><text class="stat-number">{{stats.indirect}}</text><text class="stat-label">间接下线</text></view>
+      <view class="stat"><text class="stat-number">{{stats.total}}</text><text class="stat-label">全部下线</text></view>
     </view>
-    <view class="hint">只展示完整祖先链与你邀请发展的后代，不展示兄弟或旁支。点节点可查看公开名片。</view>
-    <view class="section-title">祖先链</view>
-    <view wx:if="{{!ancestors.length}}" class="card empty">你是当前链路的起点</view>
-    <view wx:for="{{ancestors}}" wx:key="node_id" class="card person" data-id="{{item.public_id}}" bindtap="openCard"><image wx:if="{{item.avatar}}" class="initial" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="initial">{{item.initial}}</view><view><view>{{item.name}}</view><view class="muted">{{item.title}}</view></view><text wx:if="{{item.public_id}}">›</text></view>
-    <view class="section-title">我的后代</view>
-    <view wx:if="{{!children.length}}" class="card empty">暂时还没有后代节点</view>
-    <block wx:for="{{children}}" wx:key="node_id"><view class="card person" style="margin-left: {{item.indent}}rpx" data-id="{{item.public_id}}" bindtap="openCard"><image wx:if="{{item.avatar}}" class="initial" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="initial">{{item.initial}}</view><view><view>{{item.name}}</view><view class="muted">{{item.title}}</view></view><text wx:if="{{item.public_id}}">›</text></view><view wx:if="{{item.has_children}}" class="branch" style="margin-left: {{item.branchIndent}}rpx" data-index="{{index}}" bindtap="loadBranch">{{item.loading ? '加载中…' : (item.expanded && item.cursor ? '加载更多下级' : '展开下级')}}</view></block>
-    <view wx:if="{{childCursor}}" class="more" bindtap="loadMore">{{loadingChildren ? '加载中…' : '加载更多后代'}}</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="state-card"><view class="loading-star">✦</view><view>正在连接你的邀请星系…</view></view>
+  <view wx:if="{{!loading && error}}" class="state-card error">{{error}}<view class="retry" bindtap="load">重新连接</view></view>
+
+  <block wx:if="{{!loading && !error}}">
+    <view class="view-switch">
+      <view class="switch-item {{viewMode === 'graph' ? 'active' : ''}}" data-mode="graph" bindtap="toggleView">星球图</view>
+      <view class="switch-item {{viewMode === 'list' ? 'active' : ''}}" data-mode="list" bindtap="toggleView">关系列表</view>
+    </view>
+
+    <view wx:if="{{viewMode === 'graph'}}" class="graph-shell">
+      <view wx:if="{{focusUser}}" class="focus-banner"><view><text class="focus-kicker">当前中心</text><text class="focus-name">{{focusUser.name}}的直接上下级</text></view><view class="focus-back" bindtap="resetFocus">返回我的星球</view></view>
+      <view class="plane-head">
+        <view class="graph-legend"><view class="legend-item"><view class="legend-dot up"></view><text>直接上线</text></view><view class="legend-item"><view class="legend-dot me"></view><text>当前人物</text></view><view class="legend-item"><view class="legend-dot down"></view><text>直接下线</text></view></view>
+        <view class="load-state">只显示相邻一级</view>
+      </view>
+      <view class="identity-legend"><view class="identity-item"><view class="identity-dot initiator"></view><text>发起人</text></view><view class="identity-item"><view class="identity-dot partner"></view><text>合伙人</text></view><view class="identity-item"><view class="identity-dot experience"></view><text>体验官</text></view><view class="identity-item"><view class="identity-dot nonmember"></view><text>非会员</text></view></view>
+      <view class="graph-viewport">
+        <movable-area class="move-area" bindtouchstart="beginGraphInteraction" bindtouchend="endGraphInteraction" bindtouchcancel="endGraphInteraction" catchwheel="onGraphWheel">
+          <movable-view class="orbit" direction="all" inertia="{{true}}" out-of-bounds="{{true}}" scale="{{true}}" scale-min="0.12" scale-max="2.4" scale-value="{{graphScale}}" x="{{graphX}}" y="{{graphY}}" style="width: {{graphWidth}}rpx; height: {{graphHeight}}rpx;" bindchange="onGraphMove" bindscale="onGraphScale" bindtap="closeSelection" aria-label="3D邀请关系星盘，可拖动和双指缩放">
+            <view class="space-depth"></view><view class="milky-way"></view><view class="stars stars-dense"></view><view class="stars stars-near"></view><view class="stars stars-far"></view><view class="cosmic-dust"></view>
+            <view class="nebula nebula-one"></view><view class="nebula nebula-two"></view><view class="galaxy-core" style="left: {{graphCenterX}}rpx; top: {{graphCenterY}}rpx;"></view>
+            <view class="orbit-scene">
+            <view class="plane-grid"></view>
+            <view wx:for="{{orbitRings}}" wx:key="id" class="relationship-orbit" style="left: {{item.left}}rpx; top: {{item.top}}rpx; width: {{item.size}}rpx; height: {{item.size}}rpx;"></view>
+            <view wx:for="{{graphLinks}}" wx:key="id" class="star-link {{item.active ? 'active' : ''}}" style="left: {{item.left}}rpx; top: {{item.top}}rpx; width: {{item.width}}rpx; transform: rotate({{item.angle}}deg);"><view class="link-core"></view><view class="link-pulse" style="animation-delay: {{item.flow_delay}}s;"></view><view class="link-arrow">›</view></view>
+            <view wx:for="{{graphNodes}}" wx:key="node_id" class="star-node {{item.role}} identity-{{item.identity_class}} layer-{{item.layer}} {{selectedNode && selectedNode.node_id === item.node_id ? 'selected' : ''}}" style="left: {{item.left}}rpx; top: {{item.top}}rpx; width: {{item.size}}rpx; height: {{item.size}}rpx;" data-node="{{item.node_id}}" catchtap="selectNode">
+              <view class="gravity-halo halo-wide"></view><view class="gravity-halo halo-tight"></view>
+              <view wx:if="{{item.role === 'self' || item.role === 'ancestor'}}" class="planet-ring"></view>
+              <view class="planet-body">
+                <image wx:if="{{item.avatar}}" class="planet-avatar" src="{{item.avatar}}" mode="aspectFill"/>
+                <view wx:else class="planet-avatar fallback name-{{item.name_size}}">{{item.name}}</view>
+                <view class="planet-night"></view><view class="planet-shine"></view><view class="planet-atmosphere"></view>
+              </view>
+              <view class="planet-caption"><view class="planet-name">{{item.name}}</view><view class="planet-level">{{item.role === 'self' ? '当前中心' : item.relation_label}} · {{item.identity_name}}</view></view>
+              <view wx:if="{{item.children_count}}" class="child-count">{{item.children_count}}</view>
+            </view>
+            </view>
+            <view class="star-hit-plane">
+              <view wx:for="{{graphNodes}}" wx:key="node_id" class="star-hit-target {{item.role}} layer-{{item.layer}}" style="left: {{item.left}}rpx; top: {{item.top}}rpx; width: {{item.size}}rpx; height: {{item.size}}rpx;" data-node="{{item.node_id}}" catchtap="selectNode" aria-label="{{item.name}}"></view>
+            </view>
+          </movable-view>
+        </movable-area>
+        <view class="plane-controls">
+          <view class="control-button" catchtap="zoomOut">−</view><view class="control-button home" catchtap="centerOnMe">我</view><view class="control-button" catchtap="zoomIn">＋</view><view class="control-button fit" catchtap="fitAll">全部</view>
+        </view>
+        <view class="zoom-indicator">{{graphScale}}×</view>
+      </view>
+      <view class="graph-note">点击任意直接上线或直接下线，即可将对方切换为中心并继续查看；可以无限逐级探索。</view>
+
+      <view wx:if="{{selectedNode}}" class="node-sheet">
+        <view class="sheet-head"><view><view class="sheet-relation">{{selectedNode.relation_label}}</view><view class="sheet-name">{{selectedNode.name}}</view></view><view class="sheet-close" bindtap="closeSelection">×</view></view>
+        <view class="relation-path">{{selectedPath}}</view>
+        <view class="sheet-meta"><text>{{selectedNode.title || '黄雀用户'}} · {{selectedNode.identity_name}}</text><text wx:if="{{selectedNode.children_count}}">直接邀请 {{selectedNode.children_count}} 人</text></view>
+        <view wx:if="{{!viewerCanExplore}}" class="permission-note">权限不够，需要体验官及以上权限</view>
+        <button wx:if="{{selectedNode.role !== 'self'}}" class="focus-button {{!viewerCanExplore ? 'permission-required' : ''}}" bindtap="focusNode">{{focusLoading ? '正在读取…' : '查看他的星球'}}</button>
+        <button class="card-button" bindtap="openSelectedCard">{{selectedNode.is_viewer ? '查看我的名片' : '查看名片'}}</button>
+      </view>
+    </view>
+
+    <view wx:if="{{viewMode === 'list'}}" class="list-view">
+      <view class="section-title"><text>我的上线</text><text class="section-count">{{ancestors.length}}</text></view>
+      <view wx:if="{{!ancestors.length}}" class="empty-card">你是当前邀请链的起点</view>
+      <view wx:for="{{ancestors}}" wx:key="node_id" class="person-card upline" data-id="{{item.public_id}}" bindtap="openCard">
+        <image wx:if="{{item.avatar}}" class="person-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="person-avatar fallback">{{item.name}}</view>
+        <view class="person-copy"><view class="person-name">{{item.name}}</view><view class="person-meta">{{index === 0 ? '直接上线' : (index + 1) + '级上线'}} · {{item.title || '黄雀用户'}}</view></view><text wx:if="{{item.public_id}}" class="chevron">›</text>
+      </view>
+
+      <view class="section-title"><text>我的下线</text><text class="section-count">{{stats.total}}</text></view>
+      <view wx:if="{{!children.length}}" class="empty-card">暂时还没有下线，分享邀请即可点亮第一颗星球</view>
+      <block wx:for="{{children}}" wx:key="node_id">
+        <view class="person-card" style="margin-left: {{item.indent}}rpx" data-id="{{item.public_id}}" bindtap="openCard">
+          <view class="level-badge">L{{item.depth + 1}}</view>
+          <image wx:if="{{item.avatar}}" class="person-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="person-avatar fallback">{{item.name}}</view>
+          <view class="person-copy"><view class="person-name">{{item.name}}</view><view class="person-meta">{{item.title || '黄雀用户'}}<text wx:if="{{item.children_count}}"> · 直邀 {{item.children_count}} 人</text></view></view><text wx:if="{{item.public_id}}" class="chevron">›</text>
+        </view>
+        <view class="branch-action" style="margin-left: {{item.branchIndent}}rpx" data-index="{{index}}" bindtap="loadBranch">查看他的星球</view>
+      </block>
+      <view wx:if="{{childCursor}}" class="more-button" bindtap="loadMore">{{loadingChildren ? '加载中…' : '加载更多直接下线'}}</view>
+    </view>
   </block>
 </view>

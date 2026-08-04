@@ -100,6 +100,7 @@ Page({
     if (!this.data.publicId) return;
     wx.navigateTo({ url: '/pages/card/card?id=' + encodeURIComponent(this.data.publicId) + '&mine=1' });
   },
+  openInvitePlanet() { wx.navigateTo({ url: '/pages/network/network' }); },
   openAccount() { wx.switchTab({ url: '/pages/profile/profile' }); },
   callPhone() {
     const phone = this.data.card && this.data.card.phone;
