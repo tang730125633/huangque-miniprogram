@@ -3,6 +3,12 @@
   <!-- 沉浸式头图 -->
   <view class="header" style="padding-top: {{statusBarHeight}}px;">
     <image class="header-bg" src="/assets/inspiration/inspiration-header-bg.webp" mode="aspectFill"></image>
+    <view class="header-motion" aria-hidden="true">
+      <view class="motion-ribbon motion-ribbon-a"></view>
+      <view class="motion-ribbon motion-ribbon-b"></view>
+      <view class="motion-glow"></view>
+    </view>
+    <canvas class="header-canvas" type="2d" id="inspirationHeaderCanvas" aria-hidden="true"></canvas>
     <view class="header-fade"></view>
     <view class="header-inner">
       <view class="h-title">一键跟创</view>
