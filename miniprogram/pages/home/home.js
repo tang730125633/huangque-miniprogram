@@ -57,6 +57,13 @@ Page({
     ]
   },
 
+  onLoad() {
+    const app = getApp();
+    if (!app || !app.globalData || !app.globalData.redirectLegacyHomeLaunch) return;
+    app.globalData.redirectLegacyHomeLaunch = false;
+    wx.reLaunch({ url: '/pages/my-card/my-card' });
+  },
+
   onShow() {
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
