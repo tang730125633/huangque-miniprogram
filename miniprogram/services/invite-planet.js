@@ -3,6 +3,8 @@ const api = require('../utils/api.js');
 const PLANET_PATH = '/api/auth/invite/planet';
 const PERMISSION_CODE = 'planet_membership_required';
 const PERMISSION_MESSAGE = '权限不够，需要体验官及以上权限';
+const UNKNOWN_PERSON_NAME = '匿名用户';
+const MEMBERSHIP_NAMES = ['发起人', '合伙人', '体验官', '非会员'];
 
 function numberValue(value, fallback) {
   const parsed = Number(value);
@@ -21,22 +23,26 @@ function responseError(response, fallback) {
   return error;
 }
 
+function personName(value) {
+  const name = String(value || '').trim();
+  return name && MEMBERSHIP_NAMES.indexOf(name) < 0 ? name : '';
+}
+
 function publicPerson(raw, relation) {
   raw = raw || {};
+  const card = raw.card || raw.public_card || raw.profile || {};
   const tier = raw.membership_tier || raw.member_tier || '';
-  const name = String(
-    raw.name || raw.display_name || raw.card_name ||
-    (raw.card_available ? raw.membership_name : '') || '匿名用户'
-  ).trim() || '匿名用户';
+  const name = personName(raw.name) || personName(raw.display_name) || personName(raw.card_name) ||
+    personName(card.name) || personName(card.display_name) || UNKNOWN_PERSON_NAME;
   const grant = String(raw.node_token || raw.node_grant || raw.grant || '').trim();
-  const publicId = String(raw.card_public_id || raw.public_id || '').trim();
+  const publicId = String(raw.card_public_id || raw.public_id || card.public_id || '').trim();
   return {
     node_id: String(raw.node_id || grant || publicId || '').trim(),
     node_grant: grant,
     public_id: publicId,
     name,
-    title: raw.title || raw.headline || raw.occupation || '',
-    avatar: raw.avatar_url || raw.avatar || '',
+    title: raw.title || raw.headline || raw.occupation || card.title || card.headline || card.occupation || '',
+    avatar: raw.avatar_url || raw.avatar || card.avatar_url || card.avatar || '',
     membership_tier: tier,
     membership_name: raw.membership_name || '',
     membership_status: raw.membership_status || (tier ? 'active' : 'none'),
@@ -102,8 +108,76 @@ function queryString(options) {
 }
 
 function createPlanetService(requester) {
+  const publicCardCache = {};
+
   function request(path) {
     return requester(path, { method: 'GET' });
+  }
+
+  function loadPublicCard(publicId) {
+    publicId = String(publicId || '').trim();
+    if (!publicId) return Promise.resolve({});
+    if (!publicCardCache[publicId]) {
+      publicCardCache[publicId] = requester('/api/auth/card/public?id=' + encodeURIComponent(publicId), {
+        method: 'GET',
+        auth: false
+      }).then((response) => {
+        if (!response || response.statusCode !== 200) {
+          const statusCode = Number(response && response.statusCode || 0);
+          if (!statusCode || statusCode === 429 || statusCode >= 500) delete publicCardCache[publicId];
+          return {};
+        }
+        const data = response.data || {};
+        const card = data.card || data;
+        return {
+          name: personName(card.name) || personName(card.display_name),
+          title: card.title || card.headline || card.occupation || '',
+          avatar: card.avatar || card.avatar_url || ''
+        };
+      }).catch(() => {
+        delete publicCardCache[publicId];
+        return {};
+      });
+    }
+    return publicCardCache[publicId];
+  }
+
+  function hydratePerson(person) {
+    if (!person || !person.public_id || (person.name !== UNKNOWN_PERSON_NAME && person.avatar)) {
+      return Promise.resolve(person);
+    }
+    return loadPublicCard(person.public_id).then((card) => Object.assign({}, person, {
+      name: personName(card.name) || person.name,
+      title: card.title || person.title,
+      avatar: card.avatar || person.avatar
+    }));
+  }
+
+  function hydratePeople(people, limit) {
+    const result = new Array(people.length);
+    let cursor = 0;
+    function worker() {
+      const index = cursor;
+      cursor += 1;
+      if (index >= people.length) return Promise.resolve();
+      return hydratePerson(people[index]).then((person) => {
+        result[index] = person;
+        return worker();
+      });
+    }
+    const workers = [];
+    const count = Math.min(Math.max(1, Number(limit || 4)), people.length);
+    for (let index = 0; index < count; index += 1) workers.push(worker());
+    return Promise.all(workers).then(() => result);
+  }
+
+  function completePlanet(planet) {
+    const people = [planet.center, planet.upline].concat(planet.downlines || []);
+    return hydratePeople(people, 4).then((hydrated) => Object.assign({}, planet, {
+      center: hydrated[0],
+      upline: hydrated[1] || null,
+      downlines: hydrated.slice(2)
+    }));
   }
 
   function fallbackSelf(options) {
@@ -128,7 +202,7 @@ function createPlanetService(requester) {
         membership_status: user.membership_status || '',
         membership_active: user.membership_active
       });
-      return normalizePlanet({
+      return completePlanet(normalizePlanet({
         viewer: {
           membership_tier: downlineData.membership_tier || user.membership_tier || '',
           can_explore_others: !!downlineData.can_browse_network
@@ -139,7 +213,7 @@ function createPlanetService(requester) {
         stats: (responses[3] && responses[3].data) || {},
         page: { next_cursor: downlineData.next_cursor || '' },
         server_time: downlineData.server_time
-      });
+      }));
     });
   }
 
@@ -148,7 +222,7 @@ function createPlanetService(requester) {
     return request(path).then((response) => {
       if (!response || response.statusCode !== 200) throw responseError(response, '该用户的邀请关系读取失败');
       const data = response.data || {};
-      return normalizePlanet({
+      return completePlanet(normalizePlanet({
         viewer: { membership_tier: 'experience', can_explore_others: true },
         center: data.node,
         upline: data.parent,
@@ -156,14 +230,14 @@ function createPlanetService(requester) {
         stats: { direct: (data.items || []).length, indirect: 0, total: (data.items || []).length },
         page: { next_cursor: data.next_cursor || '' },
         server_time: data.server_time
-      });
+      }));
     });
   }
 
   function getPlanet(options) {
     options = options || {};
     return request(PLANET_PATH + queryString(options)).then((response) => {
-      if (response && response.statusCode === 200) return normalizePlanet(response.data || {});
+      if (response && response.statusCode === 200) return completePlanet(normalizePlanet(response.data || {}));
       if (response && response.statusCode === 404) {
         return options.grant ? fallbackOther(options) : fallbackSelf(options);
       }

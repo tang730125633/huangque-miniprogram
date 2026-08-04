@@ -291,6 +291,10 @@ assert.match(planetService, /\/api\/auth\/invite\/downlines/);
 assert.match(planetService, /\/api\/auth\/invite\/network/);
 assert.match(networkWxml, /wx:key="node_id"/);
 assert.match(networkWxml, /item\.avatar/);
+assert.match(networkWxml, /bindtap="openPersonOptions"/);
+assert.match(network, /查看他的关系/);
+assert.match(networkWxml, /查看他的星球/);
+assert.doesNotMatch(networkWxml, /class="branch-action"/);
 assert.match(invitePage, /\/api\/auth\/card\/me/);
 assert.match(invitePage, /invite\.cardSharePath\(this\.data\.publicId, this\.data\.code\)/);
 assert.match(invitePage, /cardUtil\.isPublished\(card\)/);
@@ -548,7 +552,33 @@ require('node:test')('follow-create requires a complete WeChat-bound card', asyn
   assert.deepStrictEqual(pages, ['/pages/banana/banana']);
 });
 
+let networkDefinition;
+global.Page = function (definition) { networkDefinition = definition; };
 const networkPage = require('../miniprogram/pages/network/network.js');
+assert.deepStrictEqual(networkPage.PERSON_ACTIONS, ['查看名片', '查看他的关系']);
+assert.strictEqual(networkPage.focusViewMode(), 'graph');
+assert.strictEqual(networkPage.focusViewMode({ currentTarget: { dataset: { mode: 'list' } } }), 'list');
+assert.strictEqual(networkPage.nodeView({ name: '非会员' }).name, '黄雀用户');
+let personActionSheet;
+global.wx.showActionSheet = function (options) { personActionSheet = options; };
+const selectedPerson = networkPage.nodeView({ node_id: 'node-action', public_id: 'public-action', node_grant: 'grant-action', name: '真实姓名' });
+const actionContext = {
+  data: { graphNodes: [], ancestors: [], children: [selectedPerson], viewerCanExplore: true },
+  openedCard: null,
+  focused: false,
+  focusMode: '',
+  openNodeCard(node) { this.openedCard = node; },
+  focusNode(event) { this.focused = true; this.focusMode = event.currentTarget.dataset.mode; },
+  setData(patch) { Object.assign(this.data, patch); }
+};
+networkDefinition.openPersonOptions.call(actionContext, { currentTarget: { dataset: { node: 'node-action' } } });
+assert.deepStrictEqual(personActionSheet.itemList, ['查看名片', '查看他的关系']);
+personActionSheet.success({ tapIndex: 0 });
+assert.strictEqual(actionContext.openedCard.public_id, 'public-action');
+personActionSheet.success({ tapIndex: 1 });
+assert.strictEqual(actionContext.data.selectedNode.name, '真实姓名');
+assert.strictEqual(actionContext.focused, true);
+assert.strictEqual(actionContext.focusMode, 'list');
 const roots = [networkPage.nodeView({ node_id: 'node-1', public_id: 'public-1', has_children: true }, 0, 'self')];
 const once = networkPage.appendBranch(roots, 0, [{ node_id: 'node-2', has_children: true }], 'next-1');
 const twice = networkPage.appendBranch(once, 1, [{ node_id: 'node-3', public_id: 'public-3' }], '');

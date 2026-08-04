@@ -18,7 +18,7 @@ function person(id, name, tier, childrenCount) {
     card_public_id: 'local-card-' + id,
     name,
     title: TITLES[Math.abs(String(id).length + String(name).length) % TITLES.length],
-    avatar_url: '',
+    avatar_url: 'https://example.test/avatars/' + encodeURIComponent(id) + '.jpg',
     membership_tier: active ? tier : '',
     membership_name: TIER_NAMES[tier],
     membership_status: active ? 'active' : 'none',
