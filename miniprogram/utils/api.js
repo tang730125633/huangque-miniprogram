@@ -1,5 +1,6 @@
 // 统一请求封装：拼接 API base、带上 Bearer token、401 自动跳登录
 const TOKEN_KEY = 'hq_token';
+const CARD_TOKEN_KEY = 'hq_card_token';
 const LEGACY_CARD_BIND_INTENT_KEY = 'hq_card_bind_intent';
 const LOGIN_PAGE = '/pages/login/login';
 const LOGIN_REDIRECTS = {
@@ -26,6 +27,15 @@ function clearToken() {
   wx.removeStorageSync(TOKEN_KEY);
   wx.removeStorageSync(LEGACY_CARD_BIND_INTENT_KEY);
   cardBindIntent = false;
+}
+function getCardToken() {
+  return wx.getStorageSync(CARD_TOKEN_KEY) || '';
+}
+function setCardToken(t) {
+  wx.setStorageSync(CARD_TOKEN_KEY, t || '');
+}
+function clearCardToken() {
+  wx.removeStorageSync(CARD_TOKEN_KEY);
 }
 function markCardBindIntent() {
   cardBindIntent = true;
@@ -94,7 +104,9 @@ function request(path, options) {
   return new Promise(function (resolve, reject) {
     const header = { 'Content-Type': 'application/json' };
     const token = getToken();
-    if (token && options.auth !== false) header['Authorization'] = 'Bearer ' + token;
+    const cardToken = options.cardAuth ? getCardToken() : '';
+    if (cardToken) header['X-HQ-Card-Token'] = cardToken;
+    else if (token && options.auth !== false) header['Authorization'] = 'Bearer ' + token;
     if (options.idempotencyKey) header['Idempotency-Key'] = String(options.idempotencyKey);
 
     wx.request({
@@ -104,7 +116,9 @@ function request(path, options) {
       header: header,
       timeout: options.timeout || 60000,
       success: function (res) {
-        if (res.statusCode === 401 && options.auth !== false) {
+        if (res.statusCode === 401 && cardToken) {
+          clearCardToken();
+        } else if (res.statusCode === 401 && options.auth !== false) {
           clearToken();
           const pages = getCurrentPages();
           const cur = pages.length ? pages[pages.length - 1].route : '';
@@ -165,6 +179,6 @@ function downloadProtected(url) {
 }
 
 module.exports = {
-  request, getToken, setToken, clearToken, markCardBindIntent, hasCardBindIntent, clearCardBindIntent, getBase, absUrl, downloadProtected,
+  request, getToken, setToken, clearToken, getCardToken, setCardToken, clearCardToken, markCardBindIntent, hasCardBindIntent, clearCardBindIntent, getBase, absUrl, downloadProtected,
   isMembershipRequired, showMembershipRequired, loginRedirect, loginUrl, navigateAfterLogin
 };

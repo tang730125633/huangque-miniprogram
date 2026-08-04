@@ -305,7 +305,8 @@ assert.match(inviteWxss, /width: 100%; min-width: 0;/);
 assert.match(inviteWxss, /box-sizing: border-box;/);
 assert.match(profilePage, /goInvite\(\) \{ wx\.navigateTo/);
 assert.doesNotMatch(profilePage, /goInvite\(\)[\s\S]*membership\.status/);
-assert.match(cardUtilSource, /\/api\/auth\/miniprogram\/card-login/);
+assert.match(cardUtilSource, /\/api\/auth\/miniprogram\/card-session/);
+assert.match(cardUtilSource, /\/api\/auth\/miniprogram\/card-account-login/);
 assert.match(cardUtilSource, /auth: false/);
 assert.match(myCardPage, /\/api\/auth\/card\/wechat\/bind/);
 assert.match(cardUtilSource, /card_unbound/);
@@ -397,7 +398,7 @@ editModule.uploadMedia('/tmp/avatar.jpg', 'avatar').then((url) => {
   assert.strictEqual(url, 'https://example.test/avatar.jpg');
   assert.deepStrictEqual(mediaRequest, {
     path: '/api/auth/card/media',
-    options: { method: 'POST', data: { field: 'avatar', data: 'data:image/jpeg;base64,QUJD' }, timeout: 60000 }
+    options: { method: 'POST', cardAuth: true, data: { field: 'avatar', data: 'data:image/jpeg;base64,QUJD' }, timeout: 60000 }
   });
 }).catch((error) => { throw error; });
 
@@ -410,6 +411,7 @@ require('node:test')('work video upload uses the real MP4 media endpoint contrac
   const uploaded = await editModule.uploadMediaRecord('/tmp/work.mp4', 'work_video_1');
   assert.strictEqual(uploaded.url, 'https://example.test/work.mp4');
   assert.strictEqual(request.path, '/api/auth/card/media');
+  assert.strictEqual(request.options.cardAuth, true);
   assert.strictEqual(request.options.data.field, 'work_video_1');
   assert.strictEqual(request.options.data.data, 'data:video/mp4;base64,QUJD');
   assert.strictEqual(request.options.timeout, 120000);
@@ -447,7 +449,7 @@ require('node:test')('registering a draft card publishes it before redirecting',
     requests.push(requestPath);
     if (requestPath === '/api/auth/miniprogram/card-register') {
       registerPayload = options.data;
-      return Promise.resolve({ statusCode: 200, data: { token: 'new-token', created: true, invite_bound: true, invite_rewarded: true, invite_reward_points: 88, ai_account: '13800138000', initial_password: true, user: { username: '13800138000' }, card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'draft' }) } });
+      return Promise.resolve({ statusCode: 200, data: { card_token: 'new-card-token', created: true, invite_bound: true, invite_rewarded: true, invite_reward_points: 88, ai_account: '13800138000', initial_password: true, user: { username: '13800138000' }, card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'draft' }) } });
     }
     if (requestPath === '/api/auth/card/publish') {
       return Promise.resolve({ statusCode: 200, data: { card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'published', invite_code: 'ABCD23' }) } });
@@ -490,7 +492,7 @@ require('node:test')('registering a draft card publishes it before redirecting',
   api.request = function (requestPath, options) {
     requests.push(requestPath);
     if (requestPath === '/api/auth/miniprogram/card-register') {
-      return Promise.resolve({ statusCode: 200, data: { token: 'recovered-token', created: false, invite_bound: true, invite_rewarded: false, ai_account: '13800138000', initial_password: true, user: { username: '13800138000' }, card: Object.assign({}, completeCard, { name: '旧名字', public_id: 'public-1', status: 'draft' }) } });
+      return Promise.resolve({ statusCode: 200, data: { card_token: 'recovered-card-token', created: false, invite_bound: true, invite_rewarded: false, ai_account: '13800138000', initial_password: true, user: { username: '13800138000' }, card: Object.assign({}, completeCard, { name: '旧名字', public_id: 'public-1', status: 'draft' }) } });
     }
     if (requestPath === '/api/auth/card/me') {
       assert.strictEqual(options.method, 'PUT');

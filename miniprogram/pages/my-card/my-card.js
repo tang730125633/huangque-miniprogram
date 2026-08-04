@@ -73,7 +73,7 @@ Page({
   },
 
   loadOwner(loadId) {
-    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/card/me', { method: 'GET', cardAuth: true }).then((res) => {
       if (loadId && loadId !== this._loadId) return;
       const data = res.data || {};
       if (res.statusCode === 404 || (res.statusCode === 200 && !data.card)) {
@@ -131,6 +131,7 @@ Page({
     })).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200) throw new Error(data.detail || '微信授权失败');
+      if (data.card_token) api.setCardToken(data.card_token);
       api.clearCardBindIntent();
       wx.navigateTo({ url: '/pages/card-edit/card-edit' });
     }).catch((error) => this.setData({ binding: false, error: error.message || '微信授权失败' }));

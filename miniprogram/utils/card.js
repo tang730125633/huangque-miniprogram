@@ -84,19 +84,31 @@ function wechatLoginCode() {
 }
 
 function loginCardSession() {
-  return wechatLoginCode().then((code) => api.request('/api/auth/miniprogram/card-login', {
+  return wechatLoginCode().then((code) => api.request('/api/auth/miniprogram/card-session', {
     method: 'POST', auth: false, data: { wx_code: code }
   })).then((res) => {
     const data = res.data || {};
     if (res.statusCode === 404 && data.code === 'card_unbound') {
+      api.clearCardToken();
       if (api.getToken() && api.hasCardBindIntent()) return { state: 'pending-bind', data: {} };
-      api.clearToken();
       return { state: 'guest', data: {} };
     }
-    if (res.statusCode !== 200 || !data.token) throw new Error(data.detail || '微信名片登录失败');
-    api.setToken(data.token);
+    if (res.statusCode !== 200 || !data.card_token) throw new Error(data.detail || '微信名片登录失败');
+    api.setCardToken(data.card_token);
     api.clearCardBindIntent();
     return { state: 'owner', data };
+  });
+}
+
+function loginCardAccount() {
+  return loginCardSession().then((session) => {
+    if (session.state !== 'owner') throw new Error('当前微信还没有绑定名片账号');
+    return api.request('/api/auth/miniprogram/card-account-login', { method: 'POST', cardAuth: true });
+  }).then((res) => {
+    const data = res.data || {};
+    if (res.statusCode !== 200 || !data.token) throw new Error(data.detail || '名片账号登录失败');
+    api.setToken(data.token);
+    return data;
   });
 }
 
@@ -189,6 +201,6 @@ function prepareShareImage(page, card) {
 
 module.exports = {
   ATTRIBUTION_KEY, ATTRIBUTION_TTL, DEFAULT_SHARE_IMAGE,
-  privacy, workSlots, worksPayload, cardPayload, isComplete, validPhone, wechatLoginCode, loginCardSession, isPublished, rememberValidInvite,
+  privacy, workSlots, worksPayload, cardPayload, isComplete, validPhone, wechatLoginCode, loginCardSession, loginCardAccount, isPublished, rememberValidInvite,
   lastValidAttribution, lastValidInvite, clearValidAttribution, prepareShareImage
 };

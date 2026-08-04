@@ -40,6 +40,17 @@ function context(definition) {
 }
 
 (async () => {
+  storage.hq_token = 'workbench-token';
+  storage.hq_card_token = 'card-token';
+  let capturedRequest;
+  wx.request = (options) => { capturedRequest = options; options.success({ statusCode: 200, data: {} }); };
+  await api.request('/api/auth/card/me', { method: 'GET', cardAuth: true });
+  assert.strictEqual(capturedRequest.header['X-HQ-Card-Token'], 'card-token');
+  assert.strictEqual(capturedRequest.header.Authorization, undefined);
+  api.clearToken();
+  assert.strictEqual(storage.hq_token, undefined);
+  assert.strictEqual(storage.hq_card_token, 'card-token');
+
   let cardLoginOptions;
   storage.hq_token = 'stale-account-token';
   api.request = (path, options) => {
@@ -49,8 +60,8 @@ function context(definition) {
   let page = context(myCardDefinition);
   await page.loginByWechat.call(page);
   assert.strictEqual(page.data.state, 'guest');
-  assert.strictEqual(storage.hq_token, undefined);
-  assert.strictEqual(cardLoginOptions.path, '/api/auth/miniprogram/card-login');
+  assert.strictEqual(storage.hq_token, 'stale-account-token');
+  assert.strictEqual(cardLoginOptions.path, '/api/auth/miniprogram/card-session');
   assert.strictEqual(cardLoginOptions.options.auth, false);
 
   storage.hq_token = 'explicit-ai-login';
@@ -65,11 +76,12 @@ function context(definition) {
     assert.strictEqual(api.hasCardBindIntent(), true);
   }
 
-  api.request = () => Promise.resolve({ statusCode: 200, data: { token: 'current-wechat-token', card: { name: '当前微信' } } });
+  api.request = () => Promise.resolve({ statusCode: 200, data: { card_token: 'current-wechat-card-token', card: { name: '当前微信' } } });
   page = context(myCardDefinition);
   await page.loginByWechat.call(page);
   assert.strictEqual(page.data.state, 'owner');
-  assert.strictEqual(storage.hq_token, 'current-wechat-token');
+  assert.strictEqual(storage.hq_token, 'explicit-ai-login');
+  assert.strictEqual(storage.hq_card_token, 'current-wechat-card-token');
   assert.strictEqual(api.hasCardBindIntent(), false);
 
   const originalPrepareShareImage = card.prepareShareImage;
@@ -107,8 +119,7 @@ function context(definition) {
   assert.strictEqual(tabSynced, true);
   assert.strictEqual(wechatChecked, true);
 
-  const originalCardLogin = card.loginCardSession;
-  card.loginCardSession = () => Promise.resolve({ state: 'owner', data: {} });
+  storage.hq_token = 'workbench-account';
   api.request = (requestPath) => Promise.resolve(requestPath === '/api/auth/me'
     ? { statusCode: 200, data: { user: { points: 100, membership_active: false }, membership_enforcement_enabled: true } }
     : { statusCode: 200, data: { card: { name: '林知夏', title: '主理人', company: '黄雀', phone: '13800138000', wechat_bound: true }, wechat_bound: true } });
@@ -124,16 +135,26 @@ function context(definition) {
   assert.strictEqual(home.data.membershipReady, true);
   assert.strictEqual(home.data.accountStateError, true);
 
-  card.loginCardSession = () => Promise.resolve({ state: 'guest', data: {} });
+  delete storage.hq_token;
   navigation.length = 0;
   home = context(homeDefinition);
-  await home.ensureWorkbenchSession.call(home);
-  assert.deepStrictEqual(navigation, ['/pages/my-card/my-card', '/pages/login/login']);
-  card.loginCardSession = originalCardLogin;
+  const loggedOut = await home.ensureWorkbenchSession.call(home);
+  assert.strictEqual(loggedOut.state, 'logged-out');
+  assert.strictEqual(home.data.membershipReady, true);
+  assert.deepStrictEqual(navigation, []);
+
+  const originalCardAccountLogin = card.loginCardAccount;
+  card.loginCardAccount = () => Promise.resolve({ token: 'card-account-token' });
+  let login = context(loginDefinition);
+  login.data.agreed = true;
+  await login.loginWithCard.call(login);
+  assert.strictEqual(login.data.cardLoading, false);
+  assert.strictEqual(navigation.pop(), '/pages/home/home');
+  card.loginCardAccount = originalCardAccountLogin;
 
   navigation.length = 0;
   global.getCurrentPages = () => [{}, {}];
-  let login = context(loginDefinition);
+  login = context(loginDefinition);
   login.close.call(login);
   global.getCurrentPages = () => [{}];
   login.close.call(login);
