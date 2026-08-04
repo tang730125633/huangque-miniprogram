@@ -181,22 +181,11 @@ Page({
   ensureWorkbenchSession() {
     if (this._sessionPromise) return this._sessionPromise;
     this.setData({ membershipReady: false, cardReady: false, accountStateError: false });
-    this._sessionPromise = cardUtil.loginCardSession().then((session) => {
-      if (session.state === 'owner') {
-        return this.refreshPoints().then((result) => {
-          if (result && !result.cardReady) wx.switchTab({ url: '/pages/my-card/my-card' });
-          return result;
-        });
-      }
+    if (!api.getToken()) {
       this.setData({ points: null, membershipReady: true, cardReady: false });
-      wx.switchTab({
-        url: '/pages/my-card/my-card',
-        success: () => {
-          if (session.state === 'guest') wx.navigateTo({ url: '/pages/login/login' });
-        }
-      });
-      return session;
-    }).catch(() => {
+      return Promise.resolve({ state: 'logged-out' });
+    }
+    this._sessionPromise = this.refreshPoints().catch(() => {
       this.setData({ points: null, membershipReady: true, cardReady: false, accountStateError: true });
       return null;
     }).finally(() => {
