@@ -56,6 +56,7 @@ const ENGINES_ALL = [
   { key: 'omni', name: '欧米视频', desc: '官方有声·3–10 秒', ref: true, maxRef: 6 },
   { key: 'sora', name: 'Sora 2', desc: '限时测试·单图首帧', ref: true, maxRef: 1 }
 ];
+const FOLLOW_CREATE_VIDEO_ENGINES = ['grok', 'micro', 'omni'];
 const ENGINES = [ENGINES_ALL[0]];
 const OFFICIAL_VIDEO = {
   micro: {
@@ -84,6 +85,16 @@ const SORA_VIDEO = {
 function soraResolutions(model) { return SORA_VIDEO.resolutions[model] || SORA_VIDEO.resolutions['sora-2']; }
 function officialVideoRequestKey() {
   return 'mp-video-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+function normalizeFollowCreateVideo(value) {
+  if (!value || !value.prompt) return null;
+  const engine = FOLLOW_CREATE_VIDEO_ENGINES.indexOf(value.engine) >= 0 ? value.engine : 'grok';
+  const inspirationId = Number(value.inspirationId);
+  return {
+    prompt: String(value.prompt).slice(0, 2000),
+    engine,
+    inspirationId: inspirationId >= 1000000 ? inspirationId : 0
+  };
 }
 // 果肉官方线：模型 × 分辨率 × 时长动态计价；参考图不额外收点。
 const GROK_MODELS = [
@@ -302,6 +313,7 @@ Page({
     this._mediaTokens = {};
     this._lifecycleToken = 0;
     this._avatarFetchToken = 0;
+    this._sourceInspirationId = 0;
     this._modeInitialized = false;
     this._setMode(mode);
   },
@@ -803,6 +815,16 @@ Page({
 
   onShow() {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    const followCreate = normalizeFollowCreateVideo(wx.getStorageSync('hq_followcreate_video'));
+    if (followCreate) {
+      wx.removeStorageSync('hq_followcreate_video');
+      if (this.data.mode !== 'generate') this._setMode('generate');
+      this._sourceInspirationId = followCreate.inspirationId;
+      this.setData(Object.assign(this._engineState(followCreate.engine), { prompt: followCreate.prompt }));
+      this._syncGenPricing();
+      this._draftChanged(true);
+      wx.showToast({ title: '已带入视频案例提示词', icon: 'none' });
+    }
     const ip12Script = wx.getStorageSync('hq_ip12_prefill_script');
     if (ip12Script && ip12Script.prompt) {
       wx.removeStorageSync('hq_ip12_prefill_script');
@@ -1414,10 +1436,12 @@ Page({
         this.setNote('Sora 参数不支持，请重新选择模型、时长、清晰度和比例', C_ERR);
         return;
       }
-      this.submitJob('/api/gen/sora_video', {
+      const soraBody = {
         model: model, prompt: prompt, seconds: seconds, ratio: this.data.ratio, resolution: resolution,
         reference_images: this.data.refPreviews.length ? this._b64.refImgs : []
-      }, this._genCost());
+      };
+      if (this._sourceInspirationId) soraBody.source_inspiration_id = this._sourceInspirationId;
+      this.submitJob('/api/gen/sora_video', soraBody, this._genCost());
       return;
     }
     const body = { channel: this.data.engine, prompt: prompt, ratio: this.data.ratio };
@@ -1448,6 +1472,7 @@ Page({
       // 后端期望字符串数组：dataURL / https URL（不要 {type,value} 对象），果肉最多 7 张
       body.reference_images = this._b64.refImgs;
     }
+    if (this._sourceInspirationId) body.source_inspiration_id = this._sourceInspirationId;
     this.submitJob('/api/gen/xiaole_video', body, this._genCost());
   },
 
@@ -2492,3 +2517,5 @@ Page({
     }).catch(() => {});
   }
 });
+
+module.exports = { normalizeFollowCreateVideo };

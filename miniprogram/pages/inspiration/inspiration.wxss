@@ -34,6 +34,13 @@ page { background: #050509; }
   padding: 8rpx 20rpx; border-radius: 30rpx;
   background: rgba(242,41,166,0.92); color: #fff; font-size: 22rpx; font-weight: 600;
 }
+.video-badge {
+  position: absolute; left: 14rpx; bottom: 14rpx; z-index: 2;
+  display: flex; align-items: center; gap: 8rpx;
+  padding: 8rpx 16rpx; border-radius: 30rpx;
+  background: rgba(5,5,9,0.78); color: #fff; font-size: 21rpx;
+}
+.video-play { font-size: 18rpx; }
 
 .card-title {
   padding: 16rpx 18rpx 6rpx; font-size: 25rpx; color: #fff; line-height: 1.4;
