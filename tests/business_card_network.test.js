@@ -146,14 +146,15 @@ require('node:test')('joining records the server-validated journey without block
   assert.strictEqual(target, '/pages/card-edit/card-edit?source=invite');
 });
 const recharge = require('../miniprogram/pages/recharge/recharge.js');
-const experience = recharge.buildRechargeConfig({ membership_status: 'active', membership_active: true, membership_tier: 'experience' }, { items: [] });
+const commercePricing = { membershipPriceYuan: 399, membershipBonusPoints: 900 };
+const experience = recharge.buildRechargeConfig({ membership_status: 'active', membership_active: true, membership_tier: 'experience' }, { items: [] }, commercePricing);
 assert.strictEqual(experience.packages[0].id, 'membership_experience_renewal');
 assert.strictEqual(experience.packages[0].points, 0);
 assert.deepStrictEqual(recharge.virtualPaymentPayload('membership_experience_renewal', 499, 'code'), {
   package_id: 'membership_experience_renewal', wx_code: 'code', product_type: 'membership_experience_renewal', order_type: 'membership_experience_renewal'
 });
-assert.strictEqual(recharge.EXPERIENCE_RENEWAL_PACKAGE.benefit.includes('1000'), false);
-assert.strictEqual(recharge.buildRechargeConfig({ membership_status: 'active', membership_active: true, membership_tier: 'partner' }, { items: [] }).contactAdmin, true);
+assert.strictEqual(recharge.renewalPackage(commercePricing).benefit.includes('1000'), false);
+assert.strictEqual(recharge.buildRechargeConfig({ membership_status: 'active', membership_active: true, membership_tier: 'partner' }, { items: [] }, commercePricing).contactAdmin, true);
 
 const root = path.resolve(__dirname, '..');
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
@@ -342,8 +343,8 @@ const recoveredNotice = editModule.registrationNotice({ created: false, ai_accou
 assert.strictEqual(recoveredNotice.title, '已恢复原名片');
 assert.match(recoveredNotice.content, /old-account/);
 assert.doesNotMatch(recoveredNotice.content, /13900000000|100 点已到账|初始密码/);
-const rewardedNotice = editModule.registrationNotice({ created: true, invite_rewarded: true, ai_account: '13800138000' }, { phone: '13800138000' });
-assert.match(rewardedNotice.content, /100 点已到账/);
+const rewardedNotice = editModule.registrationNotice({ created: true, invite_rewarded: true, invite_reward_points: 88, ai_account: '13800138000' }, { phone: '13800138000' });
+assert.match(rewardedNotice.content, /88 点已到账/);
 assert.notStrictEqual(editModule.editDraftKey('account-a'), editModule.editDraftKey('account-b'));
 assert.strictEqual(editModule.editDraftKey(''), editModule.editDraftKey(''));
 const recoveredDraft = editModule.draftPatch({ owner: '13800138000', card: { name: '草稿姓名', phone: '13800138000' } }, '13800138000');
@@ -446,7 +447,7 @@ require('node:test')('registering a draft card publishes it before redirecting',
     requests.push(requestPath);
     if (requestPath === '/api/auth/miniprogram/card-register') {
       registerPayload = options.data;
-      return Promise.resolve({ statusCode: 200, data: { token: 'new-token', created: true, invite_bound: true, invite_rewarded: true, ai_account: '13800138000', initial_password: true, user: { username: '13800138000' }, card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'draft' }) } });
+      return Promise.resolve({ statusCode: 200, data: { token: 'new-token', created: true, invite_bound: true, invite_rewarded: true, invite_reward_points: 88, ai_account: '13800138000', initial_password: true, user: { username: '13800138000' }, card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'draft' }) } });
     }
     if (requestPath === '/api/auth/card/publish') {
       return Promise.resolve({ statusCode: 200, data: { card: Object.assign({}, completeCard, { public_id: 'public-1', status: 'published', invite_code: 'ABCD23' }) } });
@@ -482,7 +483,7 @@ require('node:test')('registering a draft card publishes it before redirecting',
   assert.strictEqual(registerPayload.phone, '13800138000');
   assert.strictEqual(registerPayload.card.works[0].title, '品牌发布会');
   assert.strictEqual(context.data.published, true);
-  assert.match(registrationModal.content, /100 点已到账/);
+  assert.match(registrationModal.content, /88 点已到账/);
 
   requests.length = 0;
   const latestCard = Object.assign({}, completeCard, { name: '修改后的名字' });

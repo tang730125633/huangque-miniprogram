@@ -1,6 +1,6 @@
 const assert = require('assert');
 
-let catalog = { 'audio.tts': 10, 'video.grok.v1.480p': 12 };
+let catalog = { 'audio.tts': 10, 'video.grok.v1.480p': 12, 'invite.card_trial_reward': 88, 'membership.experience.price_yuan': 399, 'membership.experience.bonus_points': 900 };
 global.getApp = () => ({ globalData: { apiBase: 'https://example.test' } });
 global.getCurrentPages = () => [];
 global.wx = {
@@ -17,6 +17,7 @@ const pricing = require('../miniprogram/utils/pricing.js');
   const first = await pricing.load();
   assert.strictEqual(pricing.point(first, 'audio.tts'), 10);
   assert.strictEqual(pricing.lowest(first, ['audio.tts', 'video.grok.v1.480p']), 10);
+  assert.deepStrictEqual(pricing.commerce(first), { inviteRewardPoints: 88, membershipPriceYuan: 399, membershipBonusPoints: 900 });
 
   catalog = { 'audio.tts': 14, 'video.grok.v1.480p': 12 };
   const latest = await pricing.confirm(10, (prices) => pricing.point(prices, 'audio.tts'));

@@ -9,6 +9,12 @@ require('../miniprogram/pages/recharge/recharge.js');
 const calls = [];
 api.request = function (requestPath) {
   calls.push(requestPath);
+  if (requestPath === '/api/gen/pricing') {
+    return Promise.resolve({ statusCode: 200, data: { items: [
+      { key: 'membership.experience.price_yuan', points: 399 },
+      { key: 'membership.experience.bonus_points', points: 900 }
+    ] } });
+  }
   if (requestPath === '/api/auth/me') {
     return Promise.resolve({
       statusCode: 200,
@@ -34,7 +40,7 @@ const context = {
   const refresh = page.refresh.call(context);
   assert.ok(refresh && typeof refresh.then === 'function');
   await refresh;
-  assert.deepStrictEqual(calls, ['/api/auth/me']);
+  assert.deepStrictEqual(calls.sort(), ['/api/auth/me', '/api/gen/pricing'].sort());
   assert.strictEqual(context.data.membershipActive, false);
   assert.strictEqual(context.data.packages.length, 1);
 

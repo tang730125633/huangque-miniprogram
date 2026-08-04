@@ -34,6 +34,14 @@ function lowest(prices, keys) {
   return values.length ? Math.min.apply(null, values) : null;
 }
 
+function commerce(prices) {
+  return {
+    inviteRewardPoints: point(prices, 'invite.card_trial_reward'),
+    membershipPriceYuan: point(prices, 'membership.experience.price_yuan'),
+    membershipBonusPoints: point(prices, 'membership.experience.bonus_points')
+  };
+}
+
 function watch(page, onPrices, onError) {
   stop(page);
   const token = page._pricingWatchToken;
@@ -65,4 +73,4 @@ function confirm(shownCost, calculate) {
   });
 }
 
-module.exports = { REFRESH_MS, load, point, lowest, watch, stop, confirm };
+module.exports = { REFRESH_MS, load, point, lowest, commerce, watch, stop, confirm };

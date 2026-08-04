@@ -7,9 +7,10 @@ global.Page = function (definition) { page = definition; };
 const recharge = require('../miniprogram/pages/recharge/recharge.js');
 const api = require('../miniprogram/utils/api.js');
 
-const nonmember = recharge.buildRechargeConfig({ membership_status: 'none', membership_active: false });
+const commerce = { membershipPriceYuan: 399, membershipBonusPoints: 900 };
+const nonmember = recharge.buildRechargeConfig({ membership_status: 'none', membership_active: false }, null, commerce);
 assert.strictEqual(nonmember.membershipActive, false);
-assert.deepStrictEqual(nonmember.packages, [recharge.MEMBERSHIP_PACKAGE]);
+assert.deepStrictEqual(nonmember.packages, [recharge.membershipPackage(commerce)]);
 assert.strictEqual(nonmember.custom, null);
 
 const virtualConfig = {
@@ -30,7 +31,8 @@ const virtualConfig = {
 };
 const member = recharge.buildRechargeConfig(
   { membership_status: 'active', membership_active: true, membership_name: '合伙人', points_purchase_discount_label: '7.5折' },
-  virtualConfig
+  virtualConfig,
+  commerce
 );
 assert.strictEqual(member.membershipActive, true);
 assert.strictEqual(member.packages.length, 1);
@@ -54,8 +56,10 @@ page.onCustomAmountInput.call(customContext, { detail: { value: '123' } });
 assert.strictEqual(customContext.data.customPoints, 1230);
 assert.strictEqual(customContext.data.customPayAmount, '92.25');
 
-assert.strictEqual(recharge.MEMBERSHIP_PACKAGE.id, 'membership_experience');
-assert.strictEqual(recharge.MEMBERSHIP_PACKAGE.product_id, 'hq_member_exp_1y');
+assert.strictEqual(recharge.membershipPackage(commerce).id, 'membership_experience');
+assert.strictEqual(recharge.membershipPackage(commerce).product_id, 'hq_member_exp_1y');
+assert.strictEqual(recharge.membershipPackage(commerce).amount, 399);
+assert.strictEqual(recharge.membershipPackage(commerce).points, 900);
 assert.strictEqual(recharge.paymentMode('membership_experience'), 'virtual');
 assert.strictEqual(recharge.paymentMode('points_1000'), 'virtual');
 assert.strictEqual(recharge.paymentMode('custom_points'), 'virtual');

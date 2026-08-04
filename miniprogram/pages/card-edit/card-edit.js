@@ -2,6 +2,7 @@ const api = require('../../utils/api.js');
 const device = require('../../utils/device.js');
 const cardUtil = require('../../utils/card.js');
 const drafts = require('../../utils/drafts.js');
+const pricing = require('../../utils/pricing.js');
 
 const EDIT_DRAFT_KEY = 'hq_draft_card_edit_v1';
 const MAX_WORK_VIDEO_BYTES = 20 * 1024 * 1024;
@@ -40,7 +41,7 @@ function registrationNotice(data, payload) {
   }
   return {
     title: '名片与黄雀 AI 已开通',
-    content: '登录账号和初始密码均为 ' + account + '。' + (data.invite_rewarded ? '有效邀请奖励 100 点已到账。' : '本次未检测到有效邀请，不赠送邀请点数。') + ' 首次充值前请先修改密码。'
+    content: '登录账号和初始密码均为 ' + account + '。' + (data.invite_rewarded ? '有效邀请奖励 ' + Number(data.invite_reward_points || 0) + ' 点已到账。' : '本次未检测到有效邀请，不赠送邀请点数。') + ' 首次充值前请先修改密码。'
   };
 }
 
@@ -86,12 +87,20 @@ Page({
     showPasswordForm: false,
     oldPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    inviteRewardPoints: null
   },
 
   onLoad() {
     this.checkWechatSession();
   },
+
+  onShow() {
+    pricing.watch(this, (prices) => this.setData({ inviteRewardPoints: pricing.commerce(prices).inviteRewardPoints }));
+  },
+
+  onHide() { pricing.stop(this); },
+  onUnload() { pricing.stop(this); },
 
   checkWechatSession() {
     this.setData({ ready: false, loading: true, loadFailed: false, error: '' });
