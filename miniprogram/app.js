@@ -2,6 +2,10 @@ const invite = require('./utils/invite.js');
 const notifications = require('./utils/notifications.js');
 const inviteRewards = require('./utils/invite-rewards.js');
 
+function showStartupNotices() {
+  return inviteRewards.showNextRewardNotice().then(() => notifications.checkLatest());
+}
+
 App({
   globalData: {
     // 后端已备案域名 + HTTPS。若换环境改这里即可（末尾不要带 /）
@@ -20,7 +24,8 @@ App({
   },
   onShow(options) {
     this._captureInvite(options);
-    notifications.checkLatest();
-    inviteRewards.showNextRewardNotice();
+    return showStartupNotices();
   }
 });
+
+if (typeof module !== 'undefined') module.exports = { showStartupNotices };

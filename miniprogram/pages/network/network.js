@@ -265,29 +265,41 @@ Page({
     viewerNode: {}, viewerCanExplore: false, viewerIdentityName: '非会员',
     graphWidth: 1100, graphHeight: 1280, graphCenterX: 550, graphCenterY: 460, graphScale: 0.5, graphX: 0, graphY: 0
   },
-  onLoad() {
+  onLoad(options) {
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
-    this.load();
+    const grant = String((options && options.grant) || '').trim();
+    return this.load(grant);
   },
-  load() {
+  load(grant) {
+    grant = String(grant || '').trim();
+    const request = { limit: 50 };
+    if (grant) request.grant = grant;
     this.setData({ loading: true, error: '' });
-    return planetService.getPlanet({ limit: 50 }).then((planet) => {
+    return planetService.getPlanet(request).then((planet) => {
       const ancestors = planet.upline ? [nodeView(planet.upline)] : [];
       const children = planet.downlines.map((item) => nodeView(item, 0, 'self'));
-      const viewerNode = nodeView(viewerProfile(planet.center), 0, '');
-      const viewerIdentity = membershipIdentity(viewerNode);
-      const graph = buildOrbitGraph(ancestors.slice(0, 1), children, viewerNode);
+      const center = grant
+        ? nodeView(Object.assign({}, planet.center, { is_viewer: false }), 0, '')
+        : nodeView(viewerProfile(planet.center), 0, '');
+      const viewerTier = planet.viewer.membership_tier || '';
+      const viewerIdentity = grant
+        ? membershipIdentity({ membership_tier: viewerTier, membership_status: viewerTier ? 'active' : 'none', membership_active: !!viewerTier })
+        : membershipIdentity(center);
+      const graph = buildOrbitGraph(ancestors.slice(0, 1), children, center);
       const view = fitView(graph, false);
-      this._centerGrant = '';
-      this._rootState = {
-        ancestors: ancestors.map((node) => Object.assign({}, node)),
-        children: children.map((node) => Object.assign({}, node)), viewerNode: Object.assign({}, viewerNode),
-        stats: Object.assign({}, planet.stats), childCursor: planet.page.next_cursor || ''
-      };
+      this._centerGrant = grant;
+      if (!grant) {
+        this._rootState = {
+          ancestors: ancestors.map((node) => Object.assign({}, node)),
+          children: children.map((node) => Object.assign({}, node)), viewerNode: Object.assign({}, center),
+          stats: Object.assign({}, planet.stats), childCursor: planet.page.next_cursor || ''
+        };
+      }
       this.setData({
-        loading: false, ancestors, children, viewerNode, viewerCanExplore: !!planet.viewer.can_explore_others, viewerIdentityName: viewerIdentity.name,
+        loading: false, ancestors, children, viewerNode: grant ? this.data.viewerNode : center,
+        viewerCanExplore: !!planet.viewer.can_explore_others, viewerIdentityName: viewerIdentity.name,
         graphNodes: graph.graphNodes, graphLinks: graph.graphLinks, orbitRings: graph.orbitRings,
-        stats: planet.stats, displayChildren: children, focusUser: null,
+        stats: planet.stats, displayChildren: children, focusUser: grant ? center : null,
         graphWidth: graph.graphWidth, graphHeight: graph.graphHeight, graphCenterX: graph.centerX, graphCenterY: graph.centerY,
         graphScale: view.graphScale, graphX: view.graphX, graphY: view.graphY,
         childCursor: planet.page.next_cursor || ''
