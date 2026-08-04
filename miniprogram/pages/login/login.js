@@ -1,6 +1,7 @@
 const api = require('../../utils/api.js');
 const device = require('../../utils/device.js');
 const cardUtil = require('../../utils/card.js');
+const warpTunnel = require('../../utils/warp-tunnel.js');
 
 Page({
   data: {
@@ -16,6 +17,10 @@ Page({
     const redirect = api.loginRedirect(options && options.redirect);
     this.setData({ redirect });
   },
+  onReady() { warpTunnel.mount(this, '#warpCanvas'); },
+  onShow() { warpTunnel.resume(this); },
+  onHide() { warpTunnel.pause(this); },
+  onUnload() { warpTunnel.destroy(this); },
   onUsername(e) { this.setData({ username: e.detail.value }); },
   onPassword(e) { this.setData({ password: e.detail.value }); },
   openCardRegistration() { wx.switchTab({ url: '/pages/my-card/my-card' }); },

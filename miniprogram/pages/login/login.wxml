@@ -1,37 +1,106 @@
-<view class="container">
-  <view class="login-close" bindtap="close">关闭</view>
-  <view class="brand">
-    <text class="brand-title gold">黄雀 AI 工作台</text>
-    <text class="brand-sub muted">请选择本次使用的账号</text>
+<view class="container login-page">
+  <view class="ambient" aria-hidden="true">
+    <canvas type="2d" id="warpCanvas" class="warp-canvas"></canvas>
+    <view class="warp-core"><view class="warp-core-flash"></view><view class="warp-core-ring"></view></view>
+    <view class="warp-spoke spoke-1"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-2"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-3"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-4"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-5"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-6"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-7"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-8"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-9"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-10"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-11"><view class="warp-ray"></view></view>
+    <view class="warp-spoke spoke-12"><view class="warp-ray"></view></view>
+    <view class="shard-track shard-track-1"><view class="flight-shard shard-slim"></view></view>
+    <view class="shard-track shard-track-2"><view class="flight-shard shard-wide"></view></view>
+    <view class="shard-track shard-track-3"><view class="flight-shard"></view></view>
+    <view class="shard-track shard-track-4"><view class="flight-shard shard-bright"></view></view>
+    <view class="shard-track shard-track-5"><view class="flight-shard shard-wide"></view></view>
+    <view class="shard-track shard-track-6"><view class="flight-shard shard-slim"></view></view>
+    <view class="shard-track shard-track-7"><view class="flight-shard shard-bright"></view></view>
+    <view class="shard-track shard-track-8"><view class="flight-shard"></view></view>
+    <view class="shard-track shard-track-9"><view class="flight-shard shard-wide"></view></view>
+    <view class="shard-track shard-track-10"><view class="flight-shard shard-slim"></view></view>
+    <view class="shard-track shard-track-11"><view class="flight-shard shard-bright"></view></view>
+    <view class="shard-track shard-track-12"><view class="flight-shard"></view></view>
+    <view class="warp-dust dust-1"></view><view class="warp-dust dust-2"></view>
+    <view class="warp-dust dust-3"></view><view class="warp-dust dust-4"></view>
+    <view class="warp-dust dust-5"></view><view class="warp-dust dust-6"></view>
+    <view class="ambient-vignette"></view>
   </view>
 
-  <view class="card">
-    <view class="login-method-title">使用我的名片账号</view>
-    <view class="login-scope-note">使用当前微信名片所绑定的黄雀账号登录工作台。退出后不会自动再次登录。</view>
-    <view class="btn-card {{(cardLoading || loading || !agreed)?'disabled':''}}" bindtap="loginWithCard">
-      {{cardLoading ? '正在确认微信名片…' : '使用名片账号登录'}}
+  <view class="login-close" bindtap="close"><text class="close-icon">×</text><text>关闭</text></view>
+
+  <view class="brand">
+    <view class="brand-sigil">
+      <view class="sigil-halo"></view>
+      <view class="sigil-line"></view>
+      <view class="sigil-trail trail-one"></view>
+      <view class="sigil-trail trail-two"></view>
+      <view class="sigil-trail trail-three"></view>
+      <image class="sparrow-logo" src="/assets/home/huangque-sparrow-logo.png" mode="aspectFit" />
+      <view class="sigil-particle particle-one"></view>
+      <view class="sigil-particle particle-two"></view>
+    </view>
+    <text class="brand-kicker">HUANGQUE · INTELLIGENCE</text>
+    <text class="brand-title">黄雀 AI 工作台</text>
+    <view class="brand-sub"><view class="status-dot"></view><text>欢迎回来，请选择登录方式</text></view>
+  </view>
+
+  <view class="card login-card">
+    <view class="card-beam"></view>
+    <view class="card-head">
+      <view>
+        <view class="card-eyebrow">ACCOUNT ACCESS</view>
+        <view class="card-title">登录黄雀 AI</view>
+      </view>
+      <view class="secure-pill"><view class="secure-dot"></view>安全登录</view>
+    </view>
+
+    <view class="quick-login">
+      <view class="quick-login-copy">
+        <view class="quick-login-icon"><text>雀</text></view>
+        <view><view class="quick-login-title">使用我的名片账号</view><view class="quick-login-desc">当前微信已绑定时快速进入</view></view>
+      </view>
+      <view class="btn-card {{(cardLoading || loading || !agreed)?'disabled':''}}" bindtap="loginWithCard">
+        <text>{{cardLoading ? '确认中…' : '名片账号登录'}}</text><text class="quick-arrow">→</text>
+      </view>
+    </view>
+
+    <view class="login-scope-note">
+      <view class="note-icon">i</view>
+      <view class="note-copy"><text class="note-title">登录说明</text><text>仅恢复黄雀 AI 账号；微信名片绑定状态将在返回“我的名片”后确认。</text></view>
     </view>
 
     <view class="login-divider"><text>或手动登录其他账号</text></view>
 
     <view class="field">
       <text class="field-label">账号</text>
-      <input class="input" type="text" placeholder="请输入账号" placeholder-class="ph"
-        value="{{username}}" bindinput="onUsername" />
+      <view class="input-shell">
+        <view class="input-icon user-icon"><view class="user-head"></view><view class="user-body"></view></view>
+        <input class="input" type="text" placeholder="请输入黄雀 AI 账号" placeholder-class="ph"
+          value="{{username}}" bindinput="onUsername" />
+      </view>
     </view>
 
     <view class="field">
       <text class="field-label">密码</text>
-      <input class="input" password="{{true}}" placeholder="请输入密码" placeholder-class="ph"
-        value="{{password}}" bindinput="onPassword" />
+      <view class="input-shell">
+        <view class="input-icon lock-icon"><view class="lock-loop"></view><view class="lock-body"></view></view>
+        <input class="input" password="{{true}}" placeholder="请输入登录密码" placeholder-class="ph"
+          value="{{password}}" bindinput="onPassword" />
+      </view>
     </view>
 
-    <view wx:if="{{err}}" class="err">{{err}}</view>
+    <view wx:if="{{err}}" class="err"><view class="err-dot"></view><text>{{err}}</text></view>
 
     <view class="agreement-row">
       <checkbox-group bindchange="onAgreementChange">
         <label class="agreement-check">
-          <checkbox value="accepted" checked="{{agreed}}" color="#b048c8" />
+          <checkbox value="accepted" checked="{{agreed}}" color="#d84d9e" />
           <text>我已阅读并同意</text>
         </label>
       </checkbox-group>
@@ -42,17 +111,19 @@
 
     <view class="voiceprint-agreement">
       <view class="voiceprint-agreement-head">
-        <text class="voiceprint-agreement-badge">声音信息专项授权</text>
-        <navigator class="voiceprint-agreement-link" url="/pages/legal/legal?type=voiceprint">查看《声纹授权协议》 ›</navigator>
+        <view class="voiceprint-title"><view class="voice-bars"><view class="voice-bar"></view><view class="voice-bar"></view><view class="voice-bar"></view><view class="voice-bar"></view></view><text>声音信息专项授权</text></view>
+        <navigator class="voiceprint-agreement-link" url="/pages/legal/legal?type=voiceprint">查看协议 ›</navigator>
       </view>
       <view class="voiceprint-agreement-copy">登录不代表声纹授权。仅当你主动使用声音克隆或上传口播音频时，系统才会再次弹窗，并要求单独勾选同意；未授权不会采集或上传声音，也不影响登录及其他功能。</view>
     </view>
 
-    <view class="btn-primary {{(loading || cardLoading || !agreed)?'disabled':''}}" bindtap="submit">
-      {{loading ? '请稍候…' : '登录'}}
+    <view class="btn-primary login-button {{(loading || cardLoading || !agreed)?'disabled':''}}" bindtap="submit">
+      <view class="button-sheen"></view>
+      <text>{{loading ? '正在登录…' : '进入工作台'}}</text>
+      <text class="button-arrow">→</text>
     </view>
-    <view class="card-register-link" bindtap="openCardRegistration">还没有账号？先创建我的名片</view>
+    <view class="card-register-link" bindtap="openCardRegistration"><text>还没有账号？</text><text class="register-action">先创建我的名片 →</text></view>
   </view>
 
-  <view class="foot muted">密码只能在微信授权后的名片编辑页修改</view>
+  <view class="foot"><view class="foot-line"></view><text>密码仅能在微信授权后的名片编辑页修改</text><view class="foot-line"></view></view>
 </view>
