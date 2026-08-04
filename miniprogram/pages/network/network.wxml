@@ -73,7 +73,7 @@
     <view wx:if="{{viewMode === 'list'}}" class="list-view">
       <view class="section-title"><text>我的上线</text><text class="section-count">{{ancestors.length}}</text></view>
       <view wx:if="{{!ancestors.length}}" class="empty-card">你是当前邀请链的起点</view>
-      <view wx:for="{{ancestors}}" wx:key="node_id" class="person-card upline" data-id="{{item.public_id}}" bindtap="openCard">
+      <view wx:for="{{ancestors}}" wx:key="node_id" class="person-card upline" data-node="{{item.node_id}}" bindtap="openPersonOptions">
         <image wx:if="{{item.avatar}}" class="person-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="person-avatar fallback">{{item.name}}</view>
         <view class="person-copy"><view class="person-name">{{item.name}}</view><view class="person-meta">{{index === 0 ? '直接上线' : (index + 1) + '级上线'}} · {{item.title || '黄雀用户'}}</view></view><text wx:if="{{item.public_id}}" class="chevron">›</text>
       </view>
@@ -81,12 +81,11 @@
       <view class="section-title"><text>我的下线</text><text class="section-count">{{stats.total}}</text></view>
       <view wx:if="{{!children.length}}" class="empty-card">暂时还没有下线，分享邀请即可点亮第一颗星球</view>
       <block wx:for="{{children}}" wx:key="node_id">
-        <view class="person-card" style="margin-left: {{item.indent}}rpx" data-id="{{item.public_id}}" bindtap="openCard">
+        <view class="person-card" style="margin-left: {{item.indent}}rpx" data-node="{{item.node_id}}" bindtap="openPersonOptions">
           <view class="level-badge">L{{item.depth + 1}}</view>
           <image wx:if="{{item.avatar}}" class="person-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="person-avatar fallback">{{item.name}}</view>
           <view class="person-copy"><view class="person-name">{{item.name}}</view><view class="person-meta">{{item.title || '黄雀用户'}}<text wx:if="{{item.children_count}}"> · 直邀 {{item.children_count}} 人</text></view></view><text wx:if="{{item.public_id}}" class="chevron">›</text>
         </view>
-        <view class="branch-action" style="margin-left: {{item.branchIndent}}rpx" data-index="{{index}}" bindtap="loadBranch">查看他的星球</view>
       </block>
       <view wx:if="{{childCursor}}" class="more-button" bindtap="loadMore">{{loadingChildren ? '加载中…' : '加载更多直接下线'}}</view>
     </view>

@@ -8,6 +8,7 @@ const NODES_PER_RING = 10;
 const FIRST_RING_RADIUS = 320;
 const RING_GAP = 200;
 const IDENTITY_NAMES = { initiator: '发起人', partner: '合伙人', experience: '体验官', nonmember: '非会员' };
+const PERSON_ACTIONS = ['查看名片', '查看他的关系'];
 
 function numberValue(value, fallback) {
   const parsed = Number(value);
@@ -19,6 +20,10 @@ function graphScaleAfterWheel(current, delta) {
   const wheelDelta = numberValue(delta, 0);
   if (!wheelDelta) return Number(scale.toFixed(2));
   return Number(Math.min(2.4, Math.max(MIN_GRAPH_SCALE, scale + (wheelDelta < 0 ? 0.14 : -0.14))).toFixed(2));
+}
+
+function focusViewMode(event) {
+  return event && event.currentTarget && event.currentTarget.dataset.mode === 'list' ? 'list' : 'graph';
 }
 
 function membershipIdentity(node) {
@@ -72,7 +77,8 @@ function showExplorePermission() {
 
 function nodeView(node, depth, parentId) {
   node = node || {};
-  const name = node.name || node.display_name || node.username || '黄雀用户';
+  const rawName = String(node.name || node.display_name || node.card_name || '').trim();
+  const name = Object.keys(IDENTITY_NAMES).some((key) => IDENTITY_NAMES[key] === rawName) ? '黄雀用户' : (rawName || '黄雀用户');
   const identity = membershipIdentity(node);
   return {
     node_id: node.node_id || node.id || node.user_id || node.public_id,
@@ -411,6 +417,7 @@ Page({
   },
   focusNode(e) {
     const eventId = e && e.currentTarget && e.currentTarget.dataset.node;
+    const targetMode = focusViewMode(e);
     const selected = eventId
       ? this.data.graphNodes.find((node) => node.node_id === eventId)
       : this.data.selectedNode;
@@ -433,7 +440,7 @@ Page({
       const view = fitView(graph, false);
       this._centerGrant = grant;
       this.setData({
-        focusUser: center, focusLoading: false, selectedNode: null, selectedPath: '', viewMode: 'graph', ancestors, children,
+        focusUser: center, focusLoading: false, selectedNode: null, selectedPath: '', viewMode: targetMode, ancestors, children,
         displayChildren: children, graphNodes: graph.graphNodes, graphLinks: graph.graphLinks, orbitRings: graph.orbitRings,
         graphWidth: graph.graphWidth, graphHeight: graph.graphHeight, graphCenterX: graph.centerX, graphCenterY: graph.centerY,
         graphScale: view.graphScale, graphX: view.graphX, graphY: view.graphY,
@@ -462,6 +469,31 @@ Page({
   openCard(e) {
     const id = e.currentTarget.dataset.id;
     return this.openNodeCard({ public_id: id || '', is_viewer: false });
+  },
+  openPersonOptions(e) {
+    const nodeId = e && e.currentTarget && e.currentTarget.dataset.node;
+    const candidates = (this.data.graphNodes || []).concat(this.data.ancestors || [], this.data.children || []);
+    const node = candidates.find((item) => item.node_id === nodeId);
+    const isAncestor = (this.data.ancestors || []).some((item) => item.node_id === nodeId);
+    if (!node) return;
+    wx.showActionSheet({
+      itemList: PERSON_ACTIONS,
+      success: (result) => {
+        if (result.tapIndex === 0) {
+          this.openNodeCard(node);
+          return;
+        }
+        if (result.tapIndex !== 1) return;
+        if (!this.data.viewerCanExplore) {
+          showExplorePermission();
+          return;
+        }
+        this.setData({ selectedNode: Object.assign({}, node, {
+          role: node.role || (isAncestor ? 'ancestor' : 'descendant')
+        }) });
+        this.focusNode({ currentTarget: { dataset: { mode: 'list' } } });
+      }
+    });
   },
   rebuildGraph(children) {
     const displayChildren = children.filter((node) => numberValue(node.depth, 0) === 0);
@@ -503,5 +535,5 @@ Page({
 });
 
 if (typeof module !== 'undefined') module.exports = {
-  membershipIdentity, canExploreNetwork, viewerProfile, showExplorePermission, graphScaleAfterWheel, nodeView, branchEnd, appendBranch, buildOrbitGraph, fitView, pathToNode, focusAncestors, dashboardStats, cardDestination, lineBetween
+  PERSON_ACTIONS, membershipIdentity, canExploreNetwork, viewerProfile, showExplorePermission, graphScaleAfterWheel, focusViewMode, nodeView, branchEnd, appendBranch, buildOrbitGraph, fitView, pathToNode, focusAncestors, dashboardStats, cardDestination, lineBetween
 };
