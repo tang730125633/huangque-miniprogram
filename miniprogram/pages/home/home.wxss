@@ -1,6 +1,6 @@
 /* 顶部黑色留白高度：集中定义，便于真机校准 */
 .home {
-  --top-spacer: 300rpx;      /* 沉浸式顶部留白（不含状态栏安全区） */
+  --top-spacer: 430rpx;      /* 沉浸式动态主视觉高度（不含状态栏安全区） */
   --edge: 32rpx;             /* 页面左右边距 */
   --gap: 22rpx;              /* 模块垂直间距 */
   --card-radius: 28rpx;
@@ -15,116 +15,530 @@
   height: calc(var(--top-spacer) + constant(safe-area-inset-top));
   height: calc(var(--top-spacer) + env(safe-area-inset-top));
   display: flex; align-items: flex-end;
-  padding: 0 var(--edge) 20rpx;
+  padding: 0 var(--edge) 26rpx;
   box-sizing: border-box;
 }
 .back-card {
-  position: absolute; z-index: 4; left: var(--edge); top: 104rpx;
+  position: absolute; z-index: 8; left: var(--edge); top: 104rpx;
   display: flex; align-items: center; gap: 8rpx; padding: 12rpx 20rpx 12rpx 14rpx;
   border: 1rpx solid rgba(255,255,255,.13); border-radius: 999rpx;
-  color: rgba(255,255,255,.86); background: rgba(255,255,255,.055); font-size: 22rpx;
+  color: rgba(255,255,255,.86); background: rgba(7,6,12,.46); font-size: 22rpx;
 }
 .back-card-arrow { margin-top: -2rpx; color: #f0a54b; font-size: 36rpx; line-height: 24rpx; }
 .hero-motion {
   position: absolute;
   left: var(--edge);
   right: var(--edge);
-  bottom: 82rpx;
-  height: 164rpx;
+  bottom: 62rpx;
+  height: 218rpx;
+  perspective: 860rpx;
+  transform-style: preserve-3d;
   pointer-events: none;
 }
-.hero-aurora {
+
+/* 紫黑空间裂谷：用极轻的镜头与光带运动替代原球体自转。 */
+.cosmic-rift {
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  height: auto;
+  overflow: hidden;
+  border-radius: 0;
+  perspective: 900rpx;
+  transform-style: preserve-3d;
+  background: #08040d;
+  box-shadow: none;
+}
+.rift-art {
   position: absolute;
-  left: 14%;
-  right: 14%;
-  top: 26rpx;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0.94;
+  transform-origin: 50% 54%;
+  animation: riftCameraDrift 8.8s cubic-bezier(0.45, 0.08, 0.28, 0.98) infinite alternate;
+}
+.rift-art-echo {
+  opacity: 0.22;
+  filter: saturate(1.35) brightness(1.18);
+  animation: energyEchoDrift 12.6s cubic-bezier(0.42, 0.06, 0.26, 0.98) infinite alternate-reverse;
+}
+.rift-depth {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -30rpx;
   height: 112rpx;
   border-radius: 50%;
-  opacity: 0.62;
-  background:
-    radial-gradient(circle at 38% 52%, rgba(236,69,177,0.38), transparent 31%),
-    radial-gradient(circle at 62% 46%, rgba(113,62,240,0.36), transparent 38%);
-  animation: heroAurora 7s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse, rgba(240, 48, 174, 0.23) 0%, rgba(107, 29, 156, 0.10) 44%, transparent 72%);
+  filter: blur(13rpx);
+  animation: riftDepthPulse 5.6s ease-in-out infinite;
 }
-.hero-orbit {
+.rift-glow {
+  position: absolute;
+  width: 230rpx;
+  height: 90rpx;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 72, 191, 0.28) 0%, rgba(133, 34, 192, 0.09) 50%, transparent 74%);
+  filter: blur(12rpx);
+  animation: riftGlowDrift 7.8s ease-in-out infinite alternate;
+}
+.rift-glow-left {
+  left: 8%;
+  bottom: 14rpx;
+}
+.rift-glow-right {
+  right: 5%;
+  bottom: 22rpx;
+  opacity: 0.76;
+  animation-delay: -3.9s;
+}
+.energy-volume {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+.energy-sheet {
+  position: absolute;
+  left: -34%;
+  width: 168%;
+  border-radius: 50%;
+  box-sizing: border-box;
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+}
+.energy-sheet-back {
+  top: 29%;
+  height: 46%;
+  opacity: 0.34;
+  background: linear-gradient(104deg, transparent 7%, rgba(91, 50, 173, 0.08) 23%, rgba(237, 65, 189, 0.26) 49%, rgba(132, 60, 222, 0.10) 74%, transparent 93%);
+  border-top: 1rpx solid rgba(209, 112, 255, 0.25);
+  box-shadow: 0 -8rpx 30rpx rgba(168, 55, 220, 0.16), inset 0 12rpx 28rpx rgba(242, 76, 193, 0.08);
+  filter: blur(10rpx);
+  animation: energySheetBack 18s cubic-bezier(0.42, 0.05, 0.22, 0.98) infinite alternate;
+}
+.energy-sheet-mid {
+  top: 39%;
+  height: 34%;
+  opacity: 0.48;
+  background: linear-gradient(96deg, transparent 4%, rgba(251, 85, 201, 0.11) 30%, rgba(170, 75, 240, 0.28) 52%, rgba(255, 105, 208, 0.10) 70%, transparent 96%);
+  border-top: 2rpx solid rgba(255, 117, 214, 0.38);
+  border-bottom: 1rpx solid rgba(145, 93, 242, 0.18);
+  box-shadow: 0 -5rpx 24rpx rgba(239, 64, 187, 0.20), inset 0 9rpx 20rpx rgba(119, 53, 214, 0.12);
+  filter: blur(3rpx);
+  animation: energySheetMid 13.6s cubic-bezier(0.36, 0.08, 0.24, 0.96) infinite alternate-reverse;
+}
+.energy-sheet-front {
+  top: 49%;
+  height: 38%;
+  opacity: 0.32;
+  background: linear-gradient(88deg, transparent 7%, rgba(166, 83, 244, 0.12) 28%, rgba(255, 73, 190, 0.24) 54%, rgba(119, 69, 230, 0.08) 76%, transparent 94%);
+  border-bottom: 2rpx solid rgba(194, 102, 255, 0.28);
+  box-shadow: 0 8rpx 30rpx rgba(111, 47, 198, 0.16);
+  filter: blur(5rpx);
+  animation: energySheetFront 15.2s cubic-bezier(0.40, 0.04, 0.26, 0.98) infinite alternate;
+}
+.energy-caustic {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  width: 440rpx;
+  height: 170rpx;
+  margin: -85rpx 0 0 -220rpx;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 221, 246, 0.30) 0%, rgba(250, 77, 194, 0.20) 17%, rgba(140, 54, 218, 0.09) 44%, transparent 72%);
+  filter: blur(14rpx);
+  animation: energyCaustic 6.4s ease-in-out infinite alternate;
+}
+.energy-prism {
+  position: absolute;
+  left: -38%;
+  top: 5%;
+  width: 54%;
+  height: 112%;
+  opacity: 0;
+  background: linear-gradient(108deg, transparent 10%, rgba(255, 255, 255, 0.09) 42%, rgba(255, 87, 198, 0.16) 51%, rgba(145, 99, 255, 0.09) 59%, transparent 88%);
+  filter: blur(6rpx);
+  transform: skewX(-13deg);
+  animation: energyPrismPass 9.8s ease-in-out infinite;
+}
+.energy-flare {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 132rpx;
+  height: 132rpx;
+  margin: -66rpx 0 0 -66rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.96) 0%, rgba(255, 214, 246, 0.70) 8%, rgba(255, 93, 205, 0.38) 22%, rgba(137, 66, 235, 0.16) 43%, transparent 72%);
+  filter: blur(7rpx);
+  animation: energyFlare 4.8s ease-in-out infinite;
+}
+.energy-rift-frame {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 610rpx;
+  height: 230rpx;
+  margin: -115rpx 0 0 -305rpx;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  animation: riftFrameBreathe 5.6s ease-in-out infinite alternate;
+}
+.rift-arc {
+  position: absolute;
+  top: 50%;
+  width: 270rpx;
+  height: 118rpx;
+  margin-top: -59rpx;
+  border-radius: 50%;
+  box-sizing: border-box;
+  filter: drop-shadow(0 0 8rpx rgba(255, 72, 202, 0.84));
+}
+.rift-arc-left {
+  left: -28rpx;
+  border-top: 3rpx solid rgba(255, 140, 225, 0.82);
+  border-left: 1rpx solid rgba(159, 91, 255, 0.34);
+  transform-origin: 100% 50%;
+  animation: riftArcLeft 7.2s cubic-bezier(0.38, 0.06, 0.22, 0.96) infinite alternate;
+}
+.rift-arc-right {
+  right: -28rpx;
+  border-bottom: 3rpx solid rgba(190, 105, 255, 0.76);
+  border-right: 1rpx solid rgba(255, 83, 198, 0.38);
+  transform-origin: 0 50%;
+  animation: riftArcRight 8.4s cubic-bezier(0.36, 0.05, 0.24, 0.98) infinite alternate-reverse;
+}
+.rift-arc-crown {
+  left: 50%;
+  top: 50%;
+  width: 420rpx;
+  height: 132rpx;
+  margin: -66rpx 0 0 -210rpx;
+  border-top: 2rpx solid rgba(255, 197, 237, 0.62);
+  border-bottom: 2rpx solid rgba(119, 86, 247, 0.30);
+  box-shadow: 0 -10rpx 28rpx rgba(255, 61, 190, 0.22), inset 0 8rpx 24rpx rgba(158, 67, 230, 0.14);
+  animation: riftArcCrown 10.2s ease-in-out infinite alternate;
+}
+.energy-axis {
+  position: absolute;
+  left: 50%;
+  top: -10%;
+  width: 54rpx;
+  height: 112%;
+  margin-left: -27rpx;
+  opacity: 0.58;
+  background: linear-gradient(90deg, transparent 0%, rgba(126, 83, 245, 0.08) 22%, rgba(255, 238, 252, 0.78) 49%, rgba(255, 87, 198, 0.16) 70%, transparent 100%);
+  filter: blur(8rpx);
+  transform-origin: 50% 46%;
+  animation: energyAxis 5.2s ease-in-out infinite alternate;
+}
+.portal-rings {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 2rpx;
+  height: 2rpx;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+.portal-ring {
   position: absolute;
   left: 50%;
   top: 50%;
   border-radius: 50%;
   box-sizing: border-box;
+  filter: drop-shadow(0 0 7rpx rgba(255, 80, 198, 0.88));
 }
-.hero-orbit-back {
-  width: 190rpx;
-  height: 88rpx;
-  margin: -44rpx 0 0 -95rpx;
-  border: 2rpx solid rgba(139,69,224,0.34);
-  box-shadow: 0 0 28rpx rgba(139,69,224,0.14);
-  animation: heroOrbit 11s linear infinite;
+.portal-ring-horizontal {
+  width: 300rpx;
+  height: 104rpx;
+  margin: -52rpx 0 0 -150rpx;
+  border-top: 3rpx solid rgba(255, 220, 247, 0.90);
+  border-right: 2rpx solid rgba(255, 73, 194, 0.42);
+  border-bottom: 2rpx solid rgba(124, 89, 247, 0.52);
+  border-left: 1rpx solid rgba(255, 255, 255, 0.12);
+  animation: portalRingHorizontal 9.4s linear infinite;
 }
-.hero-orbit-front {
-  width: 126rpx;
-  height: 126rpx;
-  margin: -63rpx 0 0 -63rpx;
-  border: 1rpx solid rgba(255,88,176,0.42);
-  box-shadow: inset 0 0 24rpx rgba(226,75,160,0.10), 0 0 26rpx rgba(226,75,160,0.12);
-  animation: heroOrbitReverse 8s linear infinite;
+.portal-ring-vertical {
+  width: 118rpx;
+  height: 266rpx;
+  margin: -133rpx 0 0 -59rpx;
+  border-top: 2rpx solid rgba(255, 116, 211, 0.48);
+  border-right: 3rpx solid rgba(181, 119, 255, 0.82);
+  border-bottom: 1rpx solid rgba(255, 224, 248, 0.32);
+  border-left: 2rpx solid rgba(255, 73, 193, 0.38);
+  animation: portalRingVertical 12.8s linear infinite reverse;
 }
-.hero-core {
+.energy-shockwaves {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 2rpx;
+  height: 2rpx;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+.shockwave {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 72rpx;
-  height: 72rpx;
-  margin: -36rpx 0 0 -36rpx;
+  width: 190rpx;
+  height: 82rpx;
+  margin: -41rpx 0 0 -95rpx;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 36% 30%, #ffb4e0 0%, #e44ca6 24%, #7338db 62%, rgba(21,10,45,0.4) 100%);
-  box-shadow: 0 0 24rpx rgba(226,75,160,0.65), 0 0 58rpx rgba(112,56,219,0.36);
-  animation: heroCore 3.6s ease-in-out infinite;
+  border: 2rpx solid rgba(255, 156, 225, 0.74);
+  box-shadow: 0 0 16rpx rgba(255, 71, 192, 0.46), inset 0 0 14rpx rgba(126, 74, 239, 0.28);
+  opacity: 0;
+  transform: rotateX(64deg) scale(0.36);
+  animation: energyShockwave 4.8s cubic-bezier(0.18, 0.66, 0.24, 1) infinite;
 }
-.hero-core-dot {
-  width: 20rpx;
-  height: 20rpx;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.92);
-  box-shadow: 0 0 20rpx rgba(255,255,255,0.8);
-}
-.hero-spark {
+.shockwave-two { animation-delay: -1.6s; border-color: rgba(156, 115, 255, 0.68); }
+.shockwave-three { animation-delay: -3.2s; border-color: rgba(255, 101, 205, 0.56); }
+.warp-streak {
   position: absolute;
-  width: 6rpx;
-  height: 6rpx;
+  left: 50%;
+  top: 45%;
+  width: 150rpx;
+  height: 2rpx;
   border-radius: 50%;
-  background: #ffb7df;
-  box-shadow: 0 0 12rpx rgba(255,112,197,0.9);
-  animation: heroSpark 2.8s ease-in-out infinite;
+  opacity: 0;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(255,255,255,0.94), rgba(255,92,205,0.62) 18%, rgba(138,84,248,0.18) 58%, transparent 100%);
+  filter: drop-shadow(0 0 5rpx rgba(255, 72, 194, 0.72));
+  animation: warpStreak 5.8s ease-out infinite;
 }
-.hero-spark-one { left: 30%; top: 34rpx; }
-.hero-spark-two { right: 28%; top: 82rpx; animation-delay: -0.9s; }
-.hero-spark-three { left: 39%; bottom: 18rpx; animation-delay: -1.8s; }
+.warp-streak-one { margin: -76rpx 0 0 -250rpx; transform: rotate(203deg); animation-delay: -0.8s; }
+.warp-streak-two { margin: 48rpx 0 0 -278rpx; transform: rotate(166deg); animation-delay: -2.2s; }
+.warp-streak-three { margin: -94rpx 0 0 82rpx; transform: rotate(-22deg); animation-delay: -3.7s; }
+.warp-streak-four { margin: 62rpx 0 0 70rpx; transform: rotate(18deg); animation-delay: -4.6s; }
+.warp-streak-five { margin: -116rpx 0 0 -34rpx; transform: rotate(-86deg); animation-delay: -1.5s; }
+.warp-streak-six { margin: 94rpx 0 0 16rpx; transform: rotate(86deg); animation-delay: -3s; }
+.rift-particle-field {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2rpx;
+  height: 2rpx;
+  border-radius: 50%;
+  background: rgba(255, 210, 240, 0.86);
+  box-shadow:
+    -298rpx -52rpx 0 rgba(255, 136, 213, 0.48),
+    -250rpx 58rpx 0 rgba(190, 109, 250, 0.46),
+    -206rpx -22rpx 0 rgba(255, 196, 233, 0.62),
+    -154rpx 76rpx 0 rgba(255, 93, 195, 0.56),
+    -102rpx -69rpx 0 rgba(208, 138, 255, 0.54),
+    -54rpx 61rpx 0 rgba(255, 196, 235, 0.64),
+    46rpx -63rpx 0 rgba(255, 143, 216, 0.56),
+    98rpx 75rpx 0 rgba(197, 119, 255, 0.48),
+    146rpx -28rpx 0 rgba(255, 202, 237, 0.68),
+    207rpx 56rpx 0 rgba(255, 94, 197, 0.55),
+    252rpx -58rpx 0 rgba(203, 132, 255, 0.48),
+    294rpx 22rpx 0 rgba(255, 187, 230, 0.60);
+  animation: riftParticlesFlow 6.2s ease-in-out infinite alternate;
+}
+.rift-stars {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.36;
+  background:
+    radial-gradient(circle at 13% 29%, rgba(255, 209, 240, 0.84) 0 1rpx, transparent 2rpx),
+    radial-gradient(circle at 31% 18%, rgba(216, 159, 255, 0.68) 0 1rpx, transparent 2rpx),
+    radial-gradient(circle at 72% 24%, rgba(255, 176, 226, 0.74) 0 1rpx, transparent 2rpx),
+    radial-gradient(circle at 87% 39%, rgba(229, 190, 255, 0.70) 0 1rpx, transparent 2rpx);
+  animation: riftStarsBreathe 6.6s ease-in-out infinite alternate;
+}
+.rift-vignette {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(4, 2, 9, 0.22) 0%, transparent 24%, transparent 54%, rgba(5, 2, 9, 0.84) 100%),
+    linear-gradient(90deg, rgba(7, 3, 12, 0.64) 0%, transparent 16%, transparent 84%, rgba(7, 3, 12, 0.64) 100%);
+  box-shadow: inset 0 0 46rpx rgba(0, 0, 0, 0.44);
+}
+.hero-center-logo {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 142rpx;
+  height: 128rpx;
+  margin: -64rpx 0 0 -71rpx;
+  z-index: 5;
+  opacity: 0;
+  transform-origin: 50% 52%;
+  animation: heroLogoReveal 4.6s cubic-bezier(0.22, 0.72, 0.20, 1) 0.45s forwards;
+}
+.hero-center-logo-image {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 0 8rpx rgba(255, 218, 126, 0.76)) drop-shadow(0 0 24rpx rgba(238, 116, 48, 0.28));
+  animation: heroLogoFloat 5.8s ease-in-out 5.05s infinite alternate;
+}
+.hero-center-logo-aura {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 280rpx;
+  height: 204rpx;
+  margin: -102rpx 0 0 -140rpx;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 223, 133, 0.36) 0%, rgba(245, 126, 52, 0.16) 24%, rgba(226, 67, 169, 0.12) 48%, transparent 74%);
+  filter: blur(15rpx);
+  animation: heroLogoAura 4.8s ease-in-out 2.4s infinite alternate;
+}
+.hero-center-logo-shimmer {
+  position: absolute;
+  left: -44rpx;
+  top: -18rpx;
+  width: 22rpx;
+  height: 132rpx;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 235, 177, 0.72), transparent);
+  filter: blur(3rpx);
+  transform: rotate(18deg);
+  animation: heroLogoShimmer 7.2s ease-in-out 3.2s infinite;
+}
 
-@keyframes heroAurora {
-  0% { opacity: 0.42; transform: translate3d(-18rpx, 4rpx, 0) scale(0.94); }
-  100% { opacity: 0.72; transform: translate3d(18rpx, -4rpx, 0) scale(1.06); }
+@keyframes riftCameraDrift {
+  0% { transform: translate3d(-14rpx, 5rpx, 0) scale(1.04); filter: saturate(0.90) brightness(0.84); }
+  32% { transform: translate3d(7rpx, -3rpx, 0) scale(1.075); filter: saturate(1.06) brightness(0.96); }
+  68% { transform: translate3d(-5rpx, -7rpx, 0) scale(1.10); filter: saturate(1.14) brightness(1.03); }
+  100% { transform: translate3d(15rpx, 3rpx, 0) scale(1.055); filter: saturate(0.98) brightness(0.90); }
 }
-@keyframes heroOrbit {
-  0% { transform: rotate(0deg) scaleX(1); }
-  50% { transform: rotate(180deg) scaleX(0.88); }
-  100% { transform: rotate(360deg) scaleX(1); }
+@keyframes energyEchoDrift {
+  0% { opacity: 0.09; transform: translate3d(20rpx, -5rpx, 0) scale(1.08, 1.03); }
+  42% { opacity: 0.26; transform: translate3d(-9rpx, 4rpx, 0) scale(1.03, 1.10); }
+  100% { opacity: 0.13; transform: translate3d(-22rpx, -2rpx, 0) scale(1.09, 1.04); }
 }
-@keyframes heroOrbitReverse {
-  0% { transform: rotate(360deg) scale(0.92); }
-  50% { transform: rotate(180deg) scale(1.04); }
-  100% { transform: rotate(0deg) scale(0.92); }
+@keyframes energySheetBack {
+  0% { transform: translate3d(-76rpx, 18rpx, -90rpx) rotateX(58deg) rotateZ(-7deg) scaleX(0.86); opacity: 0.18; }
+  38% { transform: translate3d(14rpx, -8rpx, -54rpx) rotateX(66deg) rotateZ(2deg) scaleX(1.02); opacity: 0.40; }
+  100% { transform: translate3d(82rpx, -17rpx, -26rpx) rotateX(54deg) rotateZ(8deg) scaleX(1.13); opacity: 0.28; }
 }
-@keyframes heroCore {
-  0%, 100% { transform: scale(0.94); opacity: 0.88; }
-  50% { transform: scale(1.08); opacity: 1; }
+@keyframes energySheetMid {
+  0% { transform: translate3d(72rpx, -10rpx, -12rpx) rotateX(63deg) rotateZ(6deg) scaleX(0.82); opacity: 0.22; }
+  52% { transform: translate3d(-8rpx, 6rpx, 22rpx) rotateX(72deg) rotateZ(-2deg) scaleX(1.04); opacity: 0.56; }
+  100% { transform: translate3d(-78rpx, 13rpx, 48rpx) rotateX(59deg) rotateZ(-8deg) scaleX(1.16); opacity: 0.34; }
 }
-@keyframes heroSpark {
-  0%, 100% { opacity: 0.2; transform: scale(0.7); }
-  50% { opacity: 1; transform: scale(1.5); }
+@keyframes energySheetFront {
+  0% { transform: translate3d(-88rpx, 15rpx, 32rpx) rotateX(69deg) rotateZ(-5deg) scaleX(0.88); opacity: 0.16; }
+  44% { transform: translate3d(10rpx, -4rpx, 58rpx) rotateX(76deg) rotateZ(2deg) scaleX(1.08); opacity: 0.42; }
+  100% { transform: translate3d(92rpx, -18rpx, 74rpx) rotateX(64deg) rotateZ(7deg) scaleX(1.18); opacity: 0.24; }
+}
+@keyframes energyCaustic {
+  0% { opacity: 0.20; transform: translate3d(-18rpx, 8rpx, 0) scale3d(0.72, 0.76, 1); }
+  100% { opacity: 0.76; transform: translate3d(20rpx, -9rpx, 0) scale3d(1.22, 1.08, 1); }
+}
+@keyframes energyPrismPass {
+  0%, 16% { opacity: 0; transform: translateX(0) skewX(-13deg); }
+  34% { opacity: 0.44; }
+  62% { opacity: 0.08; transform: translateX(980rpx) skewX(-13deg); }
+  100% { opacity: 0; transform: translateX(980rpx) skewX(-13deg); }
+}
+@keyframes energyFlare {
+  0%, 100% { opacity: 0.34; transform: scale(0.62); }
+  44% { opacity: 1; transform: scale(1.42); }
+  58% { opacity: 0.62; transform: scale(0.94); }
+}
+@keyframes riftFrameBreathe {
+  0% { opacity: 0.58; transform: translate3d(0, 5rpx, -10rpx) scale3d(0.90, 0.86, 1); }
+  100% { opacity: 1; transform: translate3d(0, -7rpx, 34rpx) scale3d(1.08, 1.04, 1); }
+}
+@keyframes riftArcLeft {
+  0% { transform: translate3d(-30rpx, 12rpx, -34rpx) rotateX(62deg) rotateZ(-14deg) scaleX(0.78); opacity: 0.32; }
+  46% { transform: translate3d(10rpx, -8rpx, 18rpx) rotateX(72deg) rotateZ(4deg) scaleX(1.12); opacity: 0.94; }
+  100% { transform: translate3d(38rpx, 4rpx, 44rpx) rotateX(58deg) rotateZ(13deg) scaleX(0.92); opacity: 0.58; }
+}
+@keyframes riftArcRight {
+  0% { transform: translate3d(34rpx, -8rpx, -24rpx) rotateX(68deg) rotateZ(15deg) scaleX(0.82); opacity: 0.38; }
+  52% { transform: translate3d(-12rpx, 7rpx, 28rpx) rotateX(76deg) rotateZ(-5deg) scaleX(1.16); opacity: 1; }
+  100% { transform: translate3d(-42rpx, -3rpx, 48rpx) rotateX(60deg) rotateZ(-14deg) scaleX(0.90); opacity: 0.54; }
+}
+@keyframes riftArcCrown {
+  0% { transform: translate3d(-22rpx, 9rpx, -46rpx) rotateX(70deg) rotateZ(-6deg) scaleX(0.84); opacity: 0.24; }
+  50% { transform: translate3d(8rpx, -6rpx, 24rpx) rotateX(78deg) rotateZ(2deg) scaleX(1.18); opacity: 0.84; }
+  100% { transform: translate3d(26rpx, 5rpx, 54rpx) rotateX(66deg) rotateZ(7deg) scaleX(0.96); opacity: 0.46; }
+}
+@keyframes energyAxis {
+  0% { opacity: 0.18; transform: scale3d(0.36, 0.76, 1) rotate(1deg); }
+  44% { opacity: 0.78; transform: scale3d(1.20, 1.04, 1) rotate(-1deg); }
+  100% { opacity: 0.38; transform: scale3d(0.64, 1.18, 1) rotate(2deg); }
+}
+@keyframes portalRingHorizontal {
+  0% { transform: rotateX(68deg) rotateZ(0deg) scale(0.92); opacity: 0.46; }
+  50% { transform: rotateX(74deg) rotateZ(180deg) scale(1.08); opacity: 0.96; }
+  100% { transform: rotateX(68deg) rotateZ(360deg) scale(0.92); opacity: 0.46; }
+}
+@keyframes portalRingVertical {
+  0% { transform: rotateY(62deg) rotateZ(0deg) scale(0.90); opacity: 0.34; }
+  50% { transform: rotateY(78deg) rotateZ(180deg) scale(1.10); opacity: 0.88; }
+  100% { transform: rotateY(62deg) rotateZ(360deg) scale(0.90); opacity: 0.34; }
+}
+@keyframes energyShockwave {
+  0% { opacity: 0; transform: rotateX(64deg) scale(0.34); }
+  18% { opacity: 0.92; }
+  72% { opacity: 0.16; }
+  100% { opacity: 0; transform: rotateX(64deg) scale(3.15); }
+}
+@keyframes warpStreak {
+  0%, 68% { opacity: 0; width: 18rpx; filter: blur(2rpx); }
+  76% { opacity: 0.92; width: 86rpx; filter: blur(0); }
+  92% { opacity: 0.20; width: 210rpx; }
+  100% { opacity: 0; width: 260rpx; filter: blur(3rpx); }
+}
+@keyframes heroLogoReveal {
+  0% { opacity: 0; transform: translate3d(0, 18rpx, 0) scale(0.68); filter: blur(12rpx); }
+  38% { opacity: 0.34; }
+  72% { opacity: 0.92; transform: translate3d(0, -2rpx, 0) scale(1.04); filter: blur(1rpx); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+}
+@keyframes heroLogoFloat {
+  0% { transform: translate3d(-2rpx, 2rpx, 0) scale(0.98); }
+  100% { transform: translate3d(2rpx, -3rpx, 0) scale(1.025); }
+}
+@keyframes heroLogoAura {
+  0% { opacity: 0.30; transform: scale(0.82); }
+  100% { opacity: 0.74; transform: scale(1.12); }
+}
+@keyframes heroLogoShimmer {
+  0%, 24% { opacity: 0; transform: translateX(0) rotate(18deg); }
+  38% { opacity: 0.58; }
+  58% { opacity: 0; transform: translateX(188rpx) rotate(18deg); }
+  100% { opacity: 0; transform: translateX(188rpx) rotate(18deg); }
+}
+@keyframes riftDepthPulse {
+  0%, 100% { opacity: 0.34; transform: scaleX(0.84); }
+  50% { opacity: 0.72; transform: scaleX(1.10); }
+}
+@keyframes riftGlowDrift {
+  0% { opacity: 0.24; transform: translate3d(-16rpx, 3rpx, 0) scale(0.84); }
+  100% { opacity: 0.72; transform: translate3d(20rpx, -4rpx, 0) scale(1.16); }
+}
+@keyframes riftStarsBreathe {
+  0% { opacity: 0.14; transform: translateY(2rpx); }
+  100% { opacity: 0.42; transform: translateY(-3rpx); }
+}
+@keyframes riftParticlesFlow {
+  0% { opacity: 0.18; transform: translate3d(-12rpx, 8rpx, 0) scale(0.82); }
+  100% { opacity: 0.72; transform: translate3d(18rpx, -10rpx, 0) scale(1.16); }
 }
 
 .brandbar { position: relative; z-index: 2; width: 100%; display: flex; align-items: center; justify-content: space-between; }
@@ -138,15 +552,34 @@
 }
 .pts-ic { width: 30rpx; height: 30rpx; }
 
-.content { padding: 0 var(--edge); }
+.content { position: relative; padding: 0 var(--edge); }
+
+.hero-content-blend {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -82rpx;
+  height: 116rpx;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(226, 49, 169, 0.13) 0%, rgba(103, 34, 153, 0.06) 42%, transparent 72%),
+    linear-gradient(180deg, transparent 0%, rgba(7, 6, 12, 0.58) 42%, #07060c 100%);
+  filter: blur(1rpx);
+  animation: heroContentBlend 5.8s ease-in-out infinite alternate;
+}
+@keyframes heroContentBlend {
+  0% { opacity: 0.58; transform: scaleX(0.94); }
+  100% { opacity: 0.92; transform: scaleX(1.04); }
+}
 
 /* ===== 功能矩阵 ===== */
-.mosaic { display: flex; gap: var(--gap); }
+.mosaic { position: relative; z-index: 1; display: flex; gap: var(--gap); margin-top: -14rpx; }
 .primary-card {
   position: relative; width: 49%; box-sizing: border-box;
   min-height: 340rpx; border-radius: var(--card-radius);
   padding: 34rpx 30rpx; overflow: hidden;
   background: linear-gradient(150deg, #ff4d9d 0%, #b845e0 55%, #7a3ff0 100%);
+  box-shadow: 0 -16rpx 44rpx rgba(184, 48, 181, 0.12), 0 18rpx 42rpx rgba(0, 0, 0, 0.24);
 }
 .pc-title { font-size: 40rpx; font-weight: 700; color: #fff; }
 .pc-sub { font-size: 24rpx; color: rgba(255,255,255,0.86); margin-top: 14rpx; line-height: 1.45; }
@@ -166,6 +599,7 @@
   position: relative; flex: 1; min-height: 159rpx; box-sizing: border-box;
   border-radius: var(--card-radius); padding: 26rpx 26rpx; overflow: hidden;
   display: flex; align-items: center;
+  box-shadow: 0 -12rpx 36rpx rgba(121, 46, 167, 0.10), 0 14rpx 34rpx rgba(0, 0, 0, 0.22);
 }
 .mc-image { background: linear-gradient(145deg, #2a1740, #171022); }
 .mc-video { background: linear-gradient(145deg, #3a1730, #1c1020); }
