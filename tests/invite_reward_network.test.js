@@ -41,11 +41,11 @@ assert.match(inviteWxml, /bindtap="openDownline"/);
 assert.match(inviteWxml, /catchtap="openDownlineCard"/);
 assert.match(inviteWxml, /加载更多/);
 assert.doesNotMatch(inviteWxml, /奖励记录/);
-assert.match(networkJs, /\/api\/auth\/invite\/network\?grant=/);
-assert.match(networkWxml, /当前用户/);
-assert.match(networkWxml, /上线/);
-assert.match(networkWxml, /直接下线/);
-assert.match(networkWxml, /catchtap="openCard"/);
+assert.match(inviteWxml, /data-id="\{\{item\.card_public_id\}\}"/);
+assert.match(inviteJs, /\/pages\/card\/card\?id=/);
+assert.match(networkJs, /planetService\.getPlanet/);
+assert.match(networkJs, /cardDestination/);
+assert.match(networkWxml, /bindtap="openSelectedCard"/);
 assert.match(appJs, /showNextRewardNotice/);
 assert.match(rechargeJs, /showNextRewardNotice/);
 
