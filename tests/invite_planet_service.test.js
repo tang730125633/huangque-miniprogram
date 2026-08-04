@@ -63,7 +63,7 @@ test('never uses a membership identity as a person name', () => {
   assert.equal(person.name, '匿名用户');
 });
 
-test('hydrates missing names and avatars from public cards with request deduplication', async () => {
+test('loads invitation relationships without fetching public cards', async () => {
   const calls = [];
   const client = service.createPlanetService((path, options) => {
     calls.push({ path, options });
@@ -80,53 +80,50 @@ test('hydrates missing names and avatars from public cards with request deduplic
         }
       });
     }
-    if (path === '/api/auth/card/public?id=card-self') {
-      return Promise.resolve({ statusCode: 200, data: { card: { name: '岳雷', avatar: 'https://example.test/self.jpg' } } });
-    }
-    if (path === '/api/auth/card/public?id=card-child') {
-      return Promise.resolve({ statusCode: 200, data: { card: { name: '真实下线姓名', avatar: 'https://example.test/child.jpg' } } });
-    }
-    return Promise.resolve({ statusCode: 404, data: {} });
+    throw new Error('relationship loading must not fetch public cards: ' + path);
   });
   const planet = await client.getPlanet({ limit: 50 });
-  assert.equal(planet.center.name, '岳雷');
-  assert.equal(planet.center.avatar, 'https://example.test/self.jpg');
-  assert.deepEqual(planet.downlines.map((person) => person.name), ['真实下线姓名', '真实下线姓名']);
-  assert.ok(planet.downlines.every((person) => person.avatar === 'https://example.test/child.jpg'));
+  assert.equal(planet.center.name, '匿名用户');
+  assert.equal(planet.center.avatar, '');
+  assert.deepEqual(planet.downlines.map((person) => person.name), ['匿名用户', '匿名用户']);
   const cardCalls = calls.filter((call) => call.path.startsWith('/api/auth/card/public'));
-  assert.equal(cardCalls.length, 2);
-  assert.ok(cardCalls.every((call) => call.options.method === 'GET' && call.options.auth === false));
+  assert.equal(cardCalls.length, 0);
 });
 
-test('keeps the planet usable and retries public-card hydration after timeout, 429 and 5xx failures', async () => {
-  let cardAttempt = 0;
-  const client = service.createPlanetService((path) => {
-    if (path.startsWith('/api/auth/invite/planet')) {
-      return Promise.resolve({
-        statusCode: 200,
-        data: {
-          viewer: { membership_tier: 'experience', can_explore_others: true },
-          center: { node_id: 'self', card_public_id: 'card-retry', membership_name: '体验官', card_available: true },
-          downlines: []
-        }
-      });
-    }
-    cardAttempt += 1;
-    if (cardAttempt === 1) return Promise.reject(new Error('timeout'));
-    if (cardAttempt === 2) return Promise.resolve({ statusCode: 429, data: {} });
-    if (cardAttempt === 3) return Promise.resolve({ statusCode: 503, data: {} });
-    return Promise.resolve({ statusCode: 200, data: { card: { name: '恢复后的姓名', avatar: '/retry-avatar.jpg' } } });
+test('loads one public card on demand and reuses successful results', async () => {
+  let calls = 0;
+  let resolveRequest;
+  const client = service.createPlanetService((path, options) => {
+    calls += 1;
+    assert.equal(path, '/api/auth/card/public?id=card-one');
+    assert.deepEqual(options, { method: 'GET', auth: false });
+    return new Promise((resolve) => { resolveRequest = resolve; });
   });
-  const first = await client.getPlanet({ limit: 50 });
-  const second = await client.getPlanet({ limit: 50 });
-  const third = await client.getPlanet({ limit: 50 });
-  const recovered = await client.getPlanet({ limit: 50 });
-  assert.equal(first.center.name, '匿名用户');
-  assert.equal(second.center.name, '匿名用户');
-  assert.equal(third.center.name, '匿名用户');
-  assert.equal(recovered.center.name, '恢复后的姓名');
-  assert.equal(recovered.center.avatar, '/retry-avatar.jpg');
-  assert.equal(cardAttempt, 4);
+
+  const first = client.getPublicCard('card-one');
+  const second = client.getPublicCard('card-one');
+  await Promise.resolve();
+  assert.equal(calls, 1);
+  resolveRequest({ statusCode: 200, data: { card: { name: '按需姓名', avatar: '/avatar.jpg' } } });
+  assert.deepEqual(await first, { name: '按需姓名', title: '', avatar: '/avatar.jpg' });
+  assert.deepEqual(await second, { name: '按需姓名', title: '', avatar: '/avatar.jpg' });
+  assert.deepEqual(await client.getPublicCard('card-one'), { name: '按需姓名', title: '', avatar: '/avatar.jpg' });
+  assert.equal(calls, 1);
+});
+
+test('does not cache missing or failed public cards', async () => {
+  let calls = 0;
+  const client = service.createPlanetService(() => {
+    calls += 1;
+    if (calls === 1) return Promise.resolve({ statusCode: 404, data: {} });
+    if (calls === 2) return Promise.reject(new Error('timeout'));
+    return Promise.resolve({ statusCode: 200, data: { card: { name: '恢复成功' } } });
+  });
+
+  await assert.rejects(client.getPublicCard('retry-card'));
+  await assert.rejects(client.getPublicCard('retry-card'), /timeout/);
+  assert.equal((await client.getPublicCard('retry-card')).name, '恢复成功');
+  assert.equal(calls, 3);
 });
 
 test('returns the exact experience-tier permission message', async () => {

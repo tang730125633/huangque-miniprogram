@@ -568,6 +568,7 @@ const actionContext = {
   focused: false,
   focusMode: '',
   openNodeCard(node) { this.openedCard = node; },
+  loadNodeProfile(node) { return Promise.resolve(node); },
   focusNode(event) { this.focused = true; this.focusMode = event.currentTarget.dataset.mode; },
   setData(patch) { Object.assign(this.data, patch); }
 };

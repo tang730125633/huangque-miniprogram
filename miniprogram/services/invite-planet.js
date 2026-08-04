@@ -109,75 +109,43 @@ function queryString(options) {
 
 function createPlanetService(requester) {
   const publicCardCache = {};
+  const publicCardRequests = {};
 
   function request(path) {
     return requester(path, { method: 'GET' });
   }
 
-  function loadPublicCard(publicId) {
+  function getPublicCard(publicId) {
     publicId = String(publicId || '').trim();
-    if (!publicId) return Promise.resolve({});
-    if (!publicCardCache[publicId]) {
-      publicCardCache[publicId] = requester('/api/auth/card/public?id=' + encodeURIComponent(publicId), {
-        method: 'GET',
-        auth: false
-      }).then((response) => {
-        if (!response || response.statusCode !== 200) {
-          const statusCode = Number(response && response.statusCode || 0);
-          if (!statusCode || statusCode === 429 || statusCode >= 500) delete publicCardCache[publicId];
-          return {};
-        }
-        const data = response.data || {};
-        const card = data.card || data;
-        return {
-          name: personName(card.name) || personName(card.display_name),
-          title: card.title || card.headline || card.occupation || '',
-          avatar: card.avatar || card.avatar_url || ''
-        };
-      }).catch(() => {
-        delete publicCardCache[publicId];
-        return {};
-      });
-    }
-    return publicCardCache[publicId];
-  }
+    if (!publicId) return Promise.reject(new Error('名片不存在或已取消公开'));
+    if (publicCardCache[publicId]) return Promise.resolve(publicCardCache[publicId]);
+    if (publicCardRequests[publicId]) return publicCardRequests[publicId];
 
-  function hydratePerson(person) {
-    if (!person || !person.public_id || (person.name !== UNKNOWN_PERSON_NAME && person.avatar)) {
-      return Promise.resolve(person);
-    }
-    return loadPublicCard(person.public_id).then((card) => Object.assign({}, person, {
-      name: personName(card.name) || person.name,
-      title: card.title || person.title,
-      avatar: card.avatar || person.avatar
-    }));
-  }
+    const pending = Promise.resolve().then(() => requester('/api/auth/card/public?id=' + encodeURIComponent(publicId), {
+      method: 'GET',
+      auth: false
+    })).then((response) => {
+      if (!response || response.statusCode !== 200) throw responseError(response, '名片不存在或已取消公开');
+      const data = response.data || {};
+      const card = data.card || data;
+      const profile = {
+        name: personName(card.name) || personName(card.display_name),
+        title: card.title || card.headline || card.occupation || '',
+        avatar: card.avatar || card.avatar_url || ''
+      };
+      if (!profile.name && !profile.title && !profile.avatar) throw new Error('名片不存在或已取消公开');
+      publicCardCache[publicId] = profile;
+      return profile;
+    });
 
-  function hydratePeople(people, limit) {
-    const result = new Array(people.length);
-    let cursor = 0;
-    function worker() {
-      const index = cursor;
-      cursor += 1;
-      if (index >= people.length) return Promise.resolve();
-      return hydratePerson(people[index]).then((person) => {
-        result[index] = person;
-        return worker();
-      });
-    }
-    const workers = [];
-    const count = Math.min(Math.max(1, Number(limit || 4)), people.length);
-    for (let index = 0; index < count; index += 1) workers.push(worker());
-    return Promise.all(workers).then(() => result);
-  }
-
-  function completePlanet(planet) {
-    const people = [planet.center, planet.upline].concat(planet.downlines || []);
-    return hydratePeople(people, 4).then((hydrated) => Object.assign({}, planet, {
-      center: hydrated[0],
-      upline: hydrated[1] || null,
-      downlines: hydrated.slice(2)
-    }));
+    publicCardRequests[publicId] = pending.then((profile) => {
+      delete publicCardRequests[publicId];
+      return profile;
+    }, (error) => {
+      delete publicCardRequests[publicId];
+      throw error;
+    });
+    return publicCardRequests[publicId];
   }
 
   function fallbackSelf(options) {
@@ -202,7 +170,7 @@ function createPlanetService(requester) {
         membership_status: user.membership_status || '',
         membership_active: user.membership_active
       });
-      return completePlanet(normalizePlanet({
+      return normalizePlanet({
         viewer: {
           membership_tier: downlineData.membership_tier || user.membership_tier || '',
           can_explore_others: !!downlineData.can_browse_network
@@ -213,7 +181,7 @@ function createPlanetService(requester) {
         stats: (responses[3] && responses[3].data) || {},
         page: { next_cursor: downlineData.next_cursor || '' },
         server_time: downlineData.server_time
-      }));
+      });
     });
   }
 
@@ -222,7 +190,7 @@ function createPlanetService(requester) {
     return request(path).then((response) => {
       if (!response || response.statusCode !== 200) throw responseError(response, '该用户的邀请关系读取失败');
       const data = response.data || {};
-      return completePlanet(normalizePlanet({
+      return normalizePlanet({
         viewer: { membership_tier: 'experience', can_explore_others: true },
         center: data.node,
         upline: data.parent,
@@ -230,14 +198,14 @@ function createPlanetService(requester) {
         stats: { direct: (data.items || []).length, indirect: 0, total: (data.items || []).length },
         page: { next_cursor: data.next_cursor || '' },
         server_time: data.server_time
-      }));
+      });
     });
   }
 
   function getPlanet(options) {
     options = options || {};
     return request(PLANET_PATH + queryString(options)).then((response) => {
-      if (response && response.statusCode === 200) return completePlanet(normalizePlanet(response.data || {}));
+      if (response && response.statusCode === 200) return normalizePlanet(response.data || {});
       if (response && response.statusCode === 404) {
         return options.grant ? fallbackOther(options) : fallbackSelf(options);
       }
@@ -245,7 +213,7 @@ function createPlanetService(requester) {
     });
   }
 
-  return { getPlanet };
+  return { getPlanet, getPublicCard };
 }
 
 const defaultService = createPlanetService(api.request);
@@ -257,5 +225,6 @@ module.exports = {
   publicPerson,
   normalizePlanet,
   createPlanetService,
-  getPlanet: defaultService.getPlanet
+  getPlanet: defaultService.getPlanet,
+  getPublicCard: defaultService.getPublicCard
 };

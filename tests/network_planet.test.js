@@ -29,7 +29,8 @@ test('loads the granted user as the initial planet center', async () => {
   const page = {
     data: Object.assign({}, pageDefinition.data),
     setData(change) { Object.assign(this.data, change); },
-    load: pageDefinition.load
+    load: pageDefinition.load,
+    loadNodeProfile(node) { return pageDefinition.loadNodeProfile.call(this, node); }
   };
   try {
     await pageDefinition.onLoad.call(page, { grant: 'grant/target' });
@@ -150,7 +151,8 @@ test('allows the current center to open its own action sheet', () => {
   const center = { node_id: 'self', role: 'self', name: '我', relation_label: '当前中心', public_id: 'mine' };
   const page = {
     data: { graphNodes: [center], focusUser: null, displayChildren: [], children: [], graphLinks: [] },
-    setData(change) { Object.assign(this.data, change); }
+    setData(change) { Object.assign(this.data, change); },
+    loadNodeProfile(node) { return Promise.resolve(node); }
   };
   pageDefinition.selectNode.call(page, { currentTarget: { dataset: { node: 'self' } } });
   assert.equal(page.data.selectedNode, center);
@@ -276,6 +278,34 @@ test('opens the launched card feature from invitation planet actions', () => {
   assert.match(wxss, /identity-dot\.partner[\s\S]*background: #ed5eae !important/);
   assert.match(wxss, /identity-dot\.experience[\s\S]*background: #5d9cff !important/);
   assert.match(wxss, /identity-dot\.nonmember[\s\S]*background: #8791a3 !important/);
+});
+
+test('hydrates only the node selected by the user', async () => {
+  const originalGetPublicCard = planetService.getPublicCard;
+  const requested = [];
+  planetService.getPublicCard = (publicId) => {
+    requested.push(publicId);
+    return Promise.resolve({ name: '点击后姓名', title: '主理人', avatar: '/clicked.jpg' });
+  };
+  const node = network.nodeView({ node_id: 'child-1', public_id: 'card-child-1', membership_name: '非会员' }, 0, 'self');
+  const page = {
+    data: {
+      graphNodes: [node], graphLinks: [], children: [node], displayChildren: [node], ancestors: [],
+      selectedNode: null, focusUser: null, viewerNode: {}, viewerCanExplore: true
+    },
+    setData(change) { Object.assign(this.data, change); },
+    loadNodeProfile(target) { return pageDefinition.loadNodeProfile.call(this, target); }
+  };
+
+  try {
+    await pageDefinition.selectNode.call(page, { currentTarget: { dataset: { node: 'child-1' } } });
+    assert.deepEqual(requested, ['card-child-1']);
+    assert.equal(page.data.selectedNode.name, '点击后姓名');
+    assert.equal(page.data.selectedNode.avatar, '/clicked.jpg');
+    assert.equal(page.data.graphNodes[0].name, '点击后姓名');
+  } finally {
+    planetService.getPublicCard = originalGetPublicCard;
+  }
 });
 
 test('lays out 50 direct downlines without production preview fixtures', () => {

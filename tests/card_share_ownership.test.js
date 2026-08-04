@@ -10,6 +10,7 @@ const cardJsPath = path.join(root, 'miniprogram/pages/card/card.js');
 const cardWxmlPath = path.join(root, 'miniprogram/pages/card/card.wxml');
 const cardSource = fs.readFileSync(cardJsPath, 'utf8');
 const cardWxml = fs.readFileSync(cardWxmlPath, 'utf8');
+const api = require(path.join(root, 'miniprogram/utils/api.js'));
 
 let pageDefinition;
 global.Page = function (definition) { pageDefinition = definition; };
@@ -59,4 +60,35 @@ test('public-card loading never enables sharing and UI remains view-only', () =>
   assert.match(cardWxml, /wx:if="\{\{isMine && shareReady\}\}"/);
   assert.match(cardWxml, /名片只允许本人分享/);
   assert.doesNotMatch(cardWxml, /分享这张名片/);
+});
+
+test('retry reissues a failed public-card request instead of caching the failure', async () => {
+  const originalRequest = api.request;
+  let attempts = 0;
+  const context = {
+    data: { ownerHint: false, publicId: 'retry-card', inviteCode: '', card: {} },
+    setData(patch) { Object.assign(this.data, patch); }
+  };
+  context.loadPublic = (id, code) => pageDefinition.loadPublic.call(context, id, code);
+  context.loadOwnerPreview = (id, code) => pageDefinition.loadOwnerPreview.call(context, id, code);
+
+  api.request = () => {
+    attempts += 1;
+    if (attempts === 1) return Promise.resolve({ statusCode: 404, data: { detail: 'not found' } });
+    return Promise.resolve({ statusCode: 200, data: { card: { public_id: 'retry-card', name: 'retry success' } } });
+  };
+
+  try {
+    context.loadPublic('retry-card', '');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(context.data.error, 'not found');
+
+    pageDefinition.retry.call(context);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(attempts, 2);
+    assert.equal(context.data.error, '');
+    assert.equal(context.data.card.name, 'retry success');
+  } finally {
+    api.request = originalRequest;
+  }
 });
