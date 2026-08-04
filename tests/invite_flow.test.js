@@ -35,7 +35,7 @@ assert.doesNotMatch(loginWxml, /邀请码（选填）|注册并登录/);
 assert.match(loginWxml, /先创建我的名片/);
 assert.match(profileWxml, /邀请中心/);
 assert.match(inviteJs, /\/api\/auth\/invite\/dashboard/);
-assert.match(inviteJs, /\/api\/auth\/invite\/reward-points/);
+assert.match(inviteJs, /\/api\/auth\/invite\/downlines/);
 assert.match(inviteJs, /\/api\/auth\/invite\/referrer/);
 assert.match(inviteJs, /\/api\/auth\/card\/me/);
 assert.match(inviteJs, /onShareAppMessage\(\)/);

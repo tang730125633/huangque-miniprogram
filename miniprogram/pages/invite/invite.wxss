@@ -35,12 +35,15 @@
 .referrer-card { padding: 24rpx 28rpx; }
 .referrer-name { margin-top: 12rpx; color: var(--text); font-size: 28rpx; }
 .section-title { margin: 34rpx 0 16rpx; color: var(--text); font-size: 29rpx; font-weight: 600; }
-.reward-row {
+.downline-row {
   min-height: 106rpx; padding: 22rpx 24rpx; margin-bottom: 14rpx; box-sizing: border-box;
   display: flex; align-items: center; justify-content: space-between; gap: 20rpx;
   border: 1rpx solid var(--line); border-radius: 14rpx; background: var(--surface);
 }
-.reward-info { min-width: 0; }
-.reward-title { color: var(--text); font-size: 25rpx; overflow-wrap: anywhere; }
-.reward-meta { margin-top: 7rpx; color: var(--text-muted); font-size: 20rpx; }
-.reward-points { flex: none; color: var(--secondary); font-size: 27rpx; font-weight: 600; }
+.downline-main { min-width: 0; flex: 1; }
+.downline-name { color: var(--text); font-size: 26rpx; overflow-wrap: anywhere; }
+.downline-tier { margin-top: 5rpx; color: var(--secondary); font-size: 21rpx; }
+.downline-reward { margin-top: 7rpx; color: var(--text-muted); font-size: 20rpx; line-height: 1.5; }
+.card-button { flex: none; min-width: 104rpx; margin: 0; padding: 13rpx 16rpx; color: var(--primary); background: var(--surface-muted); border: 1rpx solid var(--line); border-radius: 10rpx; font-size: 22rpx; line-height: 1.2; }
+.card-button::after { border: 0; }
+.load-more { margin-top: 18rpx; padding: 22rpx; text-align: center; color: var(--primary); border: 1rpx solid var(--line); border-radius: 12rpx; }

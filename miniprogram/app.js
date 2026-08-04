@@ -1,5 +1,10 @@
 const invite = require('./utils/invite.js');
 const notifications = require('./utils/notifications.js');
+const inviteRewards = require('./utils/invite-rewards.js');
+
+function showStartupNotices() {
+  return inviteRewards.showNextRewardNotice().then(() => notifications.checkLatest());
+}
 
 App({
   globalData: {
@@ -19,6 +24,8 @@ App({
   },
   onShow(options) {
     this._captureInvite(options);
-    notifications.checkLatest();
+    return showStartupNotices();
   }
 });
+
+if (typeof module !== 'undefined') module.exports = { showStartupNotices };
