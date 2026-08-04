@@ -6,6 +6,16 @@ const root = path.resolve(__dirname, '..');
 const videoJs = fs.readFileSync(path.join(root, 'miniprogram/pages/video/video.js'), 'utf8');
 const videoWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/video/video.wxml'), 'utf8');
 
+const PRICES = {
+  'avatar.create': 2,
+  'video.cinematic.motion': 10, 'video.cinematic.duo': 30, 'video.cinematic.open': 10,
+  'video.talking.block': 30, 'video.tryon.single': 25, 'video.tryon.double': 40,
+  'video.grok.v1.480p': 10, 'video.grok.v1.720p': 12, 'video.grok.v1_5.720p': 25,
+  'video.seedance': 30, 'video.omni': 30,
+  'video.sora.standard.720p': 30, 'video.sora.pro.720p': 90,
+  'video.sora.pro.1024p': 150, 'video.sora.pro.1080p': 210
+};
+
 assert.match(videoJs, /key: 'micro', name: '黄豆视频'/);
 assert.match(videoJs, /key: 'omni', name: '欧米视频'/);
 assert.match(videoJs, /defaultRatio: '16:9', maxRef: 6/);
@@ -33,7 +43,14 @@ global.getApp = () => ({ globalData: { apiBase: 'https://example.test' } });
 global.getCurrentPages = () => [];
 global.wx = {
   getStorageSync: () => 'token',
-  request: (options) => { requestOptions = options; options.success({ statusCode: 200, data: { job_id: 91, cost: 1200, points_left: 0 } }); }
+  request: (options) => {
+    requestOptions = options;
+    if (/\/api\/gen\/pricing$/.test(options.url)) {
+      options.success({ statusCode: 200, data: { items: Object.keys(PRICES).map((key) => ({ key, points: PRICES[key] })) } });
+      return;
+    }
+    options.success({ statusCode: 200, data: { job_id: 91, cost: 1200, points_left: 0 } });
+  }
 };
 global.Page = (definition) => { videoPage = definition; };
 const api = require('../miniprogram/utils/api.js');
@@ -47,6 +64,7 @@ function pageFor(engine) {
     setNote() {}
   });
   page.setData(page._engineState(engine));
+  page._applyPricing(PRICES);
   return page;
 }
 
@@ -54,6 +72,9 @@ function pageFor(engine) {
   const micro = pageFor('micro');
   let submitted;
   micro.data.prompt = '人物在海边缓慢向镜头走来';
+  micro._applyPricing(Object.assign({}, PRICES, { 'video.seedance': 33 }));
+  assert.strictEqual(micro._genCost(), 165, 'a refreshed backend rate must immediately change the visible estimate');
+  micro._applyPricing(PRICES);
   micro.submitJob = (endpoint, body, cost) => { submitted = { endpoint, body, cost }; };
   micro.submitGenerate();
   assert.strictEqual(submitted.endpoint, '/api/gen/xiaole_video');

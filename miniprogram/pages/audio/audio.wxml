@@ -51,8 +51,8 @@
   </view>
 
   <!-- 生成按钮 -->
-  <view class="btn-primary {{busy?'disabled':''}}" bindtap="generate">
-    {{busy ? '生成中…' : '生成配音（' + cost + ' 点）'}}
+  <view class="btn-primary {{busy || pricingChecking || !pricingReady ? 'disabled' : ''}}" bindtap="generate">
+    {{busy ? '生成中…' : (pricingChecking ? '正在确认价格…' : (pricingReady ? '生成配音（' + cost + ' 点）' : '实时价格加载中…'))}}
   </view>
   <view class="ai-disclosure">音频由人工智能生成，请勿用于冒充他人或其他违法用途</view>
   <view class="note" style="color:{{noteColor}}">{{note || defaultNote}}</view>

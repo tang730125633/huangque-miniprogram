@@ -1,5 +1,13 @@
 const api = require('../../utils/api.js');
 const cardUtil = require('../../utils/card.js');
+const pricing = require('../../utils/pricing.js');
+
+const VIDEO_FROM_KEYS = [
+  'video.grok.v1.480p', 'video.grok.v1.720p',
+  'video.grok.v1_5.720p', 'video.seedance', 'video.omni',
+  'video.sora.standard.720p', 'video.sora.pro.720p',
+  'video.sora.pro.1024p', 'video.sora.pro.1080p'
+];
 
 Page({
   data: {
@@ -11,6 +19,7 @@ Page({
     accountStateError: false,
     videoEntryChecking: false,
     videoIp12PromptVisible: false,
+    videoFromPrice: null,
     bannerCurrent: 0,
     bannerAutoplay: true,
 
@@ -53,14 +62,20 @@ Page({
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
     // swiper 只在首页可见时运行，避免切到其它 tab 后后台定时切页造成卡顿。
     if (!this.data.bannerAutoplay) this.setData({ bannerAutoplay: true });
+    pricing.watch(this, (prices) => {
+      this.setData({ videoFromPrice: pricing.lowest(prices, VIDEO_FROM_KEYS) });
+    }, () => this.setData({ videoFromPrice: null }));
     this.ensureWorkbenchSession();
   },
 
   onHide() {
+    pricing.stop(this);
     this._videoEntryCheckId = Number(this._videoEntryCheckId || 0) + 1;
     this.setData({ videoEntryChecking: false, videoIp12PromptVisible: false });
     if (this.data.bannerAutoplay) this.setData({ bannerAutoplay: false });
   },
+
+  onUnload() { pricing.stop(this); },
 
   backToCard() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
 

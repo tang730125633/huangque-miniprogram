@@ -10,6 +10,16 @@ const modals = [];
 const failedReads = new Set();
 let failDraftStorage = false;
 
+const PRICES = {
+  'avatar.create': 2,
+  'video.cinematic.motion': 10, 'video.cinematic.duo': 30, 'video.cinematic.open': 10,
+  'video.talking.block': 30, 'video.tryon.single': 25, 'video.tryon.double': 40,
+  'video.grok.v1.480p': 10, 'video.grok.v1.720p': 12, 'video.grok.v1_5.720p': 25,
+  'video.seedance': 30, 'video.omni': 30,
+  'video.sora.standard.720p': 30, 'video.sora.pro.720p': 90,
+  'video.sora.pro.1024p': 150, 'video.sora.pro.1080p': 210
+};
+
 function savedPath(tempFilePath) {
   return 'wxfile://saved' + (String(tempFilePath).charAt(0) === '/' ? '' : '/') + tempFilePath;
 }
@@ -79,6 +89,7 @@ function makeContext() {
   context._avatarsLoaded = true;
   context._subscriptionPending = false;
   context._resetB64();
+  context._applyPricing(PRICES);
   return context;
 }
 
@@ -434,8 +445,16 @@ function saveTextDraft(context, mode, text) {
   const preflightSubscription = deferred();
   preflightContext._requestWorkCompleteSubscription = () => preflightSubscription.promise;
   let postAfterUnload = 0;
-  api.request = () => { postAfterUnload += 1; return Promise.resolve({ statusCode: 200, data: { job_id: 'should-not-run' } }); };
-  preflightContext.submitJob('/api/gen/xiaole_video', {}, 10);
+  api.request = (path) => {
+    if (path === '/api/gen/pricing') {
+      return Promise.resolve({ statusCode: 200, data: { items: Object.keys(PRICES).map((key) => ({ key, points: PRICES[key] })) } });
+    }
+    postAfterUnload += 1;
+    return Promise.resolve({ statusCode: 200, data: { job_id: 'should-not-run' } });
+  };
+  preflightContext.submitJob('/api/gen/xiaole_video', {
+    channel: 'grok', model: 'grok-imagine-video', resolution: '480p', duration: 1
+  }, 10);
   preflightContext.onUnload();
   preflightSubscription.resolve();
   await flush();
@@ -462,24 +481,27 @@ function saveTextDraft(context, mode, text) {
   hiddenPreflight._preloadSubscriptionTemplate = () => {};
   hiddenPreflight.refreshPoints = () => {};
   hiddenPreflight.refreshVideoChannels = () => {};
-  const hiddenSubscriptions = [deferred(), deferred()];
+  const hiddenSubscriptions = [deferred()];
   let hiddenSubscriptionIndex = 0;
   hiddenPreflight._requestWorkCompleteSubscription = () => hiddenSubscriptions[hiddenSubscriptionIndex++].promise;
   const hiddenPosts = [];
   api.request = (endpoint, options) => {
+    if (endpoint === '/api/gen/pricing') {
+      return Promise.resolve({ statusCode: 200, data: { items: Object.keys(PRICES).map((key) => ({ key, points: PRICES[key] })) } });
+    }
     hiddenPosts.push({ endpoint, options });
     return Promise.resolve({ statusCode: 200, data: { job_id: 'foreground-job' } });
   };
-  hiddenPreflight.submitJob('/api/gen/xiaole_video', { channel: 'grok' }, 10);
+  const hiddenBody = { channel: 'grok', model: 'grok-imagine-video', resolution: '480p', duration: 1 };
+  hiddenPreflight.submitJob('/api/gen/xiaole_video', hiddenBody, 10);
   hiddenPreflight.onHide();
   hiddenPreflight.onShow();
-  hiddenPreflight.submitJob('/api/gen/xiaole_video', { channel: 'grok' }, 10);
-  hiddenSubscriptions[0].resolve();
+  hiddenPreflight.submitJob('/api/gen/xiaole_video', hiddenBody, 10);
   await flush();
   assert.strictEqual(hiddenPreflight._subscriptionPending, true,
-    'an obsolete subscription Promise must not unlock the newer foreground submit');
+    'the foreground submit should wait for its subscription choice');
   assert.strictEqual(hiddenPosts.length, 0);
-  hiddenSubscriptions[1].resolve();
+  hiddenSubscriptions[0].resolve();
   await flush();
   assert.deepStrictEqual(hiddenPosts.map((item) => item.endpoint), ['/api/gen/xiaole_video']);
 
@@ -493,11 +515,14 @@ function saveTextDraft(context, mode, text) {
   hiddenBatchPreflight.refreshPoints = () => {};
   hiddenBatchPreflight.refreshVideoChannels = () => {};
   hiddenBatchPreflight.fetchVoices = () => {};
-  const hiddenBatchSubscriptions = [deferred(), deferred()];
+  const hiddenBatchSubscriptions = [deferred()];
   let hiddenBatchSubscriptionIndex = 0;
   hiddenBatchPreflight._requestWorkCompleteSubscription = () => hiddenBatchSubscriptions[hiddenBatchSubscriptionIndex++].promise;
   const hiddenBatchPosts = [];
   api.request = (endpoint, options) => {
+    if (endpoint === '/api/gen/pricing') {
+      return Promise.resolve({ statusCode: 200, data: { items: Object.keys(PRICES).map((key) => ({ key, points: PRICES[key] })) } });
+    }
     hiddenBatchPosts.push({ endpoint, options });
     return Promise.resolve({ statusCode: 200, data: { jobs: [{ job_id: 'foreground-batch-job', label: 'A' }] } });
   };
@@ -505,11 +530,10 @@ function saveTextDraft(context, mode, text) {
   hiddenBatchPreflight.onHide();
   hiddenBatchPreflight.onShow();
   hiddenBatchPreflight.submitTalkingBatch();
-  hiddenBatchSubscriptions[0].resolve();
   await flush();
   assert.strictEqual(hiddenBatchPreflight._subscriptionPending, true);
   assert.strictEqual(hiddenBatchPosts.length, 0);
-  hiddenBatchSubscriptions[1].resolve();
+  hiddenBatchSubscriptions[0].resolve();
   await flush();
   assert.deepStrictEqual(hiddenBatchPosts.map((item) => item.endpoint), ['/api/gen/video/batch']);
 

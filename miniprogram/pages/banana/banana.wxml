@@ -117,11 +117,11 @@
   </view>
 
   <!-- 生成按钮 -->
-  <view class="btn-primary {{busy?'disabled':''}}" bindtap="generate">
-    {{busy ? '生成中…' : '立即生成（' + cost + ' 点）'}}
+  <view class="btn-primary {{busy || pricingChecking || !pricingReady ? 'disabled' : ''}}" bindtap="generate">
+    {{busy ? '生成中…' : (pricingChecking ? '正在确认价格…' : (pricingReady ? '立即生成（' + cost + ' 点）' : '实时价格加载中…'))}}
   </view>
   <view class="ai-disclosure">内容由人工智能生成，请遵守法律法规并自行核验后使用</view>
-  <view class="note" style="color:{{noteColor}}">{{note || ('本次预计消耗 ' + cost + ' 点 · 失败自动退点')}}</view>
+  <view class="note" style="color:{{noteColor}}">{{note || (pricingReady ? '本次预计消耗 ' + cost + ' 点 · 失败自动退点' : '实时价格加载失败，请稍后重试')}}</view>
 
   <!-- 结果 -->
   <view wx:if="{{resultUrl}}" class="card">

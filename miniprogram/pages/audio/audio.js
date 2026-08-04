@@ -1,6 +1,6 @@
 const api = require('../../utils/api.js');
+const pricing = require('../../utils/pricing.js');
 
-const COST = 10;
 const POLL_INTERVAL = 2000;
 const POLL_MAX = 90; // 90 * 2s = 180s
 
@@ -27,17 +27,20 @@ Page({
     selectedVoice: '',
     paramDefs: PARAM_DEFS,
     params: { speed: 1.0, pitch: 0, volume: 0 },
-    cost: COST,
+    cost: null,
+    pricingReady: false,
+    pricingChecking: false,
     busy: false,
     note: '',
     noteColor: '#68736D',
-    defaultNote: '配音消耗 10 点 · 失败自动退点',
+    defaultNote: '正在读取实时价格…',
     resultUrl: '',
     playing: false,
     points: null
   },
 
   onLoad() {
+    this._active = true;
     this._audio = wx.createInnerAudioContext();
     this._audio.onEnded(() => this.setData({ playing: false }));
     this._audio.onStop(() => this.setData({ playing: false }));
@@ -45,11 +48,16 @@ Page({
     this._preview = wx.createInnerAudioContext();
   },
   onUnload() {
+    this._active = false;
+    pricing.stop(this);
     if (this._audio) this._audio.destroy();
     if (this._preview) this._preview.destroy();
   },
 
+  onHide() { this._active = false; pricing.stop(this); this.setData({ pricingChecking: false }); },
+
   onShow() {
+    this._active = true;
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     const ip12Prefill = wx.getStorageSync('hq_ip12_prefill_audio');
     if (ip12Prefill && ip12Prefill.text) {
@@ -57,8 +65,20 @@ Page({
       this.setData({ text: ip12Prefill.text });
       wx.showToast({ title: '已带入 IP12 音频文案', icon: 'none' });
     }
+    pricing.watch(this, (prices) => this._applyPricing(prices), () => this._pricingError());
     this.refreshPoints();
     this.loadVoices();
+  },
+
+  _applyPricing(prices) {
+    const cost = pricing.point(prices, 'audio.tts');
+    if (!cost) { this._pricingError(); return false; }
+    this.setData({ cost, pricingReady: true, defaultNote: '配音消耗 ' + cost + ' 点 · 失败自动退点' });
+    return true;
+  },
+
+  _pricingError() {
+    this.setData({ cost: null, pricingReady: false, defaultNote: '实时价格加载失败，请稍后重试' });
   },
 
   onText(e) { this.setData({ text: e.detail.value }); },
@@ -103,12 +123,34 @@ Page({
   setNote(t, c) { this.setData({ note: t, noteColor: c || '#68736D' }); },
 
   generate() {
-    if (this.data.busy) return;
+    if (this.data.busy || this.data.pricingChecking) return;
     const text = (this.data.text || '').trim();
     if (!text) { this.setNote('请先输入配音文案', '#C2413A'); return; }
     if (!this.data.selectedVoice) { this.setNote('请先选择一个音色', '#C2413A'); return; }
-    if (this.data.points !== null && this.data.points < COST) {
-      this.setNote('点数不足（需 ' + COST + ' 点）', '#C2413A');
+    const shownCost = this.data.cost;
+    this.setData({ pricingChecking: true });
+    return pricing.confirm(shownCost, (prices) => pricing.point(prices, 'audio.tts'))
+      .then((latest) => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false });
+        this._applyPricing(latest.prices);
+        if (latest.changed) {
+          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', '#2F6FED');
+          return;
+        }
+        this._submitGenerate(text, latest.cost);
+      })
+      .catch(() => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false });
+        this._pricingError();
+        this.setNote('实时价格确认失败，请稍后重试', '#C2413A');
+      });
+  },
+
+  _submitGenerate(text, cost) {
+    if (this.data.points !== null && this.data.points < cost) {
+      this.setNote('点数不足（需 ' + cost + ' 点）', '#C2413A');
       return;
     }
 
