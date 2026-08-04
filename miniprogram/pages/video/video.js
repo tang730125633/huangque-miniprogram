@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const pricing = require('../../utils/pricing.js');
 const promptTemplates = require('../../utils/prompt_templates.js');
 const drafts = require('../../utils/drafts.js');
 const imageMentions = require('../../utils/image_mentions.js');
@@ -21,16 +22,15 @@ const VALID_MODES = MODES.map((m) => m.key);
 
 // ===== 电影化身（cinematic）=====
 // 三种玩法（后端 CINEMATIC_MODES）：
-// - motion 单人动作模仿：正好 1 形象 + 1 参考视频，提示词后端写死，10 点/秒
-// - duo    双人动作模仿：正好 2 形象 + 1 参考视频，提示词后端写死，5 点/秒
-// - open   开放式生成：1~3 形象 + 自写提示词(≤2000字) + 可选参考视频/图，10 点/秒
+// - motion 单人动作模仿：正好 1 形象 + 1 参考视频，提示词后端写死，单价来自价格接口
+// - duo    双人动作模仿：正好 2 形象 + 1 参考视频，提示词后端写死，单价来自价格接口
+// - open   开放式生成：1~3 形象 + 自写提示词(≤2000字) + 可选参考视频/图，单价来自价格接口
 // 2026-07-13 三次调整：双人动作模仿(duo)去掉——强哥明确该玩法上游无法生成。
 // 仅从 UI 列表摘除；下方 duo 相关的 rate/avatars/分支为死代码，无害，留着不动。
 const CINE_MODES = [
-  { k: 'motion', name: '动作模仿', desc: '1 形象照着演 · 10点/秒' },
-  { k: 'open', name: '开放式生成', desc: '自写提示词 · 10点/秒' }
+  { k: 'motion', name: '动作模仿', desc: '1 形象照着演 · 实时计价' },
+  { k: 'open', name: '开放式生成', desc: '自写提示词 · 实时计价' }
 ];
-const CINE_RATES = { motion: 10, duo: 30, open: 10 }; // 后端 CINEMATIC_RATE_PER_SEC
 const CINE_NEED_AVATARS = { motion: 1, duo: 2 };   // 后端 CINEMATIC_MODE_AVATARS（「正好 N 个」）
 const CINE_MAX_AVATARS = 3;                        // open 上限（后端 CINEMATIC_MAX_AVATARS）
 const CINE_PROMPT_MAX = 2000;                      // 后端 CINEMATIC_PROMPT_MAX
@@ -38,7 +38,6 @@ const CINE_MAX_REF_VIDEOS = 3;                     // 后端 CINEMATIC_MAX_MEDIA
 const SUBSCRIPTION_EVENT = 'work_complete';
 const TALK_AUDIO_CONSENT_VERSION = '2026-07-27-v1';
 const CINE_MAX_MEDIA_IMAGES = 9;                   // 后端：形象数+参考图 ≤ 9
-const AVATAR_COST = 2;                     // 建形象 2 点（后端 AVATAR_COST，失败自动退点）
 const CINE_DURATIONS = [                   // motion/duo：后端仅支持 自适应 / 10 / 15
   { v: 'auto', name: '自适应' }, { v: 10, name: '10 秒' }, { v: 15, name: '15 秒' }
 ];
@@ -72,7 +71,7 @@ const OFFICIAL_VIDEO = {
 };
 const SORA_VIDEO = {
   models: [
-    { k: 'sora-2', name: 'Sora 2', desc: '720p · 30 点/秒' },
+    { k: 'sora-2', name: 'Sora 2', desc: '720p · 实时计价' },
     { k: 'sora-2-pro', name: 'Sora 2 Pro', desc: '最高 1080p' }
   ],
   durations: [4, 8, 12],
@@ -80,12 +79,6 @@ const SORA_VIDEO = {
   resolutions: {
     'sora-2': ['720p'],
     'sora-2-pro': ['720p', '1024p', '1080p']
-  },
-  rates: {
-    'sora-2:720p': 30,
-    'sora-2-pro:720p': 90,
-    'sora-2-pro:1024p': 150,
-    'sora-2-pro:1080p': 210
   }
 };
 function soraResolutions(model) { return SORA_VIDEO.resolutions[model] || SORA_VIDEO.resolutions['sora-2']; }
@@ -97,14 +90,37 @@ const GROK_MODELS = [
   { k: 'grok-imagine-video', name: '标准 1.0', desc: '480p/720p' },
   { k: 'grok-imagine-video-1.5', name: '高清 1.5', desc: '参考图·720p' }
 ];
-const GROK_PRICE = {
-  'grok-imagine-video': { '480p': 10, '720p': 12 },
-  'grok-imagine-video-1.5': { '720p': 25 }
-};
 const GROK_DURATIONS = [5, 8, 10];
-const VIDEO_COST = 30;       // 口播最低一档：1~30 秒 30 点
 const VIDEO_BATCH_MAX = 5;   // 口播批量：一段文案 × 最多 5 个形象（后端 VIDEO_BATCH_MAX）
-const TRYON_COST_SINGLE = 25; // 换装/换背景单段：后端 cost_of('tryon') 单段25/两段40，以返回 cost 为准
+
+const PRICE_KEYS = {
+  avatar: 'avatar.create',
+  cinematic: {
+    motion: 'video.cinematic.motion', duo: 'video.cinematic.duo', open: 'video.cinematic.open'
+  },
+  talking: 'video.talking.block',
+  tryon: { single: 'video.tryon.single', double: 'video.tryon.double' },
+  official: { micro: 'video.seedance', omni: 'video.omni' },
+  grok: {
+    'grok-imagine-video:480p': 'video.grok.v1.480p',
+    'grok-imagine-video:720p': 'video.grok.v1.720p',
+    'grok-imagine-video-1.5:720p': 'video.grok.v1_5.720p'
+  },
+  sora: {
+    'sora-2:720p': 'video.sora.standard.720p',
+    'sora-2-pro:720p': 'video.sora.pro.720p',
+    'sora-2-pro:1024p': 'video.sora.pro.1024p',
+    'sora-2-pro:1080p': 'video.sora.pro.1080p'
+  }
+};
+const REQUIRED_PRICE_KEYS = [
+  PRICE_KEYS.avatar, PRICE_KEYS.talking, PRICE_KEYS.tryon.single, PRICE_KEYS.tryon.double
+].concat(
+  Object.keys(PRICE_KEYS.cinematic).map((key) => PRICE_KEYS.cinematic[key]),
+  Object.keys(PRICE_KEYS.official).map((key) => PRICE_KEYS.official[key]),
+  Object.keys(PRICE_KEYS.grok).map((key) => PRICE_KEYS.grok[key]),
+  Object.keys(PRICE_KEYS.sora).map((key) => PRICE_KEYS.sora[key])
+);
 
 // 比例按后端校验分两套：
 // - 生成模式(xiaole_video)：果肉官方线(xAI)仅支持 1:1/16:9/9:16/4:3/3:4/3:2/2:3，取常用 5 种
@@ -121,9 +137,9 @@ const TRYON_TYPES = [
 ];
 
 const HINTS = {
-  cinematic: '动作模仿、开放式生成均为 10 点/秒 · 失败自动退点',
+  cinematic: '价格按玩法与时长实时计算 · 失败自动退点',
   generate: 'AI 视频价格随模型、清晰度与时长变化 · 失败自动退点',
-  talking: '数字人口播 30 点/30 秒 · 不足 30 秒按 30 秒计 · 失败自动退点',
+  talking: '数字人口播每 30 秒一档实时计价 · 不足 30 秒按一档计 · 失败自动退点',
   tryon: '换装 / 换背景，耗时约数分钟 · 点数以服务端返回为准，失败任务按服务端规则处理'
 };
 
@@ -174,7 +190,9 @@ Page({
     cineRes: '1080p',
     cineDurs: CINE_DURATIONS,
     cineDur: 'auto',
-    cineEst: 30,            // 预估点数（_cineEstimate 同步，实扣以服务端为准）
+    cineEst: null,          // 预估点数（_cineEstimate 同步，实扣以服务端为准）
+    cineRate: null,
+    avatarCost: null,
 
     // ===== 视频生成模式 =====
     engines: ENGINES,
@@ -217,7 +235,7 @@ Page({
     editVideo: '',           // data URL（video/mp4）
     editVideoName: '',
     editDuration: 0,
-    editCost: 0,
+    editCost: null,
 
     // ===== 数字化 IP talking =====
     talkMode: 'text',        // text | audio
@@ -252,10 +270,12 @@ Page({
     // ===== 共享任务状态 =====
     points: null,
     busy: false,
+    pricingReady: false,
+    pricingChecking: false,
     note: '',
     noteColor: C_MUTED,
-    defaultHint: HINTS.generate,
-    cost: 30,
+    defaultHint: HINTS.cinematic,
+    cost: null,
     videoUrl: '',
     draftStatus: '',
     draftRestoring: false,
@@ -484,7 +504,7 @@ Page({
       this.setData({ cineVideoPath: '', cineVideoName: '', cineVideoDur: 0, cineRefVideos: [], cineRefPreviews: [] });
     } else if (mode === 'generate') {
       this._b64.refImgs = []; this._b64.editVideo = '';
-      this.setData({ refPreviews: [], editVideoPath: '', editVideoName: '', editDuration: 0, editCost: 0 });
+      this.setData({ refPreviews: [], editVideoPath: '', editVideoName: '', editDuration: 0, editCost: null });
     } else if (mode === 'talking') {
       this._b64.talkImg = ''; this._b64.talkAudio = '';
       const items = (this.data.batchItems || []).filter((item) => item.kind === 'avatar');
@@ -719,7 +739,7 @@ Page({
       this.setData({
         ratio: '9:16', cineMode: 'motion', cineDurs: CINE_DURATIONS,
         avatarIds: [], avatarSelMap: {}, cineVideoPath: '', cineVideoName: '', cineVideoDur: 0,
-        cinePrompt: '', cineRefVideos: [], cineRefPreviews: [], cineRes: '1080p', cineDur: 'auto', cineEst: 30
+        cinePrompt: '', cineRefVideos: [], cineRefPreviews: [], cineRes: '1080p', cineDur: 'auto', cineEst: this._cineEstimate()
       });
     } else if (mode === 'generate') {
       this._b64.refImgs = []; this._b64.editVideo = '';
@@ -728,7 +748,7 @@ Page({
         grokModel: 'grok-imagine-video', grokResList: ['480p', '720p'], grokRes: '720p', grokDur: 10, grokOp: 'generate',
         officialDuration: 5, officialResolution: '720p',
         soraModel: 'sora-2', soraDuration: 4, soraResolutions: soraResolutions('sora-2'), soraResolution: '720p',
-        prompt: '', promptUndo: '', canUndoPrompt: false, refPreviews: [], editVideoPath: '', editVideoName: '', editDuration: 0, editCost: 0,
+        prompt: '', promptUndo: '', canUndoPrompt: false, refPreviews: [], editVideoPath: '', editVideoName: '', editDuration: 0, editCost: null,
         videoPromptTemplateKey: 'product', videoTplSubject: '黄雀 AI 视觉服务', videoTplScene: '紫粉霓虹的未来空间',
         videoTplAction: '缓慢旋转展示核心亮点', videoTplStyle: '高级、真实、细腻的电影光影'
       }));
@@ -741,7 +761,7 @@ Page({
         ratio: '9:16', talkMode: 'text', talkBatch: false, batchItems: [], batchSelMap: {},
         talkImgPath: '', talkImgPreview: '', talkText: '',
         voiceKey: firstVoice.key || '', voiceName: firstVoice.name || '',
-        talkAudioPath: '', talkAudioName: '', talkRes: '1080p', cost: VIDEO_COST
+        talkAudioPath: '', talkAudioName: '', talkRes: '1080p', cost: this._talkEstimate('')
       });
     }
   },
@@ -799,6 +819,7 @@ Page({
       this._draftChanged(true);
       wx.showToast({ title: '已带入 IP12 视频计划', icon: 'none' });
     }
+    pricing.watch(this, (prices) => this._applyPricing(prices), () => this._pricingError());
     this._preloadSubscriptionTemplate();
     this.refreshPoints();
     this.refreshVideoChannels();
@@ -806,8 +827,10 @@ Page({
   },
 
   onHide() {
+    pricing.stop(this);
     this._lifecycleToken += 1;
     this._subscriptionPending = false;
+    this.setData({ pricingChecking: false });
     this._saveCurrentDraft();
   },
 
@@ -877,7 +900,9 @@ Page({
   },
 
   onUnload() {
+    pricing.stop(this);
     this._lifecycleToken += 1;
+    this.setData({ pricingChecking: false });
     this._avatarFetchToken += 1;
     this._saveCurrentDraft();
     this._draftRestoreToken += 1;
@@ -885,6 +910,56 @@ Page({
     if (this._draftSaveTimer) { clearTimeout(this._draftSaveTimer); this._draftSaveTimer = null; }
     this.stopPolling();
     if (this._vp) { this._vp.destroy(); this._vp = null; }
+  },
+
+  _applyPricing(prices) {
+    if (REQUIRED_PRICE_KEYS.some((key) => !pricing.point(prices, key))) {
+      this._pricingError();
+      return false;
+    }
+    this._prices = prices;
+    const cineModes = CINE_MODES.map((item) => Object.assign({}, item, {
+      desc: item.desc.split(' · ')[0] + ' · ' + pricing.point(prices, PRICE_KEYS.cinematic[item.k]) + '点/秒'
+    }));
+    const soraModels = SORA_VIDEO.models.map((item) => {
+      if (item.k === 'sora-2') {
+        return Object.assign({}, item, { desc: '720p · ' + pricing.point(prices, PRICE_KEYS.sora['sora-2:720p']) + ' 点/秒' });
+      }
+      return Object.assign({}, item, { desc: '720p 起 · ' + pricing.point(prices, PRICE_KEYS.sora['sora-2-pro:720p']) + ' 点/秒起' });
+    });
+    const patch = {
+      pricingReady: true,
+      avatarCost: pricing.point(prices, PRICE_KEYS.avatar),
+      cineModes,
+      soraModels
+    };
+    if (this.data.mode === 'cinematic') {
+      patch.cineRate = pricing.point(prices, PRICE_KEYS.cinematic[this.data.cineMode]);
+      patch.cineEst = this._cineEstimate(prices);
+      patch.defaultHint = this._cinePricingHint(prices);
+    } else if (this.data.mode === 'generate') {
+      patch.cost = this._genCost(prices);
+      patch.defaultHint = this._genPricingHint(prices);
+    } else if (this.data.mode === 'talking') {
+      patch.cost = this._talkEstimate(this.data.talkText || '', prices);
+      patch.defaultHint = this._talkPricingHint(prices);
+    } else if (this.data.mode === 'tryon') {
+      patch.cost = this._tryonCost(prices);
+    }
+    this.setData(patch);
+    return true;
+  },
+
+  _pricingError() {
+    this._prices = null;
+    this.setData({
+      pricingReady: false,
+      avatarCost: null,
+      cineEst: null,
+      cineRate: null,
+      cost: null,
+      defaultHint: '实时价格加载失败，请稍后重试'
+    });
   },
 
   // ===== 模式切换：保存旧模式，再重置并恢复目标模式草稿 =====
@@ -896,7 +971,6 @@ Page({
     }
     this.stopPolling();
     const m = MODES.find((x) => x.key === mode) || MODES[0];
-    const cost = m.key === 'cinematic' ? 0 : (m.key === 'tryon' ? TRYON_COST_SINGLE : VIDEO_COST);
     const defaultHint = HINTS[m.key] || '';
     const ratios = m.key === 'cinematic' ? RATIOS_CINE : (m.key === 'generate' ? RATIOS_GEN : RATIOS_VIDEO);
     this._draftRestoreToken += 1;
@@ -904,10 +978,11 @@ Page({
     this.setData({
       mode: m.key, modeReady: m.ready, modeName: m.name,
       ratios, ratio: '9:16',
-      busy: false, note: '', noteColor: C_MUTED, defaultHint, videoUrl: '', cost,
+      busy: false, note: '', noteColor: C_MUTED, defaultHint, videoUrl: '', cost: null,
       draftStatus: '', draftRestoring: false, batchJobs: []
     });
     this._resetModeForm(m.key);
+    if (this._prices) this._applyPricing(this._prices);
     this._modeInitialized = true;
     this._restoreDraft(m.key);
     if (m.key === 'talking' && !this._voicesLoaded) this.fetchVoices();
@@ -962,46 +1037,65 @@ Page({
   },
 
   // ===== 视频生成模式：交互 =====
-  // 果肉预估价：与后端 points.py 公式逐字一致（仅展示，实扣以返回 cost 为准）
-  _grokEstimate(model, res, dur, hasRefs) {
-    const perSec = (GROK_PRICE[model] || {})[res];
-    if (!perSec) return 0;
+  _grokRate(model, res, prices) {
+    return pricing.point(prices || this._prices, PRICE_KEYS.grok[model + ':' + res]);
+  },
+  _grokEstimate(model, res, dur, hasRefs, prices) {
+    const perSec = this._grokRate(model, res, prices);
+    if (!perSec) return null;
     return Math.max(1, dur * perSec);
   },
-  _genPricingHint() {
+  _officialRate(engine, prices) {
+    return pricing.point(prices || this._prices, PRICE_KEYS.official[engine]);
+  },
+  _genPricingHint(prices) {
     const d = this.data;
     if (d.engine === 'sora') {
-      const rate = this._soraRate();
+      const rate = this._soraRate(prices);
+      if (!rate) return HINTS.generate;
       return 'Sora 2 · ' + d.soraModel + ' · ' + d.soraResolution + ' · '
         + rate + ' 点/秒 × ' + d.soraDuration + ' 秒 = ' + (rate * d.soraDuration) + ' 点 · 失败自动退点';
     }
     if (d.engine !== 'grok') {
       const cfg = OFFICIAL_VIDEO[d.engine];
       const seconds = Number(d.officialDuration) || 5;
-      return 'AI 视频 ' + cfg.name + ' · 30 点/秒 × ' + seconds + ' 秒 = '
-        + (seconds * 30) + ' 点 · 失败自动退点';
+      const rate = this._officialRate(d.engine, prices);
+      if (!cfg || !rate) return HINTS.generate;
+      return 'AI 视频 ' + cfg.name + ' · ' + rate + ' 点/秒 × ' + seconds + ' 秒 = '
+        + (seconds * rate) + ' 点 · 失败自动退点';
     }
-    const perSec = (GROK_PRICE[d.grokModel] || {})[d.grokRes] || 0;
+    const perSec = this._grokRate(d.grokModel, d.grokRes, prices);
+    if (!perSec) return HINTS.generate;
     const modelName = d.grokModel === 'grok-imagine-video-1.5' ? '高清 1.5' : '标准 1.0';
-    const total = this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0);
+    const total = this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0, prices);
     return 'AI 视频 ' + modelName + ' · ' + d.grokRes + ' · '
       + perSec + ' 点/秒 × ' + d.grokDur + ' 秒 = ' + total + ' 点 · 失败自动退点';
   },
   _syncGenPricing() {
+    const cost = this._genCost();
     this.setData({
-      cost: this._genCost(),
+      cost,
+      pricingReady: !!cost,
       defaultHint: this._genPricingHint(),
       note: '',
       noteColor: C_MUTED
     });
   },
-  _genCost() {
+  _genCost(prices) {
     const d = this.data;
-    if (d.engine === 'sora') return this._soraRate() * d.soraDuration;
-    if (d.engine !== 'grok') return (Number(d.officialDuration) || 5) * 30;
-    return this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0);
+    if (d.engine === 'sora') {
+      const rate = this._soraRate(prices);
+      return rate ? rate * d.soraDuration : null;
+    }
+    if (d.engine !== 'grok') {
+      const rate = this._officialRate(d.engine, prices);
+      return rate ? (Number(d.officialDuration) || 5) * rate : null;
+    }
+    return this._grokEstimate(d.grokModel, d.grokRes, d.grokDur, d.refPreviews.length > 0, prices);
   },
-  _soraRate() { return SORA_VIDEO.rates[this.data.soraModel + ':' + this.data.soraResolution] || 0; },
+  _soraRate(prices) {
+    return pricing.point(prices || this._prices, PRICE_KEYS.sora[this.data.soraModel + ':' + this.data.soraResolution]);
+  },
   _engineState(engine) {
     const eng = ENGINES_ALL.find((x) => x.key === engine) || ENGINES_ALL[0];
     if (eng.key === 'sora') {
@@ -1010,7 +1104,7 @@ Page({
       return {
         engine: 'sora', engineRef: true, engineRefMax: 1, engineRefHint: '（可选 · 1 张 · 不得含真人脸）',
         ratios: SORA_VIDEO.ratios, ratio: '9:16',
-        soraModels: SORA_VIDEO.models, soraModel: model,
+        soraModels: this.data.soraModels, soraModel: model,
         soraDurations: SORA_VIDEO.durations, soraDuration: 4,
         soraResolutions: resolutions, soraResolution: resolutions[0]
       };
@@ -1277,11 +1371,8 @@ Page({
         this._persistAndRead(f.tempFilePath, 'video/mp4').then((item) => {
           if (!this._mediaIsCurrent('generate_edit', token, mode)) { this._discardPersisted([item]); return; }
           if (item.data.indexOf('data:video/mp4') !== 0) { this._discardPersisted([item]); this.setNote('仅支持 MP4 格式的视频', C_ERR); return; }
-          // 计价公式与后端 points.py 编辑分支保持一致（扣点以服务端返回为准，这里仅展示）
-          const d = Math.max(0.1, Math.min(8.7, dur));
-          const cost = Math.max(1, Math.ceil(d * (0.01 + 0.07) * 7.3 * 1.2 * 10));
           this._b64.editVideo = item.data;
-          this.setData({ editVideoPath: item.path, editVideoName: '已选视频 · ' + dur.toFixed(1) + ' 秒', editDuration: dur, editCost: cost });
+          this.setData({ editVideoPath: item.path, editVideoName: '已选视频 · ' + dur.toFixed(1) + ' 秒', editDuration: dur, editCost: null });
           this._draftChanged(true);
         }).catch(() => this._mediaDraftFailed(mode, 'generate_edit', token));
       }
@@ -1290,7 +1381,7 @@ Page({
   clearEditVideo() {
     this._nextMediaToken('generate_edit');
     this._b64.editVideo = '';
-    this.setData({ editVideoPath: '', editVideoName: '', editDuration: 0, editCost: 0 });
+    this.setData({ editVideoPath: '', editVideoName: '', editDuration: 0, editCost: null });
     this._draftChanged(true);
   },
 
@@ -1310,19 +1401,14 @@ Page({
     const mentionError = imageMentions.validate(prompt, this.data.refPreviews.length);
     if (mentionError) { this.setNote(mentionError, C_ERR); return; }
     if (this.data.engine === 'grok' && this.data.grokOp === 'edit') {
-      if (!this._b64.editVideo) { this.setNote('请先上传 MP4 参考视频', C_ERR); return; }
-      const editBody = {
-        channel: 'grok', prompt: prompt, operation: 'edit', model: 'grok-imagine-video',
-        reference_video_data: this._b64.editVideo, source_duration: this.data.editDuration
-      };
-      this.submitJob('/api/gen/xiaole_video', editBody, this.data.editCost || 1);
+      this.setNote('果肉视频编辑维护中，暂不可提交', C_ERR);
       return;
     }
     if (this.data.engine === 'sora') {
       const model = this.data.soraModel;
       const seconds = this.data.soraDuration;
       const resolution = this.data.soraResolution;
-      if (!SORA_VIDEO.rates[model + ':' + resolution]
+      if (!PRICE_KEYS.sora[model + ':' + resolution]
         || SORA_VIDEO.durations.indexOf(seconds) < 0
         || SORA_VIDEO.ratios.indexOf(this.data.ratio) < 0) {
         this.setNote('Sora 参数不支持，请重新选择模型、时长、清晰度和比例', C_ERR);
@@ -1416,9 +1502,17 @@ Page({
     this._draftChanged(false);
   },
 
-  _talkEstimate(text) {
+  _talkEstimate(text, prices) {
+    const unit = pricing.point(prices || this._prices, PRICE_KEYS.talking);
+    if (!unit) return null;
     const seconds = Math.max(1, String(text || '').trim().length / 4);
-    return Math.max(30, Math.ceil(seconds / 30) * 30);
+    return Math.max(1, Math.ceil(seconds / 30)) * unit;
+  },
+  _talkPricingHint(prices) {
+    const unit = pricing.point(prices || this._prices, PRICE_KEYS.talking);
+    return unit
+      ? '数字人口播 ' + unit + ' 点/30 秒 · 不足 30 秒按一档计 · 失败自动退点'
+      : HINTS.talking;
   },
   selectVoice(e) {
     const key = e.currentTarget.dataset.k;
@@ -1505,7 +1599,10 @@ Page({
       body.voice_consent_version = TALK_AUDIO_CONSENT_VERSION;
       body.voice_consent_at = this.data.talkAudioConsentAt;
     }
-    this.submitJob('/api/gen/video', body, VIDEO_COST);
+    const estimate = body.mode === 'text'
+      ? this._talkEstimate(body.text || '')
+      : pricing.point(this._prices, PRICE_KEYS.talking);
+    this.submitJob('/api/gen/video', body, estimate);
   },
 
   // ===== 口播批量：一段文案 × 多个形象（2~5 个，后端 /api/gen/video/batch）=====
@@ -1569,7 +1666,7 @@ Page({
     this._draftChanged(true);
   },
   submitTalkingBatch() {
-    if (this.data.busy || this._subscriptionPending) return;
+    if (this.data.busy || this._subscriptionPending || this.data.pricingChecking) return;
     if (this.data.draftRestoring) { this.setNote('草稿媒体恢复中，请稍候', C_INFO); return; }
     const items = this.data.batchItems;
     if (items.length < 2) { this.setNote('批量出片请至少选择 2 个形象（同一形象不能重复）', C_ERR); return; }
@@ -1579,11 +1676,7 @@ Page({
     if (items.some((item) => item.kind === 'image' && !this._b64['batch_' + item.bid])) {
       this.setNote('部分人物照片已失效，请移除后重新选择', C_ERR); return;
     }
-    const need = this._talkEstimate(text) * items.length;
-    if (this.data.points !== null && this.data.points < need) {
-      this.setNote('点数不足（约需 ' + need + ' 点，当前 ' + this.data.points + ' 点）', C_ERR);
-      return;
-    }
+    const shownNeed = this._talkEstimate(text) * items.length;
     const body = {
       mode: 'text', text, voice: this.data.voiceKey,
       resolution: this.data.talkRes, ratio: this.data.ratio, motion: 'medium',
@@ -1592,6 +1685,31 @@ Page({
         ? { avatar_id: String(x.id), label: x.label }
         : { image_data: this._b64['batch_' + x.bid], label: x.label })
     };
+    const submittedMode = this.data.mode;
+    const lifecycleToken = this._lifecycleToken;
+    this.setData({ pricingChecking: true });
+    return pricing.confirm(shownNeed, (prices) => this._talkEstimate(text, prices) * items.length)
+      .then((latest) => {
+        if (lifecycleToken !== this._lifecycleToken || this.data.mode !== submittedMode) return;
+        this.setData({ pricingChecking: false });
+        this._applyPricing(latest.prices);
+        if (latest.changed) {
+          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', C_INFO);
+          return;
+        }
+        if (this.data.points !== null && this.data.points < latest.cost) {
+          this.setNote('点数不足（约需 ' + latest.cost + ' 点，当前 ' + this.data.points + ' 点）', C_ERR);
+          return;
+        }
+        this._queueTalkingBatch(body, latest.cost);
+      })
+      .catch(() => {
+        this.setData({ pricingChecking: false });
+        this._pricingError();
+        this.setNote('实时价格确认失败，请稍后重试', C_ERR);
+      });
+  },
+  _queueTalkingBatch(body, need) {
     const submittedMode = this.data.mode;
     const submission = this._submissionDraftState(submittedMode);
     const lifecycleToken = this._lifecycleToken;
@@ -1879,7 +1997,11 @@ Page({
       note: '', noteColor: C_MUTED
     });
     this._setAvatarIds(this.data.avatarIds.slice(0, max));
-    this.setData({ cineEst: this._cineEstimate() });
+    this.setData({
+      cineRate: pricing.point(this._prices, PRICE_KEYS.cinematic[k]),
+      cineEst: this._cineEstimate(),
+      defaultHint: this._cinePricingHint()
+    });
     this._draftChanged(true);
   },
   onCinePrompt(e) { this.setData({ cinePrompt: e.detail.value }); this._draftChanged(false); },
@@ -1960,12 +2082,32 @@ Page({
     this._draftChanged(true);
   },
 
-  // 建形象：选照片 → 提交 /api/gen/avatar（5点，约25秒）→ 轮询 → 刷新形象列表
+  // 建形象：提交前读取后台实时价格，成功后再选照片并提交。
   createAvatar() {
-    if (this.data.avatarBusy) return;
-    if (this.data.points !== null && this.data.points < AVATAR_COST) {
-      this.setData({ avatarNote: '点数不足（建形象需 ' + AVATAR_COST + ' 点）' }); return;
-    }
+    if (this.data.avatarBusy || this.data.pricingChecking) return;
+    const shownCost = this.data.avatarCost;
+    this.setData({ pricingChecking: true });
+    return pricing.confirm(shownCost, (prices) => pricing.point(prices, PRICE_KEYS.avatar))
+      .then((latest) => {
+        this.setData({ pricingChecking: false });
+        this._applyPricing(latest.prices);
+        if (latest.changed) {
+          this.setData({ avatarNote: '价格已更新为 ' + latest.cost + ' 点，请确认后重新创建' });
+          return;
+        }
+        if (this.data.points !== null && this.data.points < latest.cost) {
+          this.setData({ avatarNote: '点数不足（建形象需 ' + latest.cost + ' 点）' });
+          return;
+        }
+        this._chooseAvatarImage();
+      })
+      .catch(() => {
+        this.setData({ pricingChecking: false });
+        this._pricingError();
+        this.setData({ avatarNote: '实时价格确认失败，请稍后重试' });
+      });
+  },
+  _chooseAvatarImage() {
     this._chooseImage('image/jpeg', (url) => {
       this.setData({ avatarBusy: true, avatarNote: '建形象中，约 25 秒…' });
       api.request('/api/gen/avatar', { method: 'POST', data: { image_data: url }, timeout: 60000 })
@@ -2038,9 +2180,10 @@ Page({
 
   // 预估点数：秒数 × 玩法单价；自适应跟随第一个参考视频，
   // 无参考视频（open 纯提示词）回落 10 秒。实扣以服务端为准。
-  _cineEstimate() {
+  _cineEstimate(prices) {
     const mode = this.data.cineMode;
-    const rate = CINE_RATES[mode] || 10;
+    const rate = pricing.point(prices || this._prices, PRICE_KEYS.cinematic[mode]);
+    if (!rate) return null;
     let refDur = 0;
     if (mode === 'open') refDur = this.data.cineRefVideos.length ? this.data.cineRefVideos[0].dur : 0;
     else refDur = this.data.cineVideoDur;
@@ -2048,6 +2191,14 @@ Page({
       ? (refDur ? Math.min(Math.max(refDur, 4), 15) : 10)
       : this.data.cineDur;
     return Math.max(1, (d || 10) * rate);
+  },
+  _cinePricingHint(prices) {
+    const mode = this.data.cineMode;
+    const rate = pricing.point(prices || this._prices, PRICE_KEYS.cinematic[mode]);
+    const item = CINE_MODES.find((candidate) => candidate.k === mode);
+    return rate
+      ? (item ? item.name : '电影化身') + ' · ' + rate + ' 点/秒 · 失败自动退点'
+      : HINTS.cinematic;
   },
   submitCinematic() {
     if (this.data.busy) return;
@@ -2104,6 +2255,10 @@ Page({
   clearTryonClothes() { this.setData({ tryonClothes: '', tryonClothesPreview: '' }); },
   chooseTryonBg() { this._chooseImage('image/jpeg', (url, prev) => this.setData({ tryonBg: url, tryonBgPreview: prev })); },
   clearTryonBg() { this.setData({ tryonBg: '', tryonBgPreview: '' }); },
+  _tryonCost(prices) {
+    const combined = !!(this.data.tryonClothes && this.data.tryonBg);
+    return pricing.point(prices || this._prices, combined ? PRICE_KEYS.tryon.double : PRICE_KEYS.tryon.single);
+  },
   submitTryon() {
     if (this.data.busy) return;
     const t = this.data.tryonType;
@@ -2117,7 +2272,7 @@ Page({
       if (!this.data.tryonBg) { this.setNote('请先上传背景图', C_ERR); return; }
       body = { person_video_data: this.data.tryonPersonVideo, background_data: this.data.tryonBg };
     }
-    this.submitJob('/api/gen/tryon', body, TRYON_COST_SINGLE);
+    this.submitJob('/api/gen/tryon', body, this._tryonCost());
   },
 
   // ===== 统一任务方法 =====
@@ -2127,9 +2282,57 @@ Page({
     return typeof value === 'string' && value.trim().length > 0;
   },
 
+  _latestCostFor(endpoint, body, prices) {
+    if (endpoint === '/api/gen/sora_video') {
+      const rate = pricing.point(prices, PRICE_KEYS.sora[body.model + ':' + body.resolution]);
+      return rate ? rate * Number(body.seconds) : null;
+    }
+    if (endpoint === '/api/gen/xiaole_video') {
+      if (body.operation === 'edit') return null;
+      if (body.channel === 'grok') {
+        const rate = pricing.point(prices, PRICE_KEYS.grok[body.model + ':' + body.resolution]);
+        return rate ? rate * Number(body.duration) : null;
+      }
+      const rate = pricing.point(prices, PRICE_KEYS.official[body.channel]);
+      return rate ? rate * Number(body.duration) : null;
+    }
+    if (endpoint === '/api/gen/video') {
+      return body.mode === 'text'
+        ? this._talkEstimate(body.text || '', prices)
+        : pricing.point(prices, PRICE_KEYS.talking);
+    }
+    if (endpoint === '/api/gen/cinematic') return this._cineEstimate(prices);
+    if (endpoint === '/api/gen/tryon') {
+      return pricing.point(prices, body.clothes_data && body.background_data ? PRICE_KEYS.tryon.double : PRICE_KEYS.tryon.single);
+    }
+    return null;
+  },
+
   submitJob(endpoint, body, cost) {
-    if (this.data.busy || this._subscriptionPending) return;
-    const need = (typeof cost === 'number') ? cost : this.data.cost;
+    if (this.data.busy || this._subscriptionPending || this.data.pricingChecking) return;
+    const shownNeed = (typeof cost === 'number') ? cost : this.data.cost;
+    const submittedMode = this.data.mode;
+    const lifecycleToken = this._lifecycleToken;
+    this.setData({ pricingChecking: true });
+    return pricing.confirm(shownNeed, (prices) => this._latestCostFor(endpoint, body, prices))
+      .then((latest) => {
+        if (lifecycleToken !== this._lifecycleToken || this.data.mode !== submittedMode) return;
+        this.setData({ pricingChecking: false });
+        this._applyPricing(latest.prices);
+        if (latest.changed) {
+          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', C_INFO);
+          return;
+        }
+        this._submitJobAfterPricing(endpoint, body, latest.cost);
+      })
+      .catch(() => {
+        this.setData({ pricingChecking: false });
+        this._pricingError();
+        this.setNote('实时价格确认失败，请稍后重试', C_ERR);
+      });
+  },
+
+  _submitJobAfterPricing(endpoint, body, need) {
     if (this.data.points !== null && this.data.points < need) {
       this.setNote('点数不足（需 ' + need + ' 点，当前 ' + this.data.points + ' 点）', C_ERR);
       return;
@@ -2144,7 +2347,7 @@ Page({
         if (lifecycleToken !== this._lifecycleToken) return;
         this._subscriptionPending = false;
         if (this.data.mode !== submittedMode) return;
-        this._submitJobRequest(endpoint, body, cost, submittedMode, submission.localRevision, submission.storageRevision);
+        this._submitJobRequest(endpoint, body, need, submittedMode, submission.localRevision, submission.storageRevision);
       });
   },
 

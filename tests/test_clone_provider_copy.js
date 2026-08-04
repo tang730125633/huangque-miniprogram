@@ -17,6 +17,6 @@ assert(page.includes('建议朗读'));
 assert(page.includes('我的音色'));
 assert(page.includes('已拥有 {{slotCount}} 个'));
 assert(page.includes('购买槽位'));
-assert(page.includes('{{slotCost}} 点/个'));
+assert(page.includes("slotCost + ' 点/个'"));
 
 console.log('clone provider copy OK');

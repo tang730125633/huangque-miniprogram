@@ -21,7 +21,7 @@ const videoPageDefinition = pageDefinition;
 
 function newVideoPage() {
   return Object.assign({}, videoPageDefinition, {
-    data: { busy: false, points: null, cost: 30, note: '' },
+    data: { mode: 'generate', busy: false, points: null, cost: 30, note: '' },
     _pollToken: 0,
     setData(patch) { Object.assign(this.data, patch); },
     startPolling() { throw new Error('403 responses must not start polling'); }
@@ -31,7 +31,7 @@ function newVideoPage() {
 async function submitVideoWith(response) {
   api.request = function () { return Promise.resolve(response); };
   const page = newVideoPage();
-  page.submitJob.call(page, '/api/gen/video', {}, 30);
+  page._submitJobRequest.call(page, '/api/gen/video', {}, 30, 'generate', 0, 0);
   await new Promise((resolve) => setImmediate(resolve));
   return page;
 }

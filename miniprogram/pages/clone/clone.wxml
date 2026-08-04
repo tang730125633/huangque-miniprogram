@@ -67,13 +67,13 @@
     <view class="slot-purchase">
       <view>
         <view class="purchase-title">新增音色槽位</view>
-        <view class="purchase-copy">一个槽位保存一个音色，{{slotCost}} 点/个</view>
+        <view class="purchase-copy">{{pricingReady ? '一个槽位保存一个音色，' + slotCost + ' 点/个' : '正在读取实时价格…'}}</view>
       </view>
       <view
-        class="buy-slot-btn {{(!canBuySlot||busy)?'disabled':''}}"
+        class="buy-slot-btn {{(!canBuySlot || busy || pricingChecking || !pricingReady)?'disabled':''}}"
         bindtap="buySlot"
       >
-        {{busy ? '处理中…' : (canBuySlot ? '购买槽位' : '已达上限')}}
+        {{busy ? '处理中…' : (pricingChecking ? '确认价格中…' : (canBuySlot ? (pricingReady ? '购买槽位' : '价格加载中') : '已达上限'))}}
       </view>
     </view>
   </view>

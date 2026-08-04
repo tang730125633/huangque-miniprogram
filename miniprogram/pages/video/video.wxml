@@ -48,9 +48,9 @@
           <view class="avatar-name">{{item.name}}</view>
           <view class="avatar-manage" data-id="{{item.id}}" catchtap="manageAvatar">管理</view>
         </view>
-        <view class="avatar-cell avatar-add {{avatarBusy?'disabled':''}}" bindtap="createAvatar">
+        <view class="avatar-cell avatar-add {{avatarBusy || pricingChecking || !pricingReady ? 'disabled' : ''}}" bindtap="createAvatar">
           <view class="avatar-add-ico">＋</view>
-          <view class="avatar-name">{{avatarBusy ? '创建中…' : '建形象'}}</view>
+          <view class="avatar-name">{{avatarBusy ? '创建中…' : (avatarCost ? '建形象 · ' + avatarCost + '点' : '价格加载中')}}</view>
         </view>
       </view>
       <view wx:if="{{avatarNote}}" class="muted small tip">{{avatarNote}}</view>
@@ -118,7 +118,7 @@
     </view>
     <view wx:if="{{cineMode==='open'}}" class="card">
       <view class="label">时长
-        <text class="muted small">（10 点/秒 · 自适应跟随参考视频{{cineMode==='open' ? '，无参考视频按 10 秒' : ''}}）</text>
+        <text class="muted small">（{{cineRate ? cineRate + ' 点/秒' : '实时计价'}} · 自适应跟随参考视频{{cineMode==='open' ? '，无参考视频按 10 秒' : ''}}）</text>
       </view>
       <view class="ratio-grid">
         <view wx:for="{{cineDurs}}" wx:key="v" class="chip {{cineDur===item.v?'active':''}}" data-v="{{item.v}}" bindtap="selectCineDur">{{item.name}}</view>
@@ -129,8 +129,8 @@
       <view class="muted small">1080p · 自适应跟随参考视频时长</view>
     </view>
 
-    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitCinematic">
-      {{busy ? '生成中…' : '生成电影化身视频（约 ' + cineEst + ' 点）'}}
+    <view class="btn-primary {{busy || pricingChecking || !pricingReady ? 'disabled' : ''}}" bindtap="submitCinematic">
+      {{busy ? '生成中…' : (pricingChecking ? '正在确认价格…' : (pricingReady ? '生成电影化身视频（约 ' + cineEst + ' 点）' : '实时价格加载中…'))}}
     </view>
     <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
   </block>
@@ -181,7 +181,7 @@
 
     <block wx:if="{{engine==='micro' || engine==='omni'}}">
       <view class="card">
-        <view class="label">时长 <text class="muted small">（30 点/秒）</text></view>
+        <view class="label">时长 <text class="muted small">（按后台实时单价计费）</text></view>
         <view class="ratio-grid">
           <view wx:for="{{officialDurations}}" wx:key="*this" class="chip {{officialDuration===item?'active':''}}"
             data-v="{{item}}" bindtap="selectOfficialDuration">{{item}} 秒</view>
@@ -291,8 +291,8 @@
       </view>
     </view>
 
-    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitGenerate">
-      {{busy ? '生成中…' : (engine==='grok' && grokOp==='edit' ? '编辑视频（' + (editCost || '上传后计价') + ' 点）' : '立即生成（' + cost + ' 点）')}}
+    <view class="btn-primary {{busy || pricingChecking || !pricingReady || (engine==='grok' && grokOp==='edit') ? 'disabled' : ''}}" bindtap="submitGenerate">
+      {{busy ? '生成中…' : (engine==='grok' && grokOp==='edit' ? '视频编辑维护中' : (pricingChecking ? '正在确认价格…' : (pricingReady ? '立即生成（' + cost + ' 点）' : '实时价格加载中…')))}}
     </view>
     <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
     <view class="ai-disclosure">内容由人工智能生成，请遵守法律法规并自行核验后使用</view>
@@ -399,8 +399,8 @@
       </view>
     </view>
 
-    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitTalking">
-      {{busy ? '生成中…' : (talkBatch ? '批量生成 ' + batchItems.length + ' 条（约 ' + batchItems.length * cost + ' 点）' : '生成口播视频（' + cost + ' 点）')}}
+    <view class="btn-primary {{busy || pricingChecking || !pricingReady ? 'disabled' : ''}}" bindtap="submitTalking">
+      {{busy ? '生成中…' : (pricingChecking ? '正在确认价格…' : (pricingReady ? (talkBatch ? '批量生成 ' + batchItems.length + ' 条（约 ' + batchItems.length * cost + ' 点）' : '生成口播视频（' + cost + ' 点）') : '实时价格加载中…'))}}
     </view>
     <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
 
@@ -485,8 +485,8 @@
       </view>
     </block>
 
-    <view class="btn-primary {{busy?'disabled':''}}" bindtap="submitTryon">
-      {{busy ? '生成中…' : '生成换装视频（' + cost + ' 点）'}}
+    <view class="btn-primary {{busy || pricingChecking || !pricingReady ? 'disabled' : ''}}" bindtap="submitTryon">
+      {{busy ? '生成中…' : (pricingChecking ? '正在确认价格…' : (pricingReady ? '生成换装视频（' + cost + ' 点）' : '实时价格加载中…'))}}
     </view>
     <view class="note" style="color:{{noteColor}}">{{note || defaultHint}}</view>
   </block>

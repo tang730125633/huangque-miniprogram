@@ -1,12 +1,14 @@
 const api = require('../../utils/api.js');
+const pricing = require('../../utils/pricing.js');
 const drafts = require('../../utils/drafts.js');
 const promptTemplates = require('../../utils/prompt_templates.js');
 const imageMentions = require('../../utils/image_mentions.js');
 
-// 与后端 / 网页版一致的价目与上限
-const COSTBASE = {
-  nb2: { std: 18, hd: 35 }, pro: { std: 35, hd: 44 },
-  gpt: { std: 20, hd: 35 }, xiaole: { std: 12, hd: 16 }, zelong2: { std: 8, hd: 12 }
+const PRICE_KEYS = {
+  nb2: { std: 'image.banana.nb2.std', hd: 'image.banana.nb2.hd' },
+  pro: { std: 'image.banana.pro.std', hd: 'image.banana.pro.hd' },
+  gpt: { std: 'image.openai.std', hd: 'image.openai.hd' },
+  xiaole: { std: 'image.xiaole.std', hd: 'image.xiaole.hd' }
 };
 const ENGINE_MAXN = { nb2: 2, pro: 2, gpt: 4, xiaole: 2, zelong2: 2 };
 const ENGINES = [
@@ -14,7 +16,7 @@ const ENGINES = [
   { key: 'pro', name: '黄雀生图 Pro', desc: '精品·最强中文/4K' },
   { key: 'gpt', name: '黄雀 Image 2', desc: 'OpenAI·写实' },
   { key: 'xiaole', name: '果肉生图', desc: '写实·稳定' }
-  // 2026-07-13 泽龙2(zelong2)下线：近7天成功率仅19%、几乎全429限流。下方 COSTBASE/ENGINE_MAXN 里的 zelong2 为死键，无害。
+  // 2026-07-13 泽龙2(zelong2)下线：近7天成功率仅19%、几乎全429限流。
 ];
 const RATIOS = ['9:16', '1:1', '16:9', '3:4'];
 const DRAFT_KEY = 'hq_draft_banana_v1';
@@ -42,7 +44,9 @@ Page({
     quality: 'hd',
     count: 1,
     maxCount: 2,
-    cost: 35,
+    cost: null,
+    pricingReady: false,
+    pricingChecking: false,
     maxRefCount: IMAGE_REF_LIMITS.nb2,
     refPreviews: [],
     refBusy: false,
@@ -95,20 +99,22 @@ Page({
       this.setData({ prompt: ip12Prefill.prompt }, () => this.saveDraft());
       wx.showToast({ title: '已带入 IP12 图片计划', icon: 'none' });
     }
-    this.updateCost();
+    pricing.watch(this, (prices) => this._applyPricing(prices), () => this._pricingError());
     this.refreshPoints();
     this.loadHistory();
   },
 
   onPullDownRefresh() {
+    if (this._pricingRefresh) this._pricingRefresh();
     this.refreshPoints();
     this.loadHistory();
     wx.stopPullDownRefresh();
   },
 
-  onHide() { this._active = false; this._flushDraftSave(); },
+  onHide() { this._active = false; pricing.stop(this); this.setData({ pricingChecking: false }); this._flushDraftSave(); },
   onUnload() {
     this._active = false;
+    pricing.stop(this);
     this._refOpToken += 1;
     this._flushDraftSave();
   },
@@ -348,10 +354,32 @@ Page({
   dec() { this.setData({ count: Math.max(1, this.data.count - 1) }, () => { this.updateCost(); this.saveDraft(); }); },
   inc() { this.setData({ count: Math.min(this.data.maxCount, this.data.count + 1) }, () => { this.updateCost(); this.saveDraft(); }); },
 
+  _priceKey() {
+    const engine = PRICE_KEYS[this.data.engine];
+    return engine && engine[this.data.quality];
+  },
+
+  _costFrom(prices) {
+    const unit = pricing.point(prices, this._priceKey());
+    return unit ? unit * this.data.count : null;
+  },
+
+  _applyPricing(prices) {
+    this._prices = prices;
+    const cost = this._costFrom(prices);
+    if (!cost) { this._pricingError(); return false; }
+    this.setData({ cost, pricingReady: true });
+    return true;
+  },
+
+  _pricingError() {
+    this._prices = null;
+    this.setData({ cost: null, pricingReady: false });
+  },
+
   updateCost() {
-    const t = COSTBASE[this.data.engine] || COSTBASE.nb2;
-    const cost = (t[this.data.quality] || t.hd) * this.data.count;
-    this.setData({ cost });
+    const cost = this._costFrom(this._prices);
+    this.setData({ cost, pricingReady: !!cost });
   },
 
   setNote(t, c) { this.setData({ note: t, noteColor: c || '#68736D' }); },
@@ -446,7 +474,7 @@ Page({
   },
 
   generate() {
-    if (this.data.busy) return;
+    if (this.data.busy || this.data.pricingChecking) return;
     const prompt = (this.data.prompt || '').trim();
     if (!prompt) { this.setNote('请先输入提示词', '#C2413A'); return; }
 
@@ -470,6 +498,28 @@ Page({
       if (engine === 'xiaole' || engine === 'zelong2') body.provider = engine;
     }
 
+    const shownCost = this.data.cost;
+    this.setData({ pricingChecking: true });
+    return pricing.confirm(shownCost, (prices) => this._costFrom(prices))
+      .then((latest) => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false });
+        this._applyPricing(latest.prices);
+        if (latest.changed) {
+          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', '#2F6FED');
+          return;
+        }
+        this._submitGenerate(endpoint, body);
+      })
+      .catch(() => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false });
+        this._pricingError();
+        this.setNote('实时价格确认失败，请稍后重试', '#C2413A');
+      });
+  },
+
+  _submitGenerate(endpoint, body) {
     this.setData({ busy: true, resultUrl: '', thumbs: [] });
     this.setNote('提交中…', '#2F6FED');
     const t0 = Date.now();

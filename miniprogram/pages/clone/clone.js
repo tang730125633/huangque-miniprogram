@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const pricing = require('../../utils/pricing.js');
 
 const CLONE_POLL_INTERVAL = 5000;
 const CLONE_POLL_MAX = 60; // 60 * 5s = 5 min
@@ -11,7 +12,9 @@ Page({
     slots: [],
     slotCount: 0,
     slotMax: 5,
-    slotCost: 50,
+    slotCost: null,
+    pricingReady: false,
+    pricingChecking: false,
     canBuySlot: true,
     points: null,
     name: '',
@@ -31,7 +34,7 @@ Page({
     voiceConsentAt: ''
   },
 
-  onLoad() {},
+  onLoad() { this._active = true; },
 
   _initMedia() {
     if (this._mediaReady) return;
@@ -52,15 +55,32 @@ Page({
     this._player.onStop(() => this.setData({ playing: false }));
   },
   onUnload() {
+    this._active = false;
+    pricing.stop(this);
     this._stopTimer();
     if (this._pollTimer) clearTimeout(this._pollTimer);
     if (this._player) this._player.destroy();
   },
 
   onShow() {
+    this._active = true;
     if (!api.getToken()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     if (this.data.consentGateVisible || !this.data.voiceConsent) return;
+    pricing.watch(this, (prices) => this._applyPricing(prices), () => this._pricingError());
     if (!this.data.recording && !this.data.busy) this.loadSlots();
+  },
+
+  onHide() { this._active = false; pricing.stop(this); this.setData({ pricingChecking: false }); },
+
+  _applyPricing(prices) {
+    const slotCost = pricing.point(prices, 'audio.voice_slot');
+    if (!slotCost) { this._pricingError(); return false; }
+    this.setData({ slotCost, pricingReady: true });
+    return true;
+  },
+
+  _pricingError() {
+    this.setData({ slotCost: null, pricingReady: false });
   },
 
   loadSlots() {
@@ -74,7 +94,6 @@ Page({
         slots,
         slotCount,
         slotMax,
-        slotCost: Number(d.slot_cost || 50),
         canBuySlot: slotCount < slotMax,
         points: d.points == null ? null : d.points
       });
@@ -120,6 +139,7 @@ Page({
       playing: false,
       err: slot.clone_error || ''
     });
+    this._active = true;
     if (slot.status === 'ready' || slot.preview_url) {
       this.setData({ stage: 'ready' });
     } else if (slot.status === 'training') {
@@ -151,6 +171,7 @@ Page({
       err: ''
     });
     this._initMedia();
+    pricing.watch(this, (prices) => this._applyPricing(prices), () => this._pricingError());
     this.loadSlots();
   },
 
@@ -161,18 +182,51 @@ Page({
   },
 
   buySlot() {
-    if (this.data.busy || !this.data.canBuySlot) return;
-    wx.showModal({
-      title: '购买音色槽位',
-      content: '将消耗 ' + this.data.slotCost + ' 点，购买后可新增 1 个专属音色。',
-      confirmText: '确认购买',
-      success: (result) => {
-        if (result.confirm) this._purchaseSlot();
-      }
-    });
+    if (this.data.busy || this.data.pricingChecking || !this.data.canBuySlot) return;
+    this.setData({ pricingChecking: true, err: '' });
+    return pricing.confirm(this.data.slotCost, (prices) => pricing.point(prices, 'audio.voice_slot'))
+      .then((latest) => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false });
+        this._applyPricing(latest.prices);
+        wx.showModal({
+          title: '购买音色槽位',
+          content: '将消耗 ' + latest.cost + ' 点，购买后可新增 1 个专属音色。',
+          confirmText: '确认购买',
+          success: (result) => {
+            if (result.confirm) this._purchaseSlot(latest.cost);
+          }
+        });
+      })
+      .catch(() => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false, err: '实时价格确认失败，请稍后重试' });
+        this._pricingError();
+      });
   },
 
-  _purchaseSlot() {
+  _purchaseSlot(shownCost) {
+    if (this.data.pricingChecking) return;
+    this.setData({ pricingChecking: true });
+    return pricing.confirm(shownCost, (prices) => pricing.point(prices, 'audio.voice_slot'))
+      .then((latest) => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false });
+        this._applyPricing(latest.prices);
+        if (latest.changed) {
+          this.setData({ err: '价格已更新为 ' + latest.cost + ' 点，请重新确认购买' });
+          return;
+        }
+        this._purchaseSlotRequest();
+      })
+      .catch(() => {
+        if (!this._active) return;
+        this.setData({ pricingChecking: false, err: '实时价格确认失败，请稍后重试' });
+        this._pricingError();
+      });
+  },
+
+  _purchaseSlotRequest() {
     this.setData({ busy: true, err: '' });
     api.request('/api/gen/audio/buy-slot', { method: 'POST', data: {} }).then((res) => {
       const d = res.data || {};

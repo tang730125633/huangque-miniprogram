@@ -11,6 +11,19 @@ let failDraftWrite = false;
 let delayedSave = null;
 let modalConfirm = true;
 let pageDefinition = null;
+const PRICES = {
+  'image.banana.nb2.std': 18, 'image.banana.nb2.hd': 35,
+  'image.banana.pro.std': 35, 'image.banana.pro.hd': 44,
+  'image.openai.std': 20, 'image.openai.hd': 35,
+  'image.xiaole.std': 12, 'image.xiaole.hd': 16
+};
+
+function pricingResponse() {
+  return Promise.resolve({
+    statusCode: 200,
+    data: { items: Object.keys(PRICES).map((key) => ({ key, points: PRICES[key] })) }
+  });
+}
 
 global.getApp = () => ({ globalData: { apiBase: 'https://example.test' } });
 global.getCurrentPages = () => [];
@@ -50,7 +63,13 @@ global.Page = (definition) => { pageDefinition = definition; };
 
 const api = require('../miniprogram/utils/api.js');
 const drafts = require('../miniprogram/utils/drafts.js');
+const pricing = require('../miniprogram/utils/pricing.js');
 api.getToken = () => 'token-a';
+pricing.confirm = (shownCost, calculate) => Promise.resolve({
+  prices: PRICES,
+  cost: calculate(PRICES),
+  changed: false
+});
 require('../miniprogram/pages/banana/banana.js');
 
 const draftKey = drafts.scopedKey('hq_draft_banana_v1', 'token-a');
@@ -83,6 +102,7 @@ function page() {
     poll() {}
   });
   instance.onLoad();
+  instance._applyPricing(PRICES);
   return instance;
 }
 
@@ -164,6 +184,7 @@ function flush() {
   reset();
   let requested = null;
   api.request = (endpoint, options) => {
+    if (endpoint === '/api/gen/pricing') return pricingResponse();
     requested = { endpoint, body: options.data };
     return Promise.resolve({ statusCode: 500, data: { detail: 'upstream unavailable' } });
   };
@@ -196,6 +217,7 @@ function flush() {
   assert.strictEqual(singlePage.data.refPreviews.length, 2, '删除会导致 @图片N 错位时必须阻止');
 
   api.request = (endpoint, options) => {
+    if (endpoint === '/api/gen/pricing') return pricingResponse();
     requested = { endpoint, body: options.data };
     return Promise.resolve({ statusCode: 200, data: { job_id: 91 } });
   };
@@ -270,6 +292,7 @@ function flush() {
   editedPage.data.prompt = '点击时的提示词';
   editedPage.saveDraft();
   editedPage.generate();
+  await flush();
   editedPage.onPrompt({ detail: { value: '点击后继续编辑' } });
   resolveSubmit({ statusCode: 200, data: { job_id: 92 } });
   await flush();
@@ -282,6 +305,7 @@ function flush() {
   submittingPage.data.prompt = '旧页面提交';
   submittingPage.saveDraft();
   submittingPage.generate();
+  await flush();
   submittingPage.onUnload();
   const replacementPage = page();
   replacementPage.onPrompt({ detail: { value: '新页面内容' } });
@@ -297,6 +321,7 @@ function flush() {
   backgroundPage.data.prompt = '后台返回也应清理已受理草稿';
   backgroundPage.saveDraft();
   backgroundPage.generate();
+  await flush();
   backgroundPage.onHide();
   resolveBackgroundSubmit({ statusCode: 200, data: { job_id: 94 } });
   await flush();
@@ -318,6 +343,7 @@ function flush() {
   abaOldPage.data.prompt = '旧请求';
   abaOldPage.saveDraft();
   abaOldPage.generate();
+  await flush();
   const staleRevision = drafts.getRevision(draftKey);
   abaOldPage.onUnload();
   drafts.clear(draftKey);
