@@ -4,7 +4,7 @@
 
 **Goal:** Stop invitation network loading from fetching every public card and keep public-card requests scoped to the card page opened by the user.
 
-**Architecture:** `services/invite-planet.js` will return normalized relationship data immediately without public-card hydration. The existing `pages/card/card.js` remains the single on-demand public-card loader and its retry action naturally reissues failed requests because it does not cache failures.
+**Architecture:** `services/invite-planet.js` returns normalized relationship data immediately and exposes a separate single-card loader with in-flight deduplication and success-only caching. `pages/network/network.js` invokes that loader only after a user selects a node; the existing card page remains retryable and does not cache failures.
 
 **Tech Stack:** WeChat Mini Program JavaScript, WXML, Node.js built-in test runner.
 
@@ -39,7 +39,7 @@ Expected: FAIL because the current `completePlanet()` implementation requests pu
 
 - [ ] **Step 3: Remove bulk public-card hydration**
 
-Delete `publicCardCache`, `loadPublicCard`, `hydratePerson`, `hydratePeople`, and `completePlanet`. Return `normalizePlanet(...)` directly from the unified and fallback relationship paths.
+Delete bulk hydration helpers and return `normalizePlanet(...)` directly from the unified and fallback relationship paths. Add `getPublicCard(publicId)` as a separate on-demand API with in-flight deduplication, success-only caching, and failure cleanup.
 
 - [ ] **Step 4: Run the focused test and verify it passes**
 
@@ -54,20 +54,22 @@ git add tests/invite_planet_service.test.js miniprogram/services/invite-planet.j
 git commit -m "fix: load invitation cards on demand"
 ```
 
-### Task 2: Verify click-only card loading and retry behavior
+### Task 2: Load the selected node and verify card retry behavior
 
 **Files:**
 - Modify: `tests/card_share_ownership.test.js`
+- Modify: `tests/network_planet.test.js`
+- Modify: `miniprogram/pages/network/network.js`
 - Verify: `miniprogram/pages/card/card.js`
 - Verify: `miniprogram/pages/card/card.wxml`
 
 **Interfaces:**
-- Consumes: `Page.loadPublic(id, code)` and `Page.retry()`.
-- Produces: a regression test proving a failed public-card request is reissued by retry.
+- Consumes: `getPublicCard(publicId)`, `Page.selectNode(event)`, `Page.loadPublic(id, code)`, and `Page.retry()`.
+- Produces: selected-node profile hydration plus regression tests proving click-only loading and retry.
 
 - [ ] **Step 1: Add a focused retry regression test**
 
-Load the card page with a public ID, make the first public request fail, invoke `retry()`, then assert a second request is issued and the successful card is displayed.
+Assert selecting one anonymous node requests only that node's public card and updates it. Also load the card page with a public ID, make the first request fail, invoke `retry()`, then assert a second request is issued and the successful card is displayed.
 
 - [ ] **Step 2: Run the focused test**
 
@@ -77,7 +79,7 @@ Expected: PASS if the existing card page already satisfies the approved behavior
 
 - [ ] **Step 3: Make the minimal card-page correction only if the test fails**
 
-Keep retry bound to `loadPublic(this.data.publicId, this.data.inviteCode)` and do not introduce failure caching.
+Call `getPublicCard` from selected-node interactions, merge the returned profile into matching node collections, keep retry bound to `loadPublic(this.data.publicId, this.data.inviteCode)`, and do not cache failures.
 
 - [ ] **Step 4: Run all tests**
 

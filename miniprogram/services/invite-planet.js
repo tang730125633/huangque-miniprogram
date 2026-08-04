@@ -108,8 +108,44 @@ function queryString(options) {
 }
 
 function createPlanetService(requester) {
+  const publicCardCache = {};
+  const publicCardRequests = {};
+
   function request(path) {
     return requester(path, { method: 'GET' });
+  }
+
+  function getPublicCard(publicId) {
+    publicId = String(publicId || '').trim();
+    if (!publicId) return Promise.reject(new Error('名片不存在或已取消公开'));
+    if (publicCardCache[publicId]) return Promise.resolve(publicCardCache[publicId]);
+    if (publicCardRequests[publicId]) return publicCardRequests[publicId];
+
+    const pending = Promise.resolve().then(() => requester('/api/auth/card/public?id=' + encodeURIComponent(publicId), {
+      method: 'GET',
+      auth: false
+    })).then((response) => {
+      if (!response || response.statusCode !== 200) throw responseError(response, '名片不存在或已取消公开');
+      const data = response.data || {};
+      const card = data.card || data;
+      const profile = {
+        name: personName(card.name) || personName(card.display_name),
+        title: card.title || card.headline || card.occupation || '',
+        avatar: card.avatar || card.avatar_url || ''
+      };
+      if (!profile.name && !profile.title && !profile.avatar) throw new Error('名片不存在或已取消公开');
+      publicCardCache[publicId] = profile;
+      return profile;
+    });
+
+    publicCardRequests[publicId] = pending.then((profile) => {
+      delete publicCardRequests[publicId];
+      return profile;
+    }, (error) => {
+      delete publicCardRequests[publicId];
+      throw error;
+    });
+    return publicCardRequests[publicId];
   }
 
   function fallbackSelf(options) {
@@ -177,7 +213,7 @@ function createPlanetService(requester) {
     });
   }
 
-  return { getPlanet };
+  return { getPlanet, getPublicCard };
 }
 
 const defaultService = createPlanetService(api.request);
@@ -189,5 +225,6 @@ module.exports = {
   publicPerson,
   normalizePlanet,
   createPlanetService,
-  getPlanet: defaultService.getPlanet
+  getPlanet: defaultService.getPlanet,
+  getPublicCard: defaultService.getPublicCard
 };

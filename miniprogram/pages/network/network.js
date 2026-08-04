@@ -310,6 +310,8 @@ Page({
         graphScale: view.graphScale, graphX: view.graphX, graphY: view.graphY,
         childCursor: planet.page.next_cursor || ''
       });
+      if (grant) return this.loadNodeProfile(center).then(() => planet);
+      return planet;
     }).catch((error) => this.setData({ loading: false, error: error.message || '邀请关系读取失败' }));
   },
   toggleView(e) {
@@ -372,6 +374,30 @@ Page({
     const graph = { graphWidth: this.data.graphWidth, graphHeight: this.data.graphHeight, centerX: this.data.graphCenterX, centerY: this.data.graphCenterY };
     this.setData(fitView(graph, false));
   },
+  loadNodeProfile(node) {
+    if (!node || !node.public_id) return Promise.resolve(node);
+    return planetService.getPublicCard(node.public_id).then((profile) => {
+      const merge = (item) => {
+        if (!item || item.node_id !== node.node_id) return item;
+        return Object.assign({}, item, {
+          name: profile.name || item.name,
+          title: profile.title || item.title,
+          avatar: profile.avatar || item.avatar
+        });
+      };
+      const patch = {
+        graphNodes: (this.data.graphNodes || []).map(merge),
+        children: (this.data.children || []).map(merge),
+        displayChildren: (this.data.displayChildren || []).map(merge),
+        ancestors: (this.data.ancestors || []).map(merge)
+      };
+      if (this.data.selectedNode && this.data.selectedNode.node_id === node.node_id) patch.selectedNode = merge(this.data.selectedNode);
+      if (this.data.focusUser && this.data.focusUser.node_id === node.node_id) patch.focusUser = merge(this.data.focusUser);
+      if (this.data.viewerNode && this.data.viewerNode.node_id === node.node_id) patch.viewerNode = merge(this.data.viewerNode);
+      this.setData(patch);
+      return merge(node);
+    }).catch(() => node);
+  },
   selectNode(e) {
     const id = e.currentTarget.dataset.node;
     const selectedNode = this.data.graphNodes.find((node) => node.node_id === id);
@@ -398,6 +424,7 @@ Page({
       selectedNode, selectedPath,
       graphLinks: this.data.graphLinks.map((link) => Object.assign({}, link, { active: !!activeIds[link.id] }))
     });
+    return this.loadNodeProfile(selectedNode);
   },
   closeSelection() {
     this.setData({ selectedNode: null, selectedPath: '', graphLinks: this.data.graphLinks.map((link) => Object.assign({}, link, { active: false })) });
@@ -446,6 +473,7 @@ Page({
         graphScale: view.graphScale, graphX: view.graphX, graphY: view.graphY,
         stats: planet.stats, childCursor: planet.page.next_cursor || ''
       });
+      return this.loadNodeProfile(center);
     }).catch((error) => {
       this.setData({ focusLoading: false });
       wx.showToast({ title: error.message || '该用户的邀请关系读取失败', icon: 'none' });
@@ -476,6 +504,7 @@ Page({
     const node = candidates.find((item) => item.node_id === nodeId);
     const isAncestor = (this.data.ancestors || []).some((item) => item.node_id === nodeId);
     if (!node) return;
+    this.loadNodeProfile(node);
     wx.showActionSheet({
       itemList: PERSON_ACTIONS,
       success: (result) => {

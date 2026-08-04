@@ -90,6 +90,42 @@ test('loads invitation relationships without fetching public cards', async () =>
   assert.equal(cardCalls.length, 0);
 });
 
+test('loads one public card on demand and reuses successful results', async () => {
+  let calls = 0;
+  let resolveRequest;
+  const client = service.createPlanetService((path, options) => {
+    calls += 1;
+    assert.equal(path, '/api/auth/card/public?id=card-one');
+    assert.deepEqual(options, { method: 'GET', auth: false });
+    return new Promise((resolve) => { resolveRequest = resolve; });
+  });
+
+  const first = client.getPublicCard('card-one');
+  const second = client.getPublicCard('card-one');
+  await Promise.resolve();
+  assert.equal(calls, 1);
+  resolveRequest({ statusCode: 200, data: { card: { name: '按需姓名', avatar: '/avatar.jpg' } } });
+  assert.deepEqual(await first, { name: '按需姓名', title: '', avatar: '/avatar.jpg' });
+  assert.deepEqual(await second, { name: '按需姓名', title: '', avatar: '/avatar.jpg' });
+  assert.deepEqual(await client.getPublicCard('card-one'), { name: '按需姓名', title: '', avatar: '/avatar.jpg' });
+  assert.equal(calls, 1);
+});
+
+test('does not cache missing or failed public cards', async () => {
+  let calls = 0;
+  const client = service.createPlanetService(() => {
+    calls += 1;
+    if (calls === 1) return Promise.resolve({ statusCode: 404, data: {} });
+    if (calls === 2) return Promise.reject(new Error('timeout'));
+    return Promise.resolve({ statusCode: 200, data: { card: { name: '恢复成功' } } });
+  });
+
+  await assert.rejects(client.getPublicCard('retry-card'));
+  await assert.rejects(client.getPublicCard('retry-card'), /timeout/);
+  assert.equal((await client.getPublicCard('retry-card')).name, '恢复成功');
+  assert.equal(calls, 3);
+});
+
 test('returns the exact experience-tier permission message', async () => {
   const client = service.createPlanetService(() => Promise.resolve({
     statusCode: 403,
