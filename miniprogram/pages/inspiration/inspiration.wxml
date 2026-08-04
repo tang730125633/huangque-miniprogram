@@ -26,10 +26,13 @@
       <view class="card" wx:for="{{leftList}}" wx:key="id">
         <view class="card-media" style="height: {{item.height}}rpx;">
           <image wx:if="{{!item.imageFailed}}" class="card-img" src="{{item.img}}" mode="aspectFill" lazy-load
-            data-img="{{item.img}}" data-col="left" data-idx="{{index}}"
-            bindtap="previewImage" binderror="onImageError"></image>
+            data-id="{{item.id}}" data-col="left" data-idx="{{index}}"
+            bindtap="previewMedia" binderror="onImageError"></image>
           <view wx:else class="card-img card-fail"></view>
           <view class="card-grad"></view>
+          <view wx:if="{{item.type==='video'}}" class="video-badge" data-id="{{item.id}}" catchtap="previewMedia">
+            <text class="video-play">▶</text><text>视频</text>
+          </view>
           <view class="card-follow" catchtap="follow" data-id="{{item.id}}">跟创</view>
         </view>
         <view class="card-title">{{item.title}}</view>
@@ -44,10 +47,13 @@
       <view class="card" wx:for="{{rightList}}" wx:key="id">
         <view class="card-media" style="height: {{item.height}}rpx;">
           <image wx:if="{{!item.imageFailed}}" class="card-img" src="{{item.img}}" mode="aspectFill" lazy-load
-            data-img="{{item.img}}" data-col="right" data-idx="{{index}}"
-            bindtap="previewImage" binderror="onImageError"></image>
+            data-id="{{item.id}}" data-col="right" data-idx="{{index}}"
+            bindtap="previewMedia" binderror="onImageError"></image>
           <view wx:else class="card-img card-fail"></view>
           <view class="card-grad"></view>
+          <view wx:if="{{item.type==='video'}}" class="video-badge" data-id="{{item.id}}" catchtap="previewMedia">
+            <text class="video-play">▶</text><text>视频</text>
+          </view>
           <view class="card-follow" catchtap="follow" data-id="{{item.id}}">跟创</view>
         </view>
         <view class="card-title">{{item.title}}</view>
