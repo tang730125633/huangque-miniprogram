@@ -6,6 +6,7 @@
     "pages/inspiration/inspiration",
     "pages/assets/assets",
     "pages/profile/profile",
+    "pages/notifications/notifications",
     "pages/card/card",
     "pages/card-edit/card-edit",
     "pages/network/network",

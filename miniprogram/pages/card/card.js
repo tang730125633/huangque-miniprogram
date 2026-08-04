@@ -79,10 +79,10 @@ Page({
 
   loadMine(expectedId, code) {
     this._shareId = Number(this._shareId || 0) + 1;
-    if (!api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
+    if (!api.getCardToken() && !api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', shareReady: false });
-    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/card/me', { method: 'GET', cardAuth: true }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '你还没有完成名片');
       if (expectedId && data.card.public_id !== expectedId) { this.loadPublic(expectedId, code); return; }

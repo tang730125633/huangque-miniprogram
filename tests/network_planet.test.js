@@ -7,6 +7,40 @@ let pageDefinition;
 global.Page = function (definition) { pageDefinition = definition; };
 
 const network = require('../miniprogram/pages/network/network.js');
+const planetService = require('../miniprogram/services/invite-planet.js');
+const api = require('../miniprogram/utils/api.js');
+
+test('loads the granted user as the initial planet center', async () => {
+  const originalGetPlanet = planetService.getPlanet;
+  const originalGetToken = api.getToken;
+  let requestOptions;
+  api.getToken = () => 'token';
+  planetService.getPlanet = (options) => {
+    requestOptions = options;
+    return Promise.resolve({
+      viewer: { membership_tier: 'experience', can_explore_others: true },
+      center: { node_id: 'target', name: '目标用户', membership_tier: 'experience' },
+      upline: null,
+      downlines: [],
+      stats: { direct: 0, indirect: 0, total: 0 },
+      page: { next_cursor: '' }
+    });
+  };
+  const page = {
+    data: Object.assign({}, pageDefinition.data),
+    setData(change) { Object.assign(this.data, change); },
+    load: pageDefinition.load
+  };
+  try {
+    await pageDefinition.onLoad.call(page, { grant: 'grant/target' });
+    assert.deepEqual(requestOptions, { grant: 'grant/target', limit: 50 });
+    assert.equal(page.data.focusUser.name, '目标用户');
+    assert.equal(page.data.focusUser.is_viewer, false);
+  } finally {
+    planetService.getPlanet = originalGetPlanet;
+    api.getToken = originalGetToken;
+  }
+});
 
 test('maps the four membership identities and fails closed for nonmembers', () => {
   assert.deepEqual(network.membershipIdentity({ membership_tier: 'initiator', membership_status: 'active', membership_active: true }), { key: 'initiator', name: '发起人' });

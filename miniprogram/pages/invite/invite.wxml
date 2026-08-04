@@ -2,41 +2,31 @@
   <canvas canvas-id="cardShareCover" style="position:fixed;left:-600px;top:-500px;width:500px;height:400px;opacity:0;pointer-events:none;" />
   <view wx:if="{{loading}}" class="card loading-state">正在读取邀请数据…</view>
   <view wx:elif="{{error}}" class="card error-state">{{error}}</view>
-
   <block wx:else>
     <view class="card invite-code-card">
-      <view class="section-label">我的邀请码</view>
-      <view class="invite-code">{{code}}</view>
+      <view class="section-label">我的邀请码</view><view class="invite-code">{{code}}</view>
       <view class="invite-actions">
         <button wx:if="{{shareReady}}" class="action-button primary" open-type="share">分享我的名片，邀请好友</button>
         <button wx:else class="action-button primary" bindtap="goCardEdit">创建并公开名片</button>
         <button class="action-button" bindtap="copyCode">复制邀请码（备用）</button>
       </view>
-      <view class="share-guide">{{shareReady ? '点击上方按钮会打开微信好友列表；好友打开名片并完成注册后，会自动计入你的邀请关系。' : '完成并公开名片后，即可调用微信好友列表分享；好友注册会自动计入你的邀请关系。'}}</view>
+      <view class="share-guide">{{shareReady ? '点击上方按钮会打开微信好友列表；好友完成注册后，会自动计入你的邀请关系。' : '完成并公开名片后，即可分享给微信好友。'}}</view>
       <view wx:if="{{shareReady}}" class="preview-link" bindtap="openMyCard">先预览我的名片 ›</view>
     </view>
-
     <view class="stats-grid">
       <view class="stat-item"><text class="stat-value">{{stats.valid_invites || 0}}</text><text class="stat-label">有效直邀</text></view>
       <view class="stat-item"><text class="stat-value">{{stats.today_new || 0}}</text><text class="stat-label">今日新增</text></view>
       <view class="stat-item"><text class="stat-value">{{stats.indirect_invites || 0}}</text><text class="stat-label">二级邀请</text></view>
       <view class="stat-item reward"><text class="stat-value">{{rewardTotal}}</text><text class="stat-label">累计奖励点数</text></view>
     </view>
+    <view class="card referrer-card"><view class="section-label">推荐我的人</view><view wx:if="{{referrer}}" class="referrer-name">{{referrer.name}} <text class="muted">{{referrer.account_id}}</text></view><view wx:else class="muted">无推荐人</view></view>
 
-    <view class="card referrer-card">
-      <view class="section-label">推荐我的人</view>
-      <view wx:if="{{referrer}}" class="referrer-name">{{referrer.name}} <text class="muted">{{referrer.account_id}}</text></view>
-      <view wx:else class="muted">无推荐人</view>
+    <view class="section-title">我的下线</view>
+    <view wx:if="{{!downlines.length}}" class="card empty-state">暂无一级下线</view>
+    <view wx:for="{{downlines}}" wx:key="username" class="card downline-row" data-grant="{{item.node_grant}}" bindtap="openDownline">
+      <view class="downline-main"><view class="downline-name">{{item.username}}</view><view class="downline-tier">{{item.membership_name}}</view><view class="downline-reward">{{item.reward_text}}</view></view>
+      <button class="card-button" data-id="{{item.card_public_id}}" catchtap="openDownlineCard">名片</button>
     </view>
-
-    <view class="section-title">奖励记录</view>
-    <view wx:if="{{!rewards.length}}" class="card empty-state">暂无邀请奖励记录</view>
-    <view wx:for="{{rewards}}" wx:key="id" class="reward-row">
-      <view class="reward-info">
-        <view class="reward-title">{{item.title}}</view>
-        <view class="reward-meta">奖励仅计入独立台账</view>
-      </view>
-      <view class="reward-points">{{item.pointsText}}</view>
-    </view>
+    <view wx:if="{{nextCursor}}" class="load-more" bindtap="loadMore">{{loadingMore ? '加载中…' : '加载更多'}}</view>
   </block>
 </view>

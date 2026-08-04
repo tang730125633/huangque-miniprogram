@@ -1,5 +1,6 @@
 const api = require('../../utils/api.js');
 const pricing = require('../../utils/pricing.js');
+const inviteRewards = require('../../utils/invite-rewards.js');
 
 function wxLogin() {
   return new Promise(function (resolve, reject) {
@@ -309,7 +310,10 @@ const pageDefinition = {
         });
         this.paymentInFlight = false;
         wx.showToast({ title: packageId === EXPERIENCE_RENEWAL_PACKAGE_ID ? '续费成功' : (membershipPurchase ? '体验官已开通' : '点数已到账'), icon: 'success' });
-        if (membershipPurchase) this.refresh();
+        if (membershipPurchase) {
+          this.refresh();
+          inviteRewards.showNextRewardNotice();
+        }
         else this.refreshOrders(false);
       })
       .catch((err) => {

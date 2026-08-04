@@ -2,6 +2,7 @@ const api = require('../../utils/api.js');
 const cardUtil = require('../../utils/card.js');
 const invite = require('../../utils/invite.js');
 const pricing = require('../../utils/pricing.js');
+const notifications = require('../../utils/notifications.js');
 
 function ownerState(data) {
   data = data || {};
@@ -72,7 +73,7 @@ Page({
   },
 
   loadOwner(loadId) {
-    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/card/me', { method: 'GET', cardAuth: true }).then((res) => {
       if (loadId && loadId !== this._loadId) return;
       const data = res.data || {};
       if (res.statusCode === 404 || (res.statusCode === 200 && !data.card)) {
@@ -89,6 +90,7 @@ Page({
   showOwner(data, loadId) {
     if (loadId && loadId !== this._loadId) return;
     const next = ownerState(data);
+    notifications.checkLatest();
     this.setData(Object.assign({ state: 'owner', error: '', shareReady: false, shareImageUrl: '' }, next), () => {
       if (!next.published || !invite.validInviteCode(next.card.invite_code)) return;
       cardUtil.prepareShareImage(this, next.card).then((imageUrl) => {
@@ -129,6 +131,7 @@ Page({
     })).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200) throw new Error(data.detail || '微信授权失败');
+      if (data.card_token) api.setCardToken(data.card_token);
       api.clearCardBindIntent();
       wx.navigateTo({ url: '/pages/card-edit/card-edit' });
     }).catch((error) => this.setData({ binding: false, error: error.message || '微信授权失败' }));

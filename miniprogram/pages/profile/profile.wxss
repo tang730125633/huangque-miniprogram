@@ -22,6 +22,7 @@
   color: #ffd9ef; background: rgba(226,75,160,0.18);
   border: 1rpx solid rgba(226,75,160,0.5); font-size: 20rpx; font-weight: 600;
 }
+.unread-badge { min-width: 34rpx; padding: 3rpx 9rpx; border-radius: 999rpx; color: #fff; background: var(--error); font-size: 18rpx; line-height: 28rpx; text-align: center; }
 .membership-badge {
   padding: 5rpx 13rpx; border-radius: 999rpx; flex: none;
   color: #c6c1d1; background: rgba(255,255,255,0.05);

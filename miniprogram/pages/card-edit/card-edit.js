@@ -51,7 +51,7 @@ function uploadMediaRecord(filePath, field) {
     const video = /^work_video_[1-3]$/.test(field);
     if (!fs) { reject(new Error('当前微信版本不支持媒体上传')); return; }
     fs.readFile({ filePath, encoding: 'base64', success: (result) => {
-      api.request('/api/auth/card/media', { method: 'POST', data: { field, data: 'data:' + (video ? 'video/mp4' : 'image/jpeg') + ';base64,' + result.data }, timeout: video ? 120000 : 60000 })
+      api.request('/api/auth/card/media', { method: 'POST', cardAuth: true, data: { field, data: 'data:' + (video ? 'video/mp4' : 'image/jpeg') + ';base64,' + result.data }, timeout: video ? 120000 : 60000 })
         .then((res) => {
           const data = res.data || {};
           const url = data.url || (data.media && data.media.url);
@@ -134,7 +134,7 @@ Page({
 
   loadOwner() {
     this.setData({ anonymous: false, loading: true, loadFailed: false, error: '' });
-    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
+    return api.request('/api/auth/card/me', { method: 'GET', cardAuth: true }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '名片读取失败');
       const card = Object.assign(blankCard(), data.card, { privacy: cardUtil.privacy(data.card) });
@@ -264,6 +264,7 @@ Page({
     })).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200) throw new Error(data.detail || '微信名片授权失败');
+      if (data.card_token) api.setCardToken(data.card_token);
       api.clearCardBindIntent();
       this.setData({ wechatBound: true });
     });
@@ -279,7 +280,8 @@ Page({
         device_id: device.getDeviceId(),
         card: payload,
         invite_code: attribution ? attribution.code : undefined,
-        invite_attribution_token: attribution ? attribution.attribution_token : undefined
+        invite_attribution_token: attribution ? attribution.attribution_token : undefined,
+        separate_sessions: true
       }
     })).then((res) => {
       const data = res.data || {};
@@ -287,12 +289,12 @@ Page({
         cardUtil.clearValidAttribution();
         throw new Error('该手机号已有黄雀 AI 账号，请先用原账号登录，再绑定微信名片');
       }
-      if (res.statusCode !== 200 || !data.token) throw new Error(data.detail || '名片与黄雀 AI 开通失败');
-      api.setToken(data.token);
+      if (res.statusCode !== 200 || !data.card_token) throw new Error(data.detail || '名片与黄雀 AI 开通失败');
+      api.setCardToken(data.card_token);
       api.clearCardBindIntent();
       cardUtil.clearValidAttribution();
       if (data.created !== false) return data;
-      return api.request('/api/auth/card/me', { method: 'PUT', data: payload }).then((update) => {
+      return api.request('/api/auth/card/me', { method: 'PUT', cardAuth: true, data: payload }).then((update) => {
         const updated = update.data || {};
         if (update.statusCode !== 200) throw new Error(updated.detail || '恢复账号后保存名片失败');
         return Object.assign({}, data, { card: updated.card || payload });
@@ -320,7 +322,7 @@ Page({
     const wasAnonymous = this.data.anonymous;
     const request = wasAnonymous
       ? this.registerCard(payload)
-      : this.ensureWechatBound().then(() => api.request('/api/auth/card/me', { method: 'PUT', data: payload })).then((res) => {
+      : this.ensureWechatBound().then(() => api.request('/api/auth/card/me', { method: 'PUT', cardAuth: true, data: payload })).then((res) => {
         const data = res.data || {};
         if (res.statusCode !== 200) throw new Error(data.detail || '名片保存失败');
         return data;
@@ -401,13 +403,12 @@ Page({
       return;
     }
     this.setData({ loading: true, error: '' });
-    api.request('/api/auth/change_password', { method: 'POST', data: { old_password: oldPassword, new_password: newPassword } }).then((res) => {
+    api.request('/api/auth/change_password', { method: 'POST', cardAuth: true, data: { old_password: oldPassword, new_password: newPassword } }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200) throw new Error(data.detail || '修改密码失败');
-      api.clearToken();
       wx.showModal({
-        title: '密码已修改', content: '为保护账号，请使用新密码重新登录。', showCancel: false, confirmText: '重新登录',
-        success: () => wx.reLaunch({ url: '/pages/login/login?redirect=my-card' })
+        title: '密码已修改', content: '以后使用此名片账号登录黄雀 AI 工作台时，请使用新密码。', showCancel: false, confirmText: '知道了',
+        complete: () => this.setData({ loading: false, initialPassword: false, showPasswordForm: false, oldPassword: '', newPassword: '', confirmPassword: '' })
       });
     }).catch((error) => this.setData({ loading: false, error: error.message || '修改密码失败' }));
   },
@@ -419,9 +420,9 @@ Page({
   },
 
   publish(warning) {
-    if (!api.getToken()) { this.setData({ error: '请先完成注册再公开名片' }); return; }
+    if (!api.getCardToken() && !api.getToken()) { this.setData({ error: '请先完成注册再公开名片' }); return; }
     this.setData({ loading: true, error: '' });
-    api.request('/api/auth/card/publish', { method: 'POST' }).then((res) => {
+    api.request('/api/auth/card/publish', { method: 'POST', cardAuth: true }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !(data.public_id || (data.card && data.card.public_id))) throw new Error(data.detail || '公开名片失败');
       const id = data.public_id || data.card.public_id;
@@ -437,7 +438,7 @@ Page({
       success: (result) => {
         if (!result.confirm) return;
         this.setData({ loading: true, error: '' });
-        api.request('/api/auth/card/unpublish', { method: 'POST' }).then((res) => {
+        api.request('/api/auth/card/unpublish', { method: 'POST', cardAuth: true }).then((res) => {
           const data = res.data || {};
           if (res.statusCode !== 200) throw new Error(data.detail || '取消公开失败');
           this.setData({ loading: false, published: false });

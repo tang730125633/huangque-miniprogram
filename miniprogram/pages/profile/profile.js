@@ -9,7 +9,8 @@ Page({
     isAdmin: false,
     membership: membership.buildMembershipView({}),
     membershipPriceYuan: null,
-    membershipBonusPoints: null
+    membershipBonusPoints: null,
+    unreadCount: 0
   },
 
   onShow() {
@@ -21,6 +22,14 @@ Page({
       return;
     }
     this.refresh();
+    this.refreshNotifications();
+  },
+
+  refreshNotifications() {
+    api.request('/api/auth/notifications?limit=50', { method: 'GET' }).then((res) => {
+      const items = res.statusCode === 200 && res.data && Array.isArray(res.data.items) ? res.data.items : [];
+      this.setData({ unreadCount: items.filter((item) => !Number(item.read_at || 0)).length });
+    }).catch(() => {});
   },
 
   onHide() { pricing.stop(this); },
@@ -48,6 +57,7 @@ Page({
   goCard() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
   goNetwork() { wx.navigateTo({ url: '/pages/network/network' }); },
   goInvite() { wx.navigateTo({ url: '/pages/invite/invite' }); },
+  goNotifications() { wx.navigateTo({ url: '/pages/notifications/notifications' }); },
   goAdmin() {
     if (!this.data.isAdmin) return;
     wx.navigateTo({ url: '/pages/admin/admin' });
