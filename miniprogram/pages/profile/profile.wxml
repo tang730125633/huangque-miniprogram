@@ -53,6 +53,10 @@
   </view>
 
   <view class="card menu-card">
+    <view class="menu-item bordered" bindtap="goNotifications">
+      <view class="mi-left"><image class="mi-ic" src="../../assets/icons/warn.svg"></image><text>消息中心</text><text wx:if="{{unreadCount}}" class="unread-badge">{{unreadCount > 99 ? '99+' : unreadCount}}</text></view>
+      <text class="muted">›</text>
+    </view>
     <view class="menu-item bordered" bindtap="goCard">
       <view class="mi-left"><text>我的公开名片</text></view>
       <text class="muted">›</text>

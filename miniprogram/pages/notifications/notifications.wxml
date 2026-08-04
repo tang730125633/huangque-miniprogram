@@ -1,0 +1,33 @@
+<view class="container notification-page">
+  <view class="hero">
+    <view>
+      <view class="eyebrow">HUANGQUE MESSAGES</view>
+      <view class="title">消息中心</view>
+      <view class="subtitle">公告、系统通知和重要提醒都会保存在这里。</view>
+    </view>
+    <button wx:if="{{unreadCount}}" class="read-all" bindtap="markAllRead">全部已读</button>
+  </view>
+
+  <view class="subscribe-card">
+    <view class="subscribe-copy">
+      <view class="subscribe-title">微信公告提醒</view>
+      <view class="subscribe-detail" wx:if="{{subscriptionConfigured}}">已授权次数：{{subscriptionRemaining}} · 每次授权可接收一条公告</view>
+      <view class="subscribe-detail" wx:else>模板配置完成后即可开启微信提醒</view>
+    </view>
+    <button class="subscribe-button" disabled="{{!subscriptionConfigured || subscriptionBusy}}" loading="{{subscriptionBusy}}" bindtap="requestAnnouncementSubscription">开启提醒</button>
+  </view>
+
+  <view wx:if="{{loading}}" class="state">正在读取消息…</view>
+  <view wx:elif="{{error}}" class="state error" bindtap="load">{{error}} · 点击重试</view>
+  <view wx:elif="{{!items.length}}" class="state">还没有消息</view>
+  <view wx:else class="message-list">
+    <view class="message {{item.unread ? 'unread' : ''}}" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="openNotice">
+      <view class="message-mark"><view wx:if="{{item.unread}}" class="unread-dot"></view>{{item.kind === 'announcement' ? '公告' : '通知'}}</view>
+      <view class="message-body">
+        <view class="message-head"><view class="message-title">{{item.title}}</view><view class="message-time">{{item.timeText}}</view></view>
+        <view class="message-detail">{{item.detail}}</view>
+      </view>
+      <view class="message-arrow">›</view>
+    </view>
+  </view>
+</view>

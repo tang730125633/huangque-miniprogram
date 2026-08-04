@@ -1,4 +1,5 @@
 const invite = require('./utils/invite.js');
+const notifications = require('./utils/notifications.js');
 
 App({
   globalData: {
@@ -18,5 +19,6 @@ App({
   },
   onShow(options) {
     this._captureInvite(options);
+    notifications.checkLatest();
   }
 });
