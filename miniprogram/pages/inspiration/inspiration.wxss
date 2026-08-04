@@ -2,24 +2,61 @@ page { background: #050509; }
 .page { min-height: 100vh; background: #050509; }
 
 /* ===== 沉浸式头图 ===== */
-.header { position: relative; min-height: 330rpx; overflow: hidden; }
-.header-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-.header-fade {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 160rpx;
-  background: linear-gradient(transparent, #050509);
+.header { position: relative; min-height: 300rpx; box-sizing: border-box; overflow: hidden; }
+.header-bg {
+  position: absolute; top: -4%; left: -4%; width: 108%; height: 108%;
+  transform-origin: 68% 46%;
+  animation: header-breathe 14s ease-in-out infinite alternate;
 }
-.header-inner { position: relative; padding: 40rpx 28rpx 20rpx; }
+.header-motion,
+.header-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none;
+}
+.header-motion { z-index: 1; overflow: hidden; }
+.header-canvas { z-index: 2; opacity: .86; }
+.motion-ribbon {
+  position: absolute; left: -18%; width: 136%; height: 86rpx;
+  border-radius: 50%; opacity: .42;
+  background: linear-gradient(90deg, transparent 4%, rgba(244,38,151,.2) 22%, rgba(255,139,38,.62) 54%, rgba(255,221,142,.68) 70%, transparent 96%);
+  box-shadow: 0 0 34rpx rgba(255,104,34,.3), inset 0 0 24rpx rgba(255,225,158,.22);
+  transform-origin: center;
+}
+.motion-ribbon-a {
+  top: 39%;
+  animation: ribbon-flow-a 8.5s ease-in-out infinite alternate;
+}
+.motion-ribbon-b {
+  top: 54%; opacity: .24;
+  background: linear-gradient(90deg, transparent 8%, rgba(230,34,145,.42) 32%, rgba(255,100,32,.36) 58%, transparent 94%);
+  animation: ribbon-flow-b 11s ease-in-out infinite alternate-reverse;
+}
+.motion-glow {
+  position: absolute; width: 220rpx; height: 150rpx; left: 57%; top: 25%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,226,169,.32) 0%, rgba(255,104,39,.12) 38%, transparent 72%);
+  animation: glow-drift 6s ease-in-out infinite alternate;
+}
+.header-fade {
+  position: absolute; z-index: 3; left: 0; right: 0; bottom: -1rpx; height: 148rpx;
+  background: linear-gradient(180deg, rgba(5,5,9,0) 0%, rgba(5,5,9,.2) 30%, rgba(5,5,9,.76) 72%, #050509 100%);
+}
+.header-inner { position: relative; z-index: 4; padding: 34rpx 28rpx 10rpx; }
 .h-title { font-size: 48rpx; font-weight: 700; color: #fff; }
 .h-sub { font-size: 25rpx; color: rgba(255,255,255,0.72); margin-top: 12rpx; }
 
-.cat-bar { white-space: nowrap; margin-top: 30rpx; }
+.cat-bar { white-space: nowrap; margin-top: 24rpx; }
 .cat { display: inline-block; margin-right: 36rpx; text-align: center; }
 .cat text { font-size: 28rpx; color: rgba(255,255,255,0.55); }
 .cat.on text { color: #fff; font-weight: 600; font-size: 30rpx; }
 .cat-line { width: 40rpx; height: 4rpx; border-radius: 2rpx; background: #f229a6; margin: 10rpx auto 0; }
 
 /* ===== 瀑布流 ===== */
-.masonry { display: flex; padding: 24rpx 24rpx 0; gap: 16rpx; }
+.masonry {
+  position: relative; z-index: 5; display: flex;
+  margin-top: -4rpx; padding: 12rpx 24rpx 0; gap: 16rpx;
+  background: linear-gradient(180deg, rgba(5,5,9,.96), #050509 80rpx);
+}
 .masonry-col { flex: 1; width: 0; }
 
 .card {
@@ -57,3 +94,21 @@ page { background: #050509; }
 .empty { text-align: center; color: rgba(255,255,255,0.5); font-size: 26rpx; padding: 120rpx 0; }
 .more { text-align: center; color: rgba(255,255,255,0.4); font-size: 23rpx; padding: 24rpx 0 8rpx; }
 .bottom-safe { height: calc(150rpx + constant(safe-area-inset-bottom)); height: calc(150rpx + env(safe-area-inset-bottom)); }
+
+@keyframes header-breathe {
+  0% { transform: translate3d(-1.2%, 0, 0) scale(1.02); filter: brightness(.82) saturate(.92); }
+  100% { transform: translate3d(1.6%, -1.2%, 0) scale(1.09); filter: brightness(.98) saturate(1.14); }
+}
+@keyframes ribbon-flow-a {
+  0% { transform: translate3d(-8%, 16rpx, 0) rotate(-4deg) scaleX(.94); }
+  52% { transform: translate3d(2%, -7rpx, 0) rotate(2deg) scaleX(1.05); }
+  100% { transform: translate3d(9%, 10rpx, 0) rotate(-1deg) scaleX(.98); }
+}
+@keyframes ribbon-flow-b {
+  0% { transform: translate3d(7%, -9rpx, 0) rotate(3deg) scaleX(1.04); }
+  100% { transform: translate3d(-7%, 12rpx, 0) rotate(-3deg) scaleX(.95); }
+}
+@keyframes glow-drift {
+  0% { transform: translate3d(-28rpx, 14rpx, 0) scale(.82); opacity: .35; }
+  100% { transform: translate3d(42rpx, -18rpx, 0) scale(1.18); opacity: .76; }
+}

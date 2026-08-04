@@ -1,5 +1,6 @@
 const api = require('../../utils/api.js');
 const cardUtil = require('../../utils/card.js');
+const headerMotion = require('../../utils/inspiration-header-motion.js');
 const RAW = require('./inspirations-data.js');
 
 const IMG_BASE = 'https://huangquechuanmei.com/';
@@ -89,6 +90,10 @@ Page({
     this._applyCategory('全部');
   },
 
+  onReady() {
+    headerMotion.mount(this, '#inspirationHeaderCanvas');
+  },
+
   _setCategories() {
     const present = new Set(this._all.map((i) => i.category).filter(Boolean));
     const ordered = CATEGORY_ORDER.filter((c) => present.has(c));
@@ -97,9 +102,18 @@ Page({
   },
 
   onShow() {
+    headerMotion.resume(this);
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
     this._loadManagedCases();
+  },
+
+  onHide() {
+    headerMotion.pause(this);
+  },
+
+  onUnload() {
+    headerMotion.destroy(this);
   },
 
   onPullDownRefresh() {
