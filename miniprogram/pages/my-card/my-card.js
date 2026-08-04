@@ -1,6 +1,7 @@
 const api = require('../../utils/api.js');
 const cardUtil = require('../../utils/card.js');
 const invite = require('../../utils/invite.js');
+const pricing = require('../../utils/pricing.js');
 
 function ownerState(data) {
   data = data || {};
@@ -36,10 +37,12 @@ Page({
     workVideos: [],
     binding: false,
     shareReady: false,
-    shareImageUrl: ''
+    shareImageUrl: '',
+    inviteRewardPoints: null
   },
 
   onShow() {
+    pricing.watch(this, (prices) => this.setData({ inviteRewardPoints: pricing.commerce(prices).inviteRewardPoints }));
     const loadId = Number(this._loadId || 0) + 1;
     this._loadId = loadId;
     const tabBar = this.getTabBar && this.getTabBar();
@@ -48,6 +51,9 @@ Page({
     this.setData({ state: 'loading', error: '', binding: false, shareReady: false });
     this.loginByWechat(loadId);
   },
+
+  onHide() { pricing.stop(this); },
+  onUnload() { pricing.stop(this); },
 
   loginByWechat(loadId) {
     return cardUtil.loginCardSession().then((session) => {

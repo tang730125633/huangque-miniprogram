@@ -1,4 +1,5 @@
 const api = require('../../utils/api.js');
+const pricing = require('../../utils/pricing.js');
 
 function wxLogin() {
   return new Promise(function (resolve, reject) {
@@ -30,15 +31,28 @@ function requestVirtualPayment(params) {
   });
 }
 
-const MEMBERSHIP_PACKAGE = { id: 'membership_experience', product_id: 'hq_member_exp_1y', title: '开通一年体验官', benefit: '赠 1000 点', price_yuan: '499.00', amount: 499, points: 1000 };
-const EXPERIENCE_RENEWAL_PACKAGE = { id: 'membership_experience_renewal', product_type: 'membership_experience_renewal', order_type: 'membership_experience_renewal', title: '体验会员续费', benefit: '延长一年', price_yuan: '499.00', amount: 499, points: 0, membership_renewal: true };
+const MEMBERSHIP_PACKAGE_ID = 'membership_experience';
+const EXPERIENCE_RENEWAL_PACKAGE_ID = 'membership_experience_renewal';
 const MEMBERSHIP_NAMES = { experience: '体验官', partner: '合伙人', initiator: '发起人' };
+
+function membershipPackage(commerce) {
+  const amount = commerce && commerce.membershipPriceYuan;
+  const points = commerce && commerce.membershipBonusPoints;
+  if (!amount || !points) return null;
+  return { id: MEMBERSHIP_PACKAGE_ID, product_id: 'hq_member_exp_1y', title: '开通一年体验官', benefit: '赠 ' + points + ' 点', price_yuan: Number(amount).toFixed(2), amount, points };
+}
+
+function renewalPackage(commerce) {
+  const amount = commerce && commerce.membershipPriceYuan;
+  if (!amount) return null;
+  return { id: EXPERIENCE_RENEWAL_PACKAGE_ID, product_type: EXPERIENCE_RENEWAL_PACKAGE_ID, order_type: EXPERIENCE_RENEWAL_PACKAGE_ID, title: '体验会员续费', benefit: '延长一年', price_yuan: Number(amount).toFixed(2), amount, points: 0, membership_renewal: true };
+}
 
 function isMembershipActive(user) {
   return !!(user && user.membership_status === 'active' && user.membership_active);
 }
 
-function buildRechargeConfig(user, virtualConfig) {
+function buildRechargeConfig(user, virtualConfig, commerce) {
   const membershipActive = isMembershipActive(user);
   const config = virtualConfig || {};
   const discountBps = membershipActive ? Number(config.discount_bps || user.points_purchase_discount_bps || 10000) : 10000;
@@ -56,10 +70,10 @@ function buildRechargeConfig(user, virtualConfig) {
       price_yuan: item.price_yuan || (priceFen / 100).toFixed(2),
       show_discount: priceFen < listPriceFen
     });
-  }) : [MEMBERSHIP_PACKAGE];
+  }) : [membershipPackage(commerce)].filter(Boolean);
   const tier = user.membership_tier || config.membership_tier;
   const experienceRenewal = membershipActive && tier === 'experience';
-  if (experienceRenewal) packages = [EXPERIENCE_RENEWAL_PACKAGE].concat(packages);
+  if (experienceRenewal) packages = [renewalPackage(commerce)].filter(Boolean).concat(packages);
   return {
     membershipActive,
     membershipName,
@@ -69,7 +83,7 @@ function buildRechargeConfig(user, virtualConfig) {
     experienceRenewal,
     contactAdmin: membershipActive && (tier === 'partner' || tier === 'initiator'),
     custom: membershipActive ? (config.custom || null) : null,
-    configured: membershipActive ? !!config.configured : true,
+    configured: !!(commerce && commerce.membershipPriceYuan && commerce.membershipBonusPoints) && (membershipActive ? !!config.configured : true),
     environment: config.environment || 'production'
   };
 }
@@ -80,9 +94,9 @@ function paymentMode(packageId) {
 
 function virtualPaymentPayload(packageId, amount, code) {
   const data = { package_id: packageId, wx_code: code };
-  if (packageId === EXPERIENCE_RENEWAL_PACKAGE.id) {
-    data.product_type = EXPERIENCE_RENEWAL_PACKAGE.product_type;
-    data.order_type = EXPERIENCE_RENEWAL_PACKAGE.order_type;
+  if (packageId === EXPERIENCE_RENEWAL_PACKAGE_ID) {
+    data.product_type = EXPERIENCE_RENEWAL_PACKAGE_ID;
+    data.order_type = EXPERIENCE_RENEWAL_PACKAGE_ID;
   }
   if (packageId === 'custom_points') data.custom_amount_yuan = amount;
   return data;
@@ -116,16 +130,21 @@ const pageDefinition = {
       wx.reLaunch({ url: '/pages/login/login' });
       return;
     }
-    this.refresh();
   },
 
   onShow() {
-    if (api.getToken() && !this.data.loading) this.refreshOrders(true);
+    if (api.getToken()) pricing.watch(this, (prices) => this.refresh(prices), () => {
+      this.setData({ loading: false, configured: false, statusText: '价格读取失败，请稍后重试' });
+    });
   },
 
-  refresh() {
+  onHide() { pricing.stop(this); },
+  onUnload() { pricing.stop(this); },
+
+  refresh(prices) {
     this.setData({ loading: true, statusText: '' });
-    return api.request('/api/auth/me', { method: 'GET' }).then((me) => {
+    return Promise.all([api.request('/api/auth/me', { method: 'GET' }), prices ? Promise.resolve(prices) : pricing.load()]).then(([me, prices]) => {
+      const commerce = pricing.commerce(prices);
       const user = me.statusCode === 200 && me.data && me.data.user;
       if (user && (user.initial_password || user.must_change)) {
         this.setData({ loading: false, points: user.points });
@@ -133,14 +152,14 @@ const pageDefinition = {
         return;
       }
       if (!isMembershipActive(user)) {
-        const next = Object.assign({ loading: false }, buildRechargeConfig(user));
+        const next = Object.assign({ loading: false }, buildRechargeConfig(user, null, commerce));
         if (user) next.points = user.points;
         this.setData(next);
         return this.refreshOrders(true);
       }
       return api.request('/api/auth/virtual-pay/packages', { method: 'GET' }).then((packs) => {
         const virtualConfig = packs.statusCode === 200 && packs.data ? packs.data : {};
-        const next = Object.assign({ loading: false }, buildRechargeConfig(user, virtualConfig));
+        const next = Object.assign({ loading: false }, buildRechargeConfig(user, virtualConfig, commerce));
         next.points = user.points;
         if (!next.configured) {
           next.statusText = (packs.data && packs.data.detail) || '微信虚拟支付配置中，请稍后重试';
@@ -282,14 +301,14 @@ const pageDefinition = {
         return this.pollVirtualPaid(orderId, 8);
       })
       .then((result) => {
-        const membershipPurchase = packageId === MEMBERSHIP_PACKAGE.id || packageId === EXPERIENCE_RENEWAL_PACKAGE.id;
+        const membershipPurchase = packageId === MEMBERSHIP_PACKAGE_ID || packageId === EXPERIENCE_RENEWAL_PACKAGE_ID;
         this.setData({
           payingId: '',
           points: result.points === null || result.points === undefined ? this.data.points : result.points,
-          statusText: packageId === EXPERIENCE_RENEWAL_PACKAGE.id ? '体验会员已延长一年' : (membershipPurchase ? '体验官开通成功，赠送点数已到账' : '充值成功，点数已到账')
+          statusText: packageId === EXPERIENCE_RENEWAL_PACKAGE_ID ? '体验会员已延长一年' : (membershipPurchase ? '体验官开通成功，赠送点数已到账' : '充值成功，点数已到账')
         });
         this.paymentInFlight = false;
-        wx.showToast({ title: packageId === EXPERIENCE_RENEWAL_PACKAGE.id ? '续费成功' : (membershipPurchase ? '体验官已开通' : '点数已到账'), icon: 'success' });
+        wx.showToast({ title: packageId === EXPERIENCE_RENEWAL_PACKAGE_ID ? '续费成功' : (membershipPurchase ? '体验官已开通' : '点数已到账'), icon: 'success' });
         if (membershipPurchase) this.refresh();
         else this.refreshOrders(false);
       })
@@ -370,5 +389,5 @@ Page(pageDefinition);
 
 if (typeof module !== 'undefined') module.exports = {
   buildRechargeConfig, paymentMode, virtualPaymentPayload, isMiniProgramWxPayOrder,
-  MEMBERSHIP_PACKAGE, EXPERIENCE_RENEWAL_PACKAGE, pageDefinition
+  membershipPackage, renewalPackage, MEMBERSHIP_PACKAGE_ID, EXPERIENCE_RENEWAL_PACKAGE_ID, pageDefinition
 };

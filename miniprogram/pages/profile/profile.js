@@ -1,15 +1,19 @@
 const api = require('../../utils/api.js');
 const membership = require('../../utils/membership.js');
+const pricing = require('../../utils/pricing.js');
 
 Page({
   data: {
     user: {},
     initial: '黄',
     isAdmin: false,
-    membership: membership.buildMembershipView({})
+    membership: membership.buildMembershipView({}),
+    membershipPriceYuan: null,
+    membershipBonusPoints: null
   },
 
   onShow() {
+    pricing.watch(this, (prices) => this.setData(pricing.commerce(prices)));
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
     if (!api.getToken()) {
@@ -18,6 +22,9 @@ Page({
     }
     this.refresh();
   },
+
+  onHide() { pricing.stop(this); },
+  onUnload() { pricing.stop(this); },
 
   refresh() {
     api.request('/api/auth/me', { method: 'GET' }).then((res) => {
