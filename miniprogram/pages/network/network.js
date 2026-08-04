@@ -310,7 +310,6 @@ Page({
         graphScale: view.graphScale, graphX: view.graphX, graphY: view.graphY,
         childCursor: planet.page.next_cursor || ''
       });
-      if (grant) return this.loadNodeProfile(center).then(() => planet);
       return planet;
     }).catch((error) => this.setData({ loading: false, error: error.message || '邀请关系读取失败' }));
   },
@@ -473,7 +472,7 @@ Page({
         graphScale: view.graphScale, graphX: view.graphX, graphY: view.graphY,
         stats: planet.stats, childCursor: planet.page.next_cursor || ''
       });
-      return this.loadNodeProfile(center);
+      return planet;
     }).catch((error) => {
       this.setData({ focusLoading: false });
       wx.showToast({ title: error.message || '该用户的邀请关系读取失败', icon: 'none' });
