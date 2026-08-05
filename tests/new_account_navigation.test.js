@@ -120,14 +120,16 @@ function context(definition) {
   assert.strictEqual(wechatChecked, true);
 
   storage.hq_token = 'workbench-account';
-  api.request = (requestPath) => Promise.resolve(requestPath === '/api/auth/me'
-    ? { statusCode: 200, data: { user: { points: 100, membership_active: false }, membership_enforcement_enabled: true } }
-    : { statusCode: 200, data: { card: { name: '林知夏', title: '主理人', company: '黄雀', phone: '13800138000', wechat_bound: true }, wechat_bound: true } });
+  const workbenchRequests = [];
+  api.request = (requestPath) => {
+    workbenchRequests.push(requestPath);
+    return Promise.resolve({ statusCode: 200, data: { user: { points: 100, membership_active: false }, membership_enforcement_enabled: true } });
+  };
   let home = context(homeDefinition);
   await home.ensureWorkbenchSession.call(home);
   assert.strictEqual(home.data.membershipReady, true);
-  assert.strictEqual(home.data.cardReady, true);
   assert.strictEqual(home.data.points, 100);
+  assert.deepStrictEqual(workbenchRequests, ['/api/auth/me']);
 
   api.request = () => Promise.reject(new Error('offline'));
   home = context(homeDefinition);

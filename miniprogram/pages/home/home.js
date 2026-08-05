@@ -1,5 +1,4 @@
 const api = require('../../utils/api.js');
-const cardUtil = require('../../utils/card.js');
 const pricing = require('../../utils/pricing.js');
 
 const VIDEO_FROM_KEYS = [
@@ -15,7 +14,6 @@ Page({
     membershipActive: false,
     membershipEnforced: false,
     membershipReady: false,
-    cardReady: false,
     accountStateError: false,
     videoEntryChecking: false,
     videoIp12PromptVisible: false,
@@ -95,11 +93,6 @@ Page({
       return null;
     }
     if (!this.data.membershipReady) { wx.showToast({ title: '正在加载账号权益', icon: 'none' }); this.ensureWorkbenchSession(); return null; }
-    if (!this.data.cardReady) {
-      wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
-      wx.switchTab({ url: '/pages/my-card/my-card' });
-      return null;
-    }
     if (this.data.membershipEnforced && !this.data.membershipActive) {
       api.showMembershipRequired();
       return null;
@@ -180,13 +173,13 @@ Page({
 
   ensureWorkbenchSession() {
     if (this._sessionPromise) return this._sessionPromise;
-    this.setData({ membershipReady: false, cardReady: false, accountStateError: false });
+    this.setData({ membershipReady: false, accountStateError: false });
     if (!api.getToken()) {
-      this.setData({ points: null, membershipReady: true, cardReady: false });
+      this.setData({ points: null, membershipReady: true });
       return Promise.resolve({ state: 'logged-out' });
     }
     this._sessionPromise = this.refreshPoints().catch(() => {
-      this.setData({ points: null, membershipReady: true, cardReady: false, accountStateError: true });
+      this.setData({ points: null, membershipReady: true, accountStateError: true });
       return null;
     }).finally(() => {
       this._sessionPromise = null;
@@ -195,24 +188,18 @@ Page({
   },
 
   refreshPoints() {
-    return Promise.all([
-      api.request('/api/auth/me', { method: 'GET' }),
-      api.request('/api/auth/card/me', { method: 'GET' })
-    ]).then(([res, cardRes]) => {
+    return api.request('/api/auth/me', { method: 'GET' }).then((res) => {
       if (res.statusCode !== 200 || !res.data || !res.data.user) throw new Error('账号状态读取失败');
-      const ownerCard = cardRes.statusCode === 200 && cardRes.data && cardRes.data.card || {};
-      const cardReady = cardUtil.isComplete(ownerCard) && !!(cardRes.data && (cardRes.data.wechat_bound || ownerCard.wechat_bound));
       this.setData({
         points: res.data.user.points,
         membershipActive: !!res.data.user.membership_active,
         membershipEnforced: !!res.data.membership_enforcement_enabled,
         membershipReady: true,
-        cardReady,
         accountStateError: false
       });
-      return { cardReady };
+      return res.data.user;
     }).catch(() => {
-      this.setData({ membershipReady: true, cardReady: false, accountStateError: true });
+      this.setData({ membershipReady: true, accountStateError: true });
       return null;
     });
   }

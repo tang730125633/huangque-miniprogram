@@ -530,26 +530,23 @@ require('node:test')('registering a draft card publishes it before redirecting',
   assert.doesNotMatch(registrationModal.content, /100 点已到账/);
 });
 
-require('node:test')('follow-create requires a complete WeChat-bound card', async () => {
+require('node:test')('follow-create requires only a logged-in workbench account', async () => {
   let inspirationDefinition;
   global.Page = function (definition) { inspirationDefinition = definition; };
   delete require.cache[require.resolve('../miniprogram/pages/inspiration/inspiration.js')];
   require('../miniprogram/pages/inspiration/inspiration.js');
-  api.getToken = () => 'token';
-  const tabs = [];
   const pages = [];
   global.wx.showToast = function () {};
-  global.wx.switchTab = ({ url }) => tabs.push(url);
   global.wx.navigateTo = ({ url }) => pages.push(url);
   const context = { _all: [{ id: 'case-1', prompt: '测试提示', engineKey: 'nb2' }] };
-  api.request = () => Promise.resolve({ statusCode: 200, data: { card: { name: '王小明', title: '设计师', company: '黄雀', phone: '13800138000' }, wechat_bound: false } });
-  await inspirationDefinition.follow.call(context, { currentTarget: { dataset: { id: 'case-1' } } });
-  assert.deepStrictEqual(tabs, ['/pages/my-card/my-card']);
-  assert.deepStrictEqual(pages, []);
 
-  api.request = () => Promise.resolve({ statusCode: 200, data: { card: { name: '王小明', title: '设计师', company: '黄雀', phone: '13800138000' }, wechat_bound: true } });
+  api.getToken = () => '';
+  inspirationDefinition.follow.call(context, { currentTarget: { dataset: { id: 'case-1' } } });
+  assert.deepStrictEqual(pages, ['/pages/login/login']);
+
+  api.getToken = () => 'token';
   await inspirationDefinition.follow.call(context, { currentTarget: { dataset: { id: 'case-1' } } });
-  assert.deepStrictEqual(pages, ['/pages/banana/banana']);
+  assert.deepStrictEqual(pages, ['/pages/login/login', '/pages/banana/banana']);
 });
 
 let networkDefinition;
