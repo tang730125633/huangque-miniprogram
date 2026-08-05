@@ -10,6 +10,7 @@
   font-size: 62rpx; font-weight: 600; letter-spacing: 12rpx;
 }
 .invite-actions { display: flex; flex-direction: column; gap: 16rpx; }
+.primary-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14rpx; }
 .action-button {
   width: 100%; min-width: 0; min-height: 84rpx; margin: 0; padding: 18rpx 20rpx;
   box-sizing: border-box; display: flex; align-items: center; justify-content: center;
