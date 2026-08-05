@@ -1,5 +1,4 @@
 const api = require('../../utils/api.js');
-const cardUtil = require('../../utils/card.js');
 const RAW = require('./inspirations-data.js');
 
 const IMG_BASE = 'https://huangquechuanmei.com/';
@@ -210,19 +209,10 @@ Page({
     const item = this._all.find((i) => String(i.id) === String(id));
     if (!item) return;
     if (!api.getToken()) { wx.navigateTo({ url: '/pages/login/login' }); return; }
-    return api.request('/api/auth/card/me', { method: 'GET' }).then((res) => {
-      const data = res.data || {};
-      const ownerCard = data.card || {};
-      if (res.statusCode !== 200 || !cardUtil.isComplete(ownerCard) || !(data.wechat_bound || ownerCard.wechat_bound)) {
-        wx.showToast({ title: '请先完善并绑定微信名片', icon: 'none' });
-        wx.switchTab({ url: '/pages/my-card/my-card' });
-        return;
-      }
-      const target = followTarget(item);
-      if (this._track) this._track('click', item.id);
-      wx.setStorageSync(target.storageKey, target.storageValue);
-      wx.navigateTo({ url: target.url });
-    }).catch(() => wx.showToast({ title: '名片状态读取失败', icon: 'none' }));
+    const target = followTarget(item);
+    if (this._track) this._track('click', item.id);
+    wx.setStorageSync(target.storageKey, target.storageValue);
+    wx.navigateTo({ url: target.url });
   }
 });
 
