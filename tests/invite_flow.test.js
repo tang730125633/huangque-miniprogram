@@ -27,6 +27,7 @@ const loginWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login
 const profileWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/profile.wxml'), 'utf8');
 const inviteJs = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.js'), 'utf8');
 const inviteWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.wxml'), 'utf8');
+const inviteWxss = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/invite.wxss'), 'utf8');
 
 assert.ok(appJson.pages.includes('pages/invite/invite'));
 assert.match(loginJs, /device_id: device\.getDeviceId\(\)/);
@@ -61,8 +62,12 @@ assert.match(inviteWxml, /data-share-type="link"/);
 assert.match(inviteWxml, /data-share-type="card"/);
 assert.match(inviteWxml, /promptCardInvite/);
 assert.match(inviteWxml, /class="invite-action-grid"/);
+assert.strictEqual((inviteWxml.match(/class="invite-action-item"/g) || []).length, 2);
 assert.match(inviteWxml, /class="copy-code-button"/);
 assert.doesNotMatch(inviteWxml, /bindtap="copyLink"/);
+assert.match(inviteWxss, /\.invite-action-grid\s*\{[^}]*display:\s*flex/);
+assert.match(inviteWxss, /\.invite-action-item\s*\{[^}]*flex:\s*1[^}]*min-width:\s*0/);
+assert.match(inviteWxss, /\.action-button\s*\{[^}]*max-width:\s*100%/);
 assert.ok(fs.existsSync(path.join(root, 'miniprogram/assets/share/invite-card.jpg')));
 
 let invitePage;

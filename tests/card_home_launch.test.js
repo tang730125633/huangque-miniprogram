@@ -35,7 +35,7 @@ assert.deepStrictEqual(launches, []);
 
 const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../miniprogram/app.json'), 'utf8'));
 const homeWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/home/home.wxml'), 'utf8');
-assert.match(homeWxml, /版本 v0\.075/);
+assert.match(homeWxml, /版本 v0\.076/);
 assert.strictEqual(appJson.pages[0], 'pages/home/home');
 assert.deepStrictEqual(appJson.tabBar.list.map((item) => item.pagePath), [
   'pages/home/home',
