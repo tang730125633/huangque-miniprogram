@@ -26,9 +26,9 @@ api.navigateAfterLogin('', '/pages/my-card/my-card');
 assert.deepStrictEqual(calls, [
   ['redirectTo', { url: '/pages/ip12/ip12' }],
   ['switchTab', { url: '/pages/profile/profile' }],
-  ['switchTab', { url: '/pages/my-card/my-card' }]
+  ['redirectTo', { url: '/pages/my-card/my-card' }]
 ]);
-assert.strictEqual(api.hasCardBindIntent(), true);
+assert.strictEqual(api.hasCardBindIntent(), false);
 assert.strictEqual(storage.hq_card_bind_intent, undefined);
 api.clearCardBindIntent();
 assert.strictEqual(api.hasCardBindIntent(), false);
@@ -58,7 +58,7 @@ api.request('/api/gen/digital-ip/projects').then(() => {
 }).then(() => {
   assert.deepStrictEqual(calls.map((item) => [item[0], item[1].url]), [
     ['reLaunch', '/pages/login/login?redirect=ip12'],
-    ['reLaunch', '/pages/my-card/my-card']
+    ['reLaunch', '/pages/login/login?redirect=my-card']
   ]);
   console.log('ip12 and card login return checks passed');
 });

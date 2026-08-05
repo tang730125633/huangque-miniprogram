@@ -12,6 +12,7 @@ global.wx = {
   login({ success }) { success({ code: 'wx-code' }); },
   hideShareMenu() {},
   navigateTo({ url }) { navigation.push(url); },
+  redirectTo({ url }) { navigation.push(url); },
   navigateBack() { navigation.push('back'); },
   switchTab({ url, success }) { navigation.push(url); if (success) success(); },
   showToast() {}
@@ -51,38 +52,23 @@ function context(definition) {
   assert.strictEqual(storage.hq_token, undefined);
   assert.strictEqual(storage.hq_card_token, 'card-token');
 
-  let cardLoginOptions;
-  storage.hq_token = 'stale-account-token';
+  let cardRequest;
+  storage.hq_token = 'account-token';
   api.request = (path, options) => {
-    cardLoginOptions = { path, options };
-    return Promise.resolve({ statusCode: 404, data: { code: 'card_unbound' } });
+    cardRequest = { path, options };
+    return Promise.resolve({ statusCode: 404, data: { code: 'card_not_found' } });
   };
   let page = context(myCardDefinition);
-  await page.loginByWechat.call(page);
-  assert.strictEqual(page.data.state, 'guest');
-  assert.strictEqual(storage.hq_token, 'stale-account-token');
-  assert.strictEqual(cardLoginOptions.path, '/api/auth/miniprogram/card-session');
-  assert.strictEqual(cardLoginOptions.options.auth, false);
+  await page.loadOwner.call(page);
+  assert.strictEqual(page.data.state, 'missing');
+  assert.strictEqual(cardRequest.path, '/api/auth/card/me?create=0');
+  assert.strictEqual(cardRequest.options.cardAuth, undefined);
 
-  storage.hq_token = 'explicit-ai-login';
-  api.markCardBindIntent();
-  for (let visit = 0; visit < 2; visit += 1) {
-    let ownerLoaded = false;
-    page = context(myCardDefinition);
-    page.loadOwner = () => { ownerLoaded = true; return Promise.resolve(); };
-    await page.loginByWechat.call(page);
-    assert.strictEqual(ownerLoaded, true);
-    assert.strictEqual(storage.hq_token, 'explicit-ai-login');
-    assert.strictEqual(api.hasCardBindIntent(), true);
-  }
-
-  api.request = () => Promise.resolve({ statusCode: 200, data: { card_token: 'current-wechat-card-token', card: { name: '当前微信' } } });
+  api.request = () => Promise.resolve({ statusCode: 200, data: { card: { name: '当前账号' } } });
   page = context(myCardDefinition);
-  await page.loginByWechat.call(page);
+  await page.loadOwner.call(page);
   assert.strictEqual(page.data.state, 'owner');
-  assert.strictEqual(storage.hq_token, 'explicit-ai-login');
-  assert.strictEqual(storage.hq_card_token, 'current-wechat-card-token');
-  assert.strictEqual(api.hasCardBindIntent(), false);
+  assert.strictEqual(storage.hq_token, 'account-token');
 
   const originalPrepareShareImage = card.prepareShareImage;
   let resolveOldShare;
@@ -103,21 +89,17 @@ function context(definition) {
   assert.strictEqual(page.data.shareImageUrl, 'new-share.jpg');
   card.prepareShareImage = originalPrepareShareImage;
 
-  api.request = () => Promise.resolve({ statusCode: 404, data: { code: 'card_not_found' } });
+  let ownerLoaded = false;
   page = context(myCardDefinition);
-  await page.loadOwner.call(page);
-  assert.strictEqual(page.data.state, 'owner');
-  assert.strictEqual(page.data.wechatBound, false);
-  assert.strictEqual(page.data.complete, false);
-
-  let tabSynced = false;
-  let wechatChecked = false;
-  page = context(myCardDefinition);
-  page.getTabBar = () => ({ syncNavigation() { tabSynced = true; } });
-  page.loginByWechat = () => { wechatChecked = true; };
+  page.loadOwner = () => { ownerLoaded = true; return Promise.resolve(); };
   page.onShow.call(page);
-  assert.strictEqual(tabSynced, true);
-  assert.strictEqual(wechatChecked, true);
+  assert.strictEqual(ownerLoaded, true);
+
+  delete storage.hq_token;
+  navigation.length = 0;
+  page = context(myCardDefinition);
+  page.onShow.call(page);
+  assert.deepStrictEqual(navigation, ['/pages/login/login?redirect=my-card']);
 
   storage.hq_token = 'workbench-account';
   const workbenchRequests = [];
@@ -145,30 +127,23 @@ function context(definition) {
   assert.strictEqual(home.data.membershipReady, true);
   assert.deepStrictEqual(navigation, []);
 
-  const originalCardAccountLogin = card.loginCardAccount;
-  card.loginCardAccount = () => Promise.resolve({ token: 'card-account-token' });
-  let login = context(loginDefinition);
-  login.data.agreed = true;
-  await login.loginWithCard.call(login);
-  assert.strictEqual(login.data.cardLoading, false);
-  assert.strictEqual(navigation.pop(), '/pages/home/home');
-  card.loginCardAccount = originalCardAccountLogin;
-
   navigation.length = 0;
   global.getCurrentPages = () => [{}, {}];
-  login = context(loginDefinition);
+  let login = context(loginDefinition);
   login.close.call(login);
   global.getCurrentPages = () => [{}];
   login.close.call(login);
   login.data.loading = true;
   login.close.call(login);
-  assert.deepStrictEqual(navigation, ['back', '/pages/my-card/my-card']);
+  assert.deepStrictEqual(navigation, ['back', '/pages/home/home']);
 
-  ['my-card', 'home', 'inspiration', 'assets', 'profile'].forEach((name) => {
+  ['home', 'inspiration', 'assets', 'profile'].forEach((name) => {
     const source = fs.readFileSync(`miniprogram/pages/${name}/${name}.js`, 'utf8');
     assert.match(source, /getTabBar/);
     assert.match(source, /syncNavigation/);
   });
+  assert.doesNotMatch(fs.readFileSync('miniprogram/pages/my-card/my-card.js', 'utf8'), /getTabBar|syncNavigation|loginCardSession|wechat\/bind/);
+  assert.doesNotMatch(fs.readFileSync('miniprogram/pages/login/login.js', 'utf8'), /loginCardAccount|loginWithCard|openCardRegistration/);
   assert.deepStrictEqual(JSON.parse(fs.readFileSync('miniprogram/pages/my-card/my-card.json', 'utf8')).usingComponents, {});
   assert.match(fs.readFileSync('miniprogram/pages/card-edit/card-edit.js', 'utf8'), /checkWechatSession/);
 

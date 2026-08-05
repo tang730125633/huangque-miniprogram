@@ -2,18 +2,10 @@
   <view class="login-close" bindtap="close">关闭</view>
   <view class="brand">
     <text class="brand-title gold">黄雀 AI 工作台</text>
-    <text class="brand-sub muted">请选择本次使用的账号</text>
+    <text class="brand-sub muted">登录你的黄雀 AI 账号</text>
   </view>
 
   <view class="card">
-    <view class="login-method-title">使用我的名片账号</view>
-    <view class="login-scope-note">使用当前微信名片所绑定的黄雀账号登录工作台。退出后不会自动再次登录。</view>
-    <view class="btn-card {{(cardLoading || loading || !agreed)?'disabled':''}}" bindtap="loginWithCard">
-      {{cardLoading ? '正在确认微信名片…' : '使用名片账号登录'}}
-    </view>
-
-    <view class="login-divider"><text>或手动登录其他账号</text></view>
-
     <view class="field">
       <text class="field-label">账号</text>
       <input class="input" type="text" placeholder="请输入账号" placeholder-class="ph"
@@ -48,11 +40,10 @@
       <view class="voiceprint-agreement-copy">登录不代表声纹授权。仅当你主动使用声音克隆或上传口播音频时，系统才会再次弹窗，并要求单独勾选同意；未授权不会采集或上传声音，也不影响登录及其他功能。</view>
     </view>
 
-    <view class="btn-primary {{(loading || cardLoading || !agreed)?'disabled':''}}" bindtap="submit">
+    <view class="btn-primary {{(loading || !agreed)?'disabled':''}}" bindtap="submit">
       {{loading ? '请稍候…' : '登录'}}
     </view>
-    <view class="card-register-link" bindtap="openCardRegistration">还没有账号？先创建我的名片</view>
   </view>
 
-  <view class="foot muted">密码只能在微信授权后的名片编辑页修改</view>
+  <view class="foot muted">登录后可在“我的”页面使用名片等账户功能</view>
 </view>

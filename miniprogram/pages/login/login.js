@@ -1,6 +1,5 @@
 const api = require('../../utils/api.js');
 const device = require('../../utils/device.js');
-const cardUtil = require('../../utils/card.js');
 
 Page({
   data: {
@@ -9,7 +8,6 @@ Page({
     redirect: '',
     agreed: false,
     loading: false,
-    cardLoading: false,
     err: ''
   },
   onLoad(options) {
@@ -18,12 +16,11 @@ Page({
   },
   onUsername(e) { this.setData({ username: e.detail.value }); },
   onPassword(e) { this.setData({ password: e.detail.value }); },
-  openCardRegistration() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
   close() {
-    if (this.data && (this.data.loading || this.data.cardLoading)) return;
+    if (this.data && this.data.loading) return;
     const pages = getCurrentPages();
     if (pages.length > 1) wx.navigateBack();
-    else wx.switchTab({ url: '/pages/my-card/my-card' });
+    else wx.switchTab({ url: '/pages/home/home' });
   },
   onAgreementChange(e) {
     const values = (e.detail && e.detail.value) || [];
@@ -38,21 +35,8 @@ Page({
     wx.openPrivacyContract({ fail: fallback });
   },
 
-  loginWithCard() {
-    if (this.data.loading || this.data.cardLoading) return;
-    if (!this.data.agreed) {
-      this.setData({ err: '请先阅读并勾选《用户服务协议》和《隐私保护指引》' });
-      return;
-    }
-    this.setData({ cardLoading: true, err: '' });
-    cardUtil.loginCardAccount().then(() => {
-      this.setData({ cardLoading: false });
-      api.navigateAfterLogin(this.data.redirect, '/pages/home/home');
-    }).catch((error) => this.setData({ cardLoading: false, err: error.message || '名片账号登录失败' }));
-  },
-
   submit() {
-    if (this.data.loading || this.data.cardLoading) return;
+    if (this.data.loading) return;
     const username = (this.data.username || '').trim();
     const password = this.data.password || '';
     if (!username || !password) {
@@ -77,7 +61,7 @@ Page({
             return;
           }
           api.setToken(token);
-          api.navigateAfterLogin(this.data.redirect, '/pages/my-card/my-card');
+          api.navigateAfterLogin(this.data.redirect, '/pages/home/home');
         } else {
           this.setData({ err: d.detail || ('请求失败（' + res.statusCode + '）') });
         }

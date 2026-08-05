@@ -159,10 +159,9 @@ assert.strictEqual(recharge.buildRechargeConfig({ membership_status: 'active', m
 const root = path.resolve(__dirname, '..');
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
 ['pages/my-card/my-card', 'pages/card/card', 'pages/card-edit/card-edit', 'pages/network/network'].forEach((page) => assert.ok(appJson.pages.includes(page)));
-assert.strictEqual(appJson.pages[0], 'pages/my-card/my-card');
+assert.strictEqual(appJson.pages[0], 'pages/home/home');
 assert.strictEqual(appJson.tabBar.custom, true);
 assert.deepStrictEqual(appJson.tabBar.list.map((item) => [item.pagePath, item.text]), [
-  ['pages/my-card/my-card', '我的名片'],
   ['pages/home/home', '黄雀AI工作台'],
   ['pages/inspiration/inspiration', '一键跟创'],
   ['pages/assets/assets', '历史作品'],
@@ -192,7 +191,6 @@ const loginWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/login/login
 const cardUtilSource = fs.readFileSync(path.join(root, 'miniprogram/utils/card.js'), 'utf8');
 const customTabBar = require('../miniprogram/custom-tab-bar/index.js');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
-assert.match(myCardPage, /openAccount\(\) \{ wx\.switchTab\(\{ url: '\/pages\/profile\/profile' \}\); \}/);
 assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
 assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
 assert.match(publicCard, /auth: false/);
@@ -214,9 +212,8 @@ assert.match(publicCardWxml, /分享我的名片，邀请好友/);
 assert.doesNotMatch(publicCardWxml, /分享这张名片/);
 assert.match(publicCardWxml, /重新加载/);
 assert.doesNotMatch(publicCardWxml, /初始密码|登录账号|黄雀 AI 登录信息/);
-assert.doesNotMatch(loginPage, /miniprogram-register|buildRegistrationPayload/);
-assert.doesNotMatch(loginWxml, /注册并登录|邀请码（选填）|新用户注册即送/);
-assert.match(loginWxml, /先创建我的名片/);
+assert.doesNotMatch(loginPage, /miniprogram-register|buildRegistrationPayload|loginCardAccount|loginWithCard/);
+assert.doesNotMatch(loginWxml, /注册并登录|邀请码（选填）|新用户注册即送|名片账号|先创建我的名片/);
 assert.match(publicCard, /card-edit\/card-edit\?source=invite/);
 assert.match(editCard, /card\.privacy\.phone/);
 assert.match(editCard, /card\.privacy\.email/);
@@ -312,10 +309,12 @@ assert.doesNotMatch(profilePage, /goInvite\(\)[\s\S]*membership\.status/);
 assert.match(cardUtilSource, /\/api\/auth\/miniprogram\/card-session/);
 assert.match(cardUtilSource, /\/api\/auth\/miniprogram\/card-account-login/);
 assert.match(cardUtilSource, /auth: false/);
-assert.match(myCardPage, /\/api\/auth\/card\/wechat\/bind/);
 assert.match(cardUtilSource, /card_unbound/);
-assert.match(myCardPage, /if \(this\.data\.binding\) return/);
-assert.match(myCardWxml, /已有黄雀 AI 账号/);
+assert.match(myCardPage, /\/api\/auth\/card\/me\?create=0/);
+assert.doesNotMatch(myCardPage, /loginCardSession|\/api\/auth\/card\/wechat\/bind|binding|loginExisting/);
+assert.match(myCardWxml, /state === 'missing'/);
+assert.match(myCardWxml, /创建我的名片/);
+assert.doesNotMatch(myCardWxml, /微信绑定|已有黄雀 AI 账号|自动开通黄雀 AI/);
 assert.match(myCardWxml, /我的名片/);
 assert.match(myCardWxml, /公开中/);
 assert.match(myCardWxml, /class="header-edit" bindtap="editCard"/);
@@ -336,8 +335,8 @@ assert.match(myCardWxml, /邀请星球/);
 assert.match(myCardWxml, /查看我的邀请关系与上下级/);
 assert.match(myCardWxss, /\.planet-entry/);
 assert.doesNotMatch(homePage, /backToCard/);
-assert.match(homeWxml, /我的名片/);
-assert.match(myCardWxml, /disabled="\{\{binding\}\}"/);
+assert.doesNotMatch(homeWxml, /back-card/);
+assert.doesNotMatch(myCardWxml, /disabled="\{\{binding\}\}"/);
 assert.match(rechargePage, /充值前先修改初始密码/);
 
 let editDefinition;

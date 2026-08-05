@@ -65,13 +65,15 @@ function loginUrl(value) {
 function navigateAfterLogin(value, fallback) {
   const target = LOGIN_REDIRECTS[loginRedirect(value)];
   if (target) {
-    if (target === '/pages/my-card/my-card') { markCardBindIntent(); wx.switchTab({ url: target }); }
-    else wx.redirectTo({ url: target });
+    wx.redirectTo({ url: target });
     return;
   }
   const destination = fallback || '/pages/home/home';
-  if (destination === '/pages/my-card/my-card') markCardBindIntent();
-  wx.switchTab({ url: destination });
+  if (destination === '/pages/my-card/my-card' || destination === '/pages/card-edit/card-edit' || destination === '/pages/ip12/ip12') {
+    wx.redirectTo({ url: destination });
+  } else {
+    wx.switchTab({ url: destination });
+  }
 }
 
 function isMembershipRequired(res) {
@@ -124,9 +126,7 @@ function request(path, options) {
           const cur = pages.length ? pages[pages.length - 1].route : '';
           if (!authRedirecting && cur.indexOf('pages/login/login') === -1) {
             authRedirecting = true;
-            const url = cur === 'pages/my-card/my-card' || cur === 'pages/card-edit/card-edit'
-              ? '/pages/my-card/my-card'
-              : loginUrl(cur);
+            const url = loginUrl(cur);
             wx.reLaunch({ url, fail: () => { authRedirecting = false; } });
           }
         }
