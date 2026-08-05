@@ -21,7 +21,8 @@ assert.deepStrictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_
 assert.strictEqual(card.lastValidInvite(validatedAt + card.ATTRIBUTION_TTL), 'ABCD23');
 assert.strictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_TTL + 1), null);
 assert.strictEqual(card.rememberValidInvite('ABCD23', 'server-token', validatedAt + card.ATTRIBUTION_TTL * 2, validatedAt), true);
-assert.strictEqual(store[card.ATTRIBUTION_KEY], undefined);
+assert.strictEqual(store[card.ATTRIBUTION_KEY].source, 'card');
+assert.strictEqual(store[card.ATTRIBUTION_KEY].expires_at, validatedAt + card.ATTRIBUTION_TTL);
 assert.deepStrictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_TTL), { code: 'ABCD23', attribution_token: 'server-token' });
 card.clearValidAttribution();
 assert.strictEqual(card.lastValidAttribution(validatedAt + card.ATTRIBUTION_TTL), null);
