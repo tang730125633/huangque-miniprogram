@@ -41,20 +41,10 @@ Page({
   loadOwnerPreview(id, code) {
     this._shareId = Number(this._shareId || 0) + 1;
     this.setData({ loading: true, error: '', isMine: false, shareReady: false });
-    return cardUtil.loginCardSession().then((session) => {
-      const data = session.data || {};
-      const current = data.card;
-      if (session.state !== 'owner') {
-        if (id) { this.loadPublic(id, code); return; }
-        throw new Error('当前微信还没有名片');
-      }
-      if (!current) { this.loadMine(id, code); return; }
-      if (id && current.public_id !== id) { this.loadPublic(id, code); return; }
-      this.showMine(current);
-    }).catch((error) => {
-      if (id) { this.loadPublic(id, code); return; }
-      this.setData({ loading: false, error: error.message || '名片读取失败' });
-    });
+    if (api.getToken()) return this.loadMine(id, code);
+    if (id) { this.loadPublic(id, code); return Promise.resolve(); }
+    this.setData({ loading: false, error: '请先登录后管理自己的名片。' });
+    return Promise.resolve();
   },
 
   loadPublic(id, code) {
@@ -79,10 +69,10 @@ Page({
 
   loadMine(expectedId, code) {
     this._shareId = Number(this._shareId || 0) + 1;
-    if (!api.getCardToken() && !api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
+    if (!api.getToken()) { this.setData({ loading: false, error: '请先登录后管理自己的名片。' }); return; }
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', shareReady: false });
-    return api.request('/api/auth/card/me', { method: 'GET', cardAuth: true }).then((res) => {
+    return api.request('/api/auth/card/me?create=0', { method: 'GET' }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '你还没有完成名片');
       if (expectedId && data.card.public_id !== expectedId) { this.loadPublic(expectedId, code); return; }

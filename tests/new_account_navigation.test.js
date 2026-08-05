@@ -145,7 +145,7 @@ function context(definition) {
   assert.doesNotMatch(fs.readFileSync('miniprogram/pages/my-card/my-card.js', 'utf8'), /getTabBar|syncNavigation|loginCardSession|wechat\/bind/);
   assert.doesNotMatch(fs.readFileSync('miniprogram/pages/login/login.js', 'utf8'), /loginCardAccount|loginWithCard|openCardRegistration/);
   assert.deepStrictEqual(JSON.parse(fs.readFileSync('miniprogram/pages/my-card/my-card.json', 'utf8')).usingComponents, {});
-  assert.match(fs.readFileSync('miniprogram/pages/card-edit/card-edit.js', 'utf8'), /checkWechatSession/);
+  assert.doesNotMatch(fs.readFileSync('miniprogram/pages/card-edit/card-edit.js', 'utf8'), /checkWechatSession|loginCardSession|wechat\/bind|card-register|cardAuth: true/);
 
   console.log('new account navigation checks passed');
 })().catch((error) => {
