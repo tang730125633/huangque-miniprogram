@@ -30,10 +30,15 @@ const inviteWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/invite/inv
 
 assert.ok(appJson.pages.includes('pages/invite/invite'));
 assert.match(loginJs, /device_id: device\.getDeviceId\(\)/);
-assert.doesNotMatch(loginJs, /miniprogram-register|invite_code/);
-assert.doesNotMatch(loginWxml, /邀请码（选填）|注册并登录/);
+assert.match(loginJs, /miniprogram-register/);
+assert.match(loginJs, /registrationPayload/);
+assert.match(loginWxml, /登录/);
+assert.match(loginWxml, /注册/);
+assert.match(loginWxml, /注册并登录/);
+assert.match(loginWxml, /你正在通过/);
+assert.doesNotMatch(loginWxml, /邀请码（选填）/);
 assert.doesNotMatch(loginWxml, /先创建我的名片|名片账号/);
-assert.match(loginWxml, /登录你的黄雀 AI 账号/);
+assert.match(loginWxml, /黄雀 AI 账号/);
 assert.match(profileWxml, /邀请中心/);
 assert.match(inviteJs, /\/api\/auth\/invite\/dashboard/);
 assert.match(inviteJs, /\/api\/auth\/invite\/downlines/);

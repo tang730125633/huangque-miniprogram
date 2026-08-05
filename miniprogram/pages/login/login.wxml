@@ -2,10 +2,19 @@
   <view class="login-close" bindtap="close">关闭</view>
   <view class="brand">
     <text class="brand-title gold">黄雀 AI 工作台</text>
-    <text class="brand-sub muted">登录你的黄雀 AI 账号</text>
+    <text class="brand-sub muted">{{mode === 'register' ? '创建你的黄雀 AI 账号' : '登录你的黄雀 AI 账号'}}</text>
   </view>
 
   <view class="card">
+    <view class="tabs">
+      <view class="tab {{mode === 'login' ? 'active' : ''}}" data-mode="login" bindtap="setMode">登录</view>
+      <view class="tab {{mode === 'register' ? 'active' : ''}}" data-mode="register" bindtap="setMode">注册</view>
+    </view>
+
+    <view wx:if="{{mode === 'register' && inviteRequired && inviteValidating}}" class="invite-notice">正在确认邀请信息…</view>
+    <view wx:elif="{{mode === 'register' && inviteRequired && inviteError}}" class="invite-notice error">{{inviteError}}</view>
+    <view wx:elif="{{mode === 'register' && inviteRequired}}" class="invite-notice">你正在通过“{{inviterName}}”的邀请注册</view>
+
     <view class="field">
       <text class="field-label">账号</text>
       <input class="input" type="text" placeholder="请输入账号" placeholder-class="ph"
@@ -41,9 +50,9 @@
     </view>
 
     <view class="btn-primary {{(loading || !agreed)?'disabled':''}}" bindtap="submit">
-      {{loading ? '请稍候…' : '登录'}}
+      {{loading ? '请稍候…' : (mode === 'register' ? '注册并登录' : '登录')}}
     </view>
   </view>
 
-  <view class="foot muted">登录后可在“我的”页面使用名片等账户功能</view>
+  <view class="foot muted">登录或注册后可使用黄雀 AI 的全部账户功能</view>
 </view>
