@@ -44,6 +44,13 @@ Page({
         sub: '你的形象照着参考视频演，一键生成',
         image: '/assets/home/role-transfer-banner.jpg',
         path: '/pages/video/video?mode=cinematic'
+      },
+      {
+        id: 'business-card',
+        title: '我的名片',
+        sub: '创建、展示并分享你的个人名片',
+        image: '/assets/home/business-card-banner.jpg',
+        path: '/pages/my-card/my-card'
       }
     ],
 

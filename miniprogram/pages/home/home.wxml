@@ -144,6 +144,7 @@
     <view class="home-asset-manifest" aria-hidden="true">
       <image src="/assets/home/video-mix-banner.jpg"></image>
       <image src="/assets/home/role-transfer-banner.jpg"></image>
+      <image src="/assets/home/business-card-banner.jpg"></image>
       <image src="/assets/home/tutorial-image-creation.jpg"></image>
       <image src="/assets/home/tutorial-video-analysis.jpg"></image>
       <image src="/assets/home/tutorial-digital-human.jpg"></image>
