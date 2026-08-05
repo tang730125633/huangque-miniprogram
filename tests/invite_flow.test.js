@@ -60,6 +60,8 @@ assert.match(inviteWxml, /名片邀请/);
 assert.match(inviteWxml, /data-share-type="link"/);
 assert.match(inviteWxml, /data-share-type="card"/);
 assert.match(inviteWxml, /promptCardInvite/);
+assert.match(inviteWxml, /class="invite-action-grid"/);
+assert.match(inviteWxml, /class="copy-code-button"/);
 assert.doesNotMatch(inviteWxml, /bindtap="copyLink"/);
 assert.ok(fs.existsSync(path.join(root, 'miniprogram/assets/share/invite-card.jpg')));
 

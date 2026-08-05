@@ -21,7 +21,11 @@
         <view class="page-title">我的名片</view>
         <view class="public-state {{published ? 'online' : ''}}">● {{published ? '公开中' : '仅自己可见'}}</view>
       </view>
-      <view class="header-edit" bindtap="editCard">✎ 编辑</view>
+      <view class="header-actions">
+        <view class="header-action header-edit" bindtap="editCard">✎ 编辑</view>
+        <button wx:if="{{shareReady}}" class="header-action header-share" open-type="share">↗ 分享</button>
+        <button wx:else class="header-action header-share disabled" bindtap="promptShare">↗ 分享</button>
+      </view>
     </view>
 
     <view class="business-card">

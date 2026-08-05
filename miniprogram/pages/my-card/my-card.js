@@ -78,6 +78,12 @@ Page({
 
   createCard() { wx.navigateTo({ url: '/pages/card-edit/card-edit?source=new' }); },
   editCard() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
+  promptShare() {
+    wx.showToast({
+      title: this.data.published ? '分享准备中，请稍后' : '请先完善并公开名片',
+      icon: 'none'
+    });
+  },
   openCard() {
     if (!this.data.publicId) return;
     wx.navigateTo({ url: '/pages/card/card?id=' + encodeURIComponent(this.data.publicId) + '&mine=1' });

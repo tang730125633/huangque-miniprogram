@@ -6,12 +6,12 @@
     <view class="card invite-code-card">
       <view class="section-label">我的邀请码</view><view class="invite-code">{{code}}</view>
       <view class="invite-actions">
-        <view class="primary-actions">
+        <view class="invite-action-grid">
           <button class="action-button" open-type="share" data-share-type="link">链接邀请</button>
           <button wx:if="{{shareReady}}" class="action-button primary" open-type="share" data-share-type="card">名片邀请</button>
           <button wx:else class="action-button primary" bindtap="promptCardInvite">名片邀请</button>
         </view>
-        <button class="action-button" bindtap="copyCode">复制邀请码（备用）</button>
+        <button class="copy-code-button" bindtap="copyCode">复制邀请码（备用）</button>
       </view>
       <view class="share-guide">链接邀请可直接进入注册；名片邀请会先展示你的公开名片。只有好友完成新账号注册后，才会绑定邀请关系。</view>
       <view wx:if="{{shareReady}}" class="preview-link" bindtap="openMyCard">先预览我的名片 ›</view>
