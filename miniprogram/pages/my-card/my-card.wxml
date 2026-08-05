@@ -22,9 +22,9 @@
         <view class="public-state {{published ? 'online' : ''}}">● {{published ? '公开中' : '仅自己可见'}}</view>
       </view>
       <view class="header-actions">
-        <view class="header-action header-edit" bindtap="editCard">✎ 编辑</view>
-        <button wx:if="{{shareReady}}" class="header-action header-share" open-type="share">↗ 分享</button>
-        <button wx:else class="header-action header-share disabled" bindtap="promptShare">↗ 分享</button>
+        <view class="header-action header-edit" bindtap="editCard">编辑</view>
+        <button wx:if="{{shareReady}}" class="header-action header-share" open-type="share">分享</button>
+        <button wx:else class="header-action header-share disabled" bindtap="promptShare">分享</button>
       </view>
     </view>
 
@@ -50,15 +50,6 @@
       </view>
     </view>
 
-    <view class="planet-entry" bindtap="openInvitePlanet">
-      <view class="planet-entry-orb">✦</view>
-      <view class="planet-entry-copy">
-        <view class="planet-entry-title">邀请星球</view>
-        <view class="planet-entry-subtitle">查看我的邀请关系与上下级</view>
-      </view>
-      <view class="planet-entry-arrow">›</view>
-    </view>
-
     <view class="content-card work-card">
       <view class="section-head"><view class="section-heading">作品与经历</view><view class="manage-link" bindtap="editCard">管理内容</view></view>
       <view class="work-image-list">
@@ -81,11 +72,6 @@
       </view>
     </view>
 
-    <view class="actions">
-      <button class="primary" bindtap="editCard">{{complete ? '编辑名片' : '填写名片'}}</button>
-      <button wx:if="{{published}}" class="secondary" bindtap="openCard">预览公开页</button>
-      <button wx:if="{{shareReady}}" class="secondary" open-type="share">分享我的名片</button>
-    </view>
     <view wx:if="{{error}}" class="inline-error">{{error}}</view>
   </block>
 
