@@ -58,7 +58,7 @@ Page({
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '名片读取失败');
       this.showOwner(data, loadId);
     }).catch((error) => {
-      if (!loadId || loadId === this._loadId) this.setData({ state: 'error', error: error.message || '名片读取失败' });
+      if (!loadId || loadId === this._loadId) this.setData({ state: 'error', error: error.message || error.errMsg || '名片读取失败' });
     });
   },
 

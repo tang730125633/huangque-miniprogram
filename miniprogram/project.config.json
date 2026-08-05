@@ -6,7 +6,7 @@
   "projectname": "huangque-miniprogram-invite-network-preview",
   "miniprogramRoot": "./",
   "setting": {
-    "urlCheck": true,
+    "urlCheck": false,
     "es6": true,
     "enhance": true,
     "postcss": true,

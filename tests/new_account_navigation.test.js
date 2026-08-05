@@ -70,6 +70,12 @@ function context(definition) {
   assert.strictEqual(page.data.state, 'owner');
   assert.strictEqual(storage.hq_token, 'account-token');
 
+  api.request = () => Promise.reject({ errMsg: 'request:fail url not in domain list' });
+  page = context(myCardDefinition);
+  await page.loadOwner.call(page);
+  assert.strictEqual(page.data.state, 'error');
+  assert.strictEqual(page.data.error, 'request:fail url not in domain list');
+
   const originalPrepareShareImage = card.prepareShareImage;
   let resolveOldShare;
   let shareCall = 0;

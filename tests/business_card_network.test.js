@@ -155,6 +155,9 @@ assert.strictEqual(recharge.buildRechargeConfig({ membership_status: 'active', m
 
 const root = path.resolve(__dirname, '..');
 const appJson = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
+const directPreviewConfig = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/project.config.json'), 'utf8'));
+assert.strictEqual(directPreviewConfig.miniprogramRoot, './');
+assert.strictEqual(directPreviewConfig.setting.urlCheck, false);
 ['pages/my-card/my-card', 'pages/card/card', 'pages/card-edit/card-edit', 'pages/network/network'].forEach((page) => assert.ok(appJson.pages.includes(page)));
 assert.strictEqual(appJson.pages[0], 'pages/home/home');
 assert.strictEqual(appJson.tabBar.custom, true);
