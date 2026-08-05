@@ -60,6 +60,20 @@ test('My Card banner opens the card page for a logged-in account', () => {
   assert.deepStrictEqual(navigations, ['/pages/my-card/my-card']);
 });
 
+test('My Card banner does not require an active membership', () => {
+  storage.hq_token = 'account-token';
+  navigations.length = 0;
+  const page = pageContext();
+  page.data.membershipEnforced = true;
+  page.data.membershipActive = false;
+
+  page.onTapRoleTransfer.call(page, {
+    currentTarget: { dataset: { path: '/pages/my-card/my-card' } }
+  });
+
+  assert.deepStrictEqual(navigations, ['/pages/my-card/my-card']);
+});
+
 test('My Card banner sends a logged-out account through login and returns to the card page', () => {
   delete storage.hq_token;
   navigations.length = 0;

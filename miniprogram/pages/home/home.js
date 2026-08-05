@@ -154,7 +154,14 @@ Page({
     if (current !== this.data.bannerCurrent) this.setData({ bannerCurrent: current });
   },
 
-  onTapRoleTransfer(e) { this._guardNav(e.currentTarget.dataset.path || '/pages/video/video'); },
+  onTapRoleTransfer(e) {
+    const path = e.currentTarget.dataset.path || '/pages/video/video';
+    if (path === '/pages/my-card/my-card') {
+      if (!api.getToken()) return wx.navigateTo({ url: api.loginUrl(path) });
+      return wx.navigateTo({ url: path });
+    }
+    return this._guardNav(path);
+  },
 
   onTapTutorial(e) {
     const id = e.currentTarget.dataset.id;
