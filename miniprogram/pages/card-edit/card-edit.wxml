@@ -1,8 +1,8 @@
 <view class="container edit-page">
   <view class="intro">
-    <view class="eyebrow">WECHAT BUSINESS CARD</view>
+    <view class="eyebrow">BUSINESS CARD</view>
     <view class="title">编辑我的名片</view>
-    <view class="subtitle">名片由微信授权管理；带 * 的信息保存前必须填写。</view>
+    <view class="subtitle">名片属于当前黄雀账号；带 * 的信息保存前必须填写。</view>
   </view>
 
   <view wx:if="{{loading && !ready}}" class="loading">正在读取你的名片…</view>
@@ -64,13 +64,10 @@
     </view>
   </view>
 
-  <view wx:if="{{!anonymous}}" class="form-section ai-section">
-    <view class="section-title">黄雀 AI 登录信息</view>
-    <view class="section-tip">名片不会向访客展示这里的任何账号或密码信息。</view>
+  <view class="form-section ai-section">
+    <view class="section-title">账户安全</view>
+    <view class="section-tip">这里的信息不会展示在公开名片中。</view>
     <view class="credential"><text>登录账号</text><text selectable="true">{{aiAccount || '读取中'}}</text></view>
-    <view class="credential"><text>密码状态</text><text>{{initialPassword ? '仍为初始密码' : '已修改，不可查看'}}</text></view>
-    <view wx:if="{{initialPassword && aiAccount === card.phone}}" class="credential-note">初始密码与手机号一致。首次充值或开通会员前必须修改。</view>
-    <view wx:elif="{{initialPassword}}" class="credential-note">当前账号仍需修改初始密码，首次充值或开通会员前必须完成。</view>
     <view class="small-button password-button" bindtap="togglePasswordForm">{{showPasswordForm ? '收起修改密码' : '修改黄雀 AI 密码'}}</view>
     <view wx:if="{{showPasswordForm}}" class="password-form">
       <view class="field"><text>当前密码</text><input disabled="{{loading}}" password="true" value="{{oldPassword}}" data-field="oldPassword" bindinput="passwordInput" placeholder="初始密码为手机号" /></view>
@@ -80,19 +77,8 @@
     </view>
   </view>
 
-  <view wx:if="{{anonymous}}" class="form-section ai-section">
-    <view class="section-title">保存后自动开通黄雀 AI</view>
-    <view class="section-tip">无需另填账号密码；手机号会同时成为黄雀 AI 登录账号和初始密码。首次充值前必须修改密码。</view>
-    <view class="credential-note" wx:if="{{inviteRewardPoints}}">若本次来自有效名片邀请，注册成功后赠送 {{inviteRewardPoints}} 点；未通过邀请进入则不赠送。</view>
-    <view class="credential-note" wx:else>邀请奖励读取中，最终以注册时后台配置为准。</view>
-    <checkbox-group bindchange="agreement"><label class="agreement"><checkbox disabled="{{loading}}" value="yes" checked="{{agreed}}" color="#e24ba0" />我已阅读并同意</label></checkbox-group>
-    <navigator class="agreement-link" url="/pages/legal/legal?type=terms">《用户服务协议》</navigator>
-    <text class="agreement-link" bindtap="openPrivacyContract">《隐私保护指引》</text>
-  </view>
-
   <view wx:if="{{error}}" class="error">{{error}}</view>
-  <button class="save-button" bindtap="save" loading="{{loading}}" disabled="{{loading}}">{{anonymous ? '保存名片并开通黄雀 AI' : (published ? '保存修改' : '保存并公开名片')}}</button>
-  <view wx:if="{{!anonymous && published}}" class="unpublish" bindtap="unpublish">取消公开名片</view>
-  <navigator wx:if="{{anonymous}}" class="existing" url="/pages/login/login?redirect=my-card">已有黄雀 AI 账号？先登录原账号</navigator>
+  <button class="save-button" bindtap="save" loading="{{loading}}" disabled="{{loading}}">{{published ? '保存修改' : '保存并公开名片'}}</button>
+  <view wx:if="{{published}}" class="unpublish" bindtap="unpublish">取消公开名片</view>
   </block>
 </view>

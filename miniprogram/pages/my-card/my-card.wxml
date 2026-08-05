@@ -1,14 +1,13 @@
 <view class="container owner-page">
   <canvas canvas-id="cardShareCover" class="share-canvas" />
 
-  <view wx:if="{{state === 'loading'}}" class="state-card">正在连接你的微信名片…</view>
+  <view wx:if="{{state === 'loading'}}" class="state-card">正在加载名片…</view>
 
-  <view wx:elif="{{state === 'guest'}}" class="welcome">
-    <view class="eyebrow">WECHAT BUSINESS CARD</view>
-    <view class="welcome-title">先创建一张属于你的名片</view>
-    <view class="welcome-copy">名片由微信授权管理。保存后会用手机号自动开通黄雀 AI；<text wx:if="{{inviteRewardPoints}}">通过有效邀请进入可获 {{inviteRewardPoints}} 点。</text><text wx:else>邀请奖励读取中。</text></view>
+  <view wx:elif="{{state === 'missing'}}" class="welcome">
+    <view class="eyebrow">BUSINESS CARD</view>
+    <view class="welcome-title">创建你的黄雀名片</view>
+    <view class="welcome-copy">名片是可选功能。创建后可展示个人信息与作品，并分享给好友。</view>
     <button class="primary" bindtap="createCard">创建我的名片</button>
-    <button class="secondary" bindtap="loginExisting">已有黄雀 AI 账号</button>
   </view>
 
   <view wx:elif="{{state === 'error'}}" class="state-card error">
@@ -20,20 +19,16 @@
     <view class="topline">
       <view class="header-copy">
         <view class="page-title">我的名片</view>
-        <view wx:if="{{wechatBound}}" class="public-state {{published ? 'online' : ''}}">● {{published ? '公开中' : '仅自己可见'}}</view>
-        <view wx:else class="public-state">● 等待微信绑定</view>
+        <view class="public-state {{published ? 'online' : ''}}">● {{published ? '公开中' : '仅自己可见'}}</view>
       </view>
-      <view wx:if="{{wechatBound}}" class="header-edit" bindtap="editCard">✎ 编辑</view>
-      <view wx:elif="{{aiAccount}}" class="account-link" bindtap="openAccount">账户与会员 ›</view>
+      <view class="header-actions">
+        <view class="header-action header-edit" bindtap="editCard">编辑</view>
+        <button wx:if="{{shareReady}}" class="header-action header-share" open-type="share">分享</button>
+        <button wx:else class="header-action header-share disabled" bindtap="promptShare">分享</button>
+      </view>
     </view>
 
-    <view wx:if="{{!wechatBound}}" class="notice">
-      <view class="notice-title">需要重新绑定微信</view>
-      <view class="notice-copy">你的黄雀 AI 原账号与权益都会保留；本次微信授权只绑定名片。</view>
-      <button class="primary" bindtap="bindAndEdit" loading="{{binding}}" disabled="{{binding}}">微信授权并完善名片</button>
-    </view>
-
-    <view wx:else class="business-card">
+    <view class="business-card">
       <view class="card-mark">雀</view>
       <view class="card-profile">
         <view class="avatar-shell">
@@ -55,16 +50,7 @@
       </view>
     </view>
 
-    <view wx:if="{{wechatBound}}" class="planet-entry" bindtap="openInvitePlanet">
-      <view class="planet-entry-orb">✦</view>
-      <view class="planet-entry-copy">
-        <view class="planet-entry-title">邀请星球</view>
-        <view class="planet-entry-subtitle">查看我的邀请关系与上下级</view>
-      </view>
-      <view class="planet-entry-arrow">›</view>
-    </view>
-
-    <view wx:if="{{wechatBound}}" class="content-card work-card">
+    <view class="content-card work-card">
       <view class="section-head"><view class="section-heading">作品与经历</view><view class="manage-link" bindtap="editCard">管理内容</view></view>
       <view class="work-image-list">
         <view class="work-media image" wx:for="{{workImages}}" wx:key="slot">
@@ -75,7 +61,7 @@
       </view>
     </view>
 
-    <view wx:if="{{wechatBound}}" class="content-card work-card">
+    <view class="content-card work-card">
       <view class="section-head"><view class="section-heading">我的视频</view><view class="manage-link" bindtap="editCard">管理内容</view></view>
       <view class="work-video-list">
         <view class="work-media video" wx:for="{{workVideos}}" wx:key="slot">
@@ -86,11 +72,6 @@
       </view>
     </view>
 
-    <view wx:if="{{wechatBound}}" class="actions">
-      <button class="primary" bindtap="editCard">{{complete ? '编辑名片' : '填写名片'}}</button>
-      <button wx:if="{{published}}" class="secondary" bindtap="openCard">预览公开页</button>
-      <button wx:if="{{shareReady}}" class="secondary" open-type="share">分享我的名片</button>
-    </view>
     <view wx:if="{{error}}" class="inline-error">{{error}}</view>
   </block>
 

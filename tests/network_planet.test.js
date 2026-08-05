@@ -12,9 +12,15 @@ const api = require('../miniprogram/utils/api.js');
 
 test('loads the granted user as the initial planet center', async () => {
   const originalGetPlanet = planetService.getPlanet;
+  const originalGetPublicCard = planetService.getPublicCard;
   const originalGetToken = api.getToken;
   let requestOptions;
+  let publicCardRequests = 0;
   api.getToken = () => 'token';
+  planetService.getPublicCard = () => {
+    publicCardRequests += 1;
+    return Promise.resolve({});
+  };
   planetService.getPlanet = (options) => {
     requestOptions = options;
     return Promise.resolve({
@@ -37,8 +43,10 @@ test('loads the granted user as the initial planet center', async () => {
     assert.deepEqual(requestOptions, { grant: 'grant/target', limit: 50 });
     assert.equal(page.data.focusUser.name, '目标用户');
     assert.equal(page.data.focusUser.is_viewer, false);
+    assert.equal(publicCardRequests, 0);
   } finally {
     planetService.getPlanet = originalGetPlanet;
+    planetService.getPublicCard = originalGetPublicCard;
     api.getToken = originalGetToken;
   }
 });
@@ -268,10 +276,12 @@ test('opens the launched card feature from invitation planet actions', () => {
   assert.match(wxml, /class="galaxy-background" src="\/assets\/network-galaxy-v1\.jpg" mode="aspectFill"/);
   assert.match(wxml, /catchwheel="onGraphWheel"/);
   assert.match(wxml, /bindchange="onGraphMove" bindscale="onGraphScale"/);
-  assert.match(wxml, /class="identity-item"><view class="identity-dot initiator"><\/view><text>发起人<\/text>/);
-  assert.match(wxml, /class="identity-item"><view class="identity-dot partner"><\/view><text>合伙人<\/text>/);
-  assert.match(wxml, /class="identity-item"><view class="identity-dot experience"><\/view><text>体验官<\/text>/);
-  assert.match(wxml, /class="identity-item"><view class="identity-dot nonmember"><\/view><text>非会员<\/text>/);
+  assert.doesNotMatch(wxml, /class="identity-legend"/);
+  assert.doesNotMatch(wxml, /class="planet-level"/);
+  assert.doesNotMatch(wxml, /class="child-count"/);
+  assert.doesNotMatch(wxml, /class="person-meta"/);
+  assert.doesNotMatch(wxml, /class="level-badge"/);
+  assert.doesNotMatch(wxml, /class="chevron"/);
 
   const wxss = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/network/network.wxss'), 'utf8');
   assert.match(wxss, /identity-dot\.initiator[\s\S]*background: #f2c45f !important/);

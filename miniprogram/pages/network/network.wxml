@@ -26,7 +26,6 @@
         <view class="graph-legend"><view class="legend-item"><view class="legend-dot up"></view><text>直接上线</text></view><view class="legend-item"><view class="legend-dot me"></view><text>当前人物</text></view><view class="legend-item"><view class="legend-dot down"></view><text>直接下线</text></view></view>
         <view class="load-state">只显示相邻一级</view>
       </view>
-      <view class="identity-legend"><view class="identity-item"><view class="identity-dot initiator"></view><text>发起人</text></view><view class="identity-item"><view class="identity-dot partner"></view><text>合伙人</text></view><view class="identity-item"><view class="identity-dot experience"></view><text>体验官</text></view><view class="identity-item"><view class="identity-dot nonmember"></view><text>非会员</text></view></view>
       <view class="graph-viewport">
         <movable-area class="move-area" bindtouchstart="beginGraphInteraction" bindtouchend="endGraphInteraction" bindtouchcancel="endGraphInteraction" catchwheel="onGraphWheel">
           <movable-view class="orbit" direction="all" inertia="{{true}}" out-of-bounds="{{true}}" scale="{{true}}" scale-min="0.12" scale-max="2.4" scale-value="{{graphScale}}" x="{{graphX}}" y="{{graphY}}" style="width: {{graphWidth}}rpx; height: {{graphHeight}}rpx;" bindchange="onGraphMove" bindscale="onGraphScale" bindtap="closeSelection" aria-label="3D邀请关系星盘，可拖动和双指缩放">
@@ -44,8 +43,7 @@
                 <view wx:else class="planet-avatar fallback name-{{item.name_size}}">{{item.name}}</view>
                 <view class="planet-night"></view><view class="planet-shine"></view><view class="planet-atmosphere"></view>
               </view>
-              <view class="planet-caption"><view class="planet-name">{{item.name}}</view><view class="planet-level">{{item.role === 'self' ? '当前中心' : item.relation_label}} · {{item.identity_name}}</view></view>
-              <view wx:if="{{item.children_count}}" class="child-count">{{item.children_count}}</view>
+              <view class="planet-caption"><view class="planet-name">{{item.name}}</view></view>
             </view>
             </view>
             <view class="star-hit-plane">
@@ -75,16 +73,15 @@
       <view wx:if="{{!ancestors.length}}" class="empty-card">你是当前邀请链的起点</view>
       <view wx:for="{{ancestors}}" wx:key="node_id" class="person-card upline" data-node="{{item.node_id}}" bindtap="openPersonOptions">
         <image wx:if="{{item.avatar}}" class="person-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="person-avatar fallback">{{item.name}}</view>
-        <view class="person-copy"><view class="person-name">{{item.name}}</view><view class="person-meta">{{index === 0 ? '直接上线' : (index + 1) + '级上线'}} · {{item.title || '黄雀用户'}}</view></view><text wx:if="{{item.public_id}}" class="chevron">›</text>
+        <view class="person-copy"><view class="person-name">{{item.name}}</view></view>
       </view>
 
       <view class="section-title"><text>我的下线</text><text class="section-count">{{stats.total}}</text></view>
       <view wx:if="{{!children.length}}" class="empty-card">暂时还没有下线，分享邀请即可点亮第一颗星球</view>
       <block wx:for="{{children}}" wx:key="node_id">
         <view class="person-card" style="margin-left: {{item.indent}}rpx" data-node="{{item.node_id}}" bindtap="openPersonOptions">
-          <view class="level-badge">L{{item.depth + 1}}</view>
           <image wx:if="{{item.avatar}}" class="person-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="person-avatar fallback">{{item.name}}</view>
-          <view class="person-copy"><view class="person-name">{{item.name}}</view><view class="person-meta">{{item.title || '黄雀用户'}}<text wx:if="{{item.children_count}}"> · 直邀 {{item.children_count}} 人</text></view></view><text wx:if="{{item.public_id}}" class="chevron">›</text>
+          <view class="person-copy"><view class="person-name">{{item.name}}</view></view>
         </view>
       </block>
       <view wx:if="{{childCursor}}" class="more-button" bindtap="loadMore">{{loadingChildren ? '加载中…' : '加载更多直接下线'}}</view>

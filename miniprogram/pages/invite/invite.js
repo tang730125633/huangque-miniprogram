@@ -32,18 +32,23 @@ Page({
       api.request('/api/auth/invite/dashboard', { method: 'GET' }),
       api.request('/api/auth/invite/downlines?limit=20&cursor=0', { method: 'GET' }),
       api.request('/api/auth/invite/referrer', { method: 'GET' }),
-      api.request('/api/auth/card/me', { method: 'GET' })
+      api.request('/api/auth/card/me?create=0', { method: 'GET' })
     ]).then((responses) => {
       if (loadId !== this._loadId) return;
       const fallbackErrors = ['邀请码读取失败', '邀请统计读取失败', '下线数据读取失败', '推荐人信息读取失败', '名片状态读取失败'];
-      responses.forEach((response, index) => {
+      responses.slice(0, 4).forEach((response, index) => {
         if (!response || response.statusCode !== 200) throw new Error((response && response.data && response.data.detail) || fallbackErrors[index]);
       });
+      const cardResponse = responses[4];
+      const cardMissing = cardResponse && cardResponse.statusCode === 404 && cardResponse.data && cardResponse.data.code === 'card_not_found';
+      if (!cardResponse || (cardResponse.statusCode !== 200 && !cardMissing)) {
+        throw new Error((cardResponse && cardResponse.data && cardResponse.data.detail) || fallbackErrors[4]);
+      }
       const code = responses[0].data || {};
       const dashboard = responses[1].data || {};
       const downlines = responses[2].data || {};
       const referrer = responses[3].data || {};
-      const card = responses[4].data && responses[4].data.card;
+      const card = cardResponse.statusCode === 200 && cardResponse.data && cardResponse.data.card;
       const publicId = card && card.public_id;
       const shareReady = !!publicId && cardUtil.isPublished(card) && invite.validInviteCode(code.code);
       this._rawDownlines = downlines.items || [];
@@ -113,6 +118,14 @@ Page({
 
   copyCode() { if (this.data.code) wx.setClipboardData({ data: this.data.code }); },
   goCardEdit() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
+  promptCardInvite() {
+    wx.showModal({
+      title: '请先创建并公开名片',
+      content: '公开名片后，好友可以先查看你的名片，再通过名片完成注册。',
+      confirmText: '去创建',
+      success: (result) => { if (result.confirm) this.goCardEdit(); }
+    });
+  },
   openMyCard() { if (this.data.publicId) wx.navigateTo({ url: '/pages/card/card?id=' + encodeURIComponent(this.data.publicId) + '&mine=1' }); },
   enableShare(card, loadId) {
     return cardUtil.prepareShareImage(this, card).then((imageUrl) => {
@@ -121,8 +134,10 @@ Page({
       if (wx.showShareMenu) wx.showShareMenu({ menus: ['shareAppMessage'] });
     });
   },
-  onShareAppMessage() {
-    if (!this.data.shareReady) return { title: '黄雀 AI 邀请你注册', path: invite.registrationSharePath(this.data.code), imageUrl: cardUtil.DEFAULT_SHARE_IMAGE };
+  onShareAppMessage(event) {
+    const requestedType = event && event.target && event.target.dataset && event.target.dataset.shareType;
+    const shareType = requestedType || (this.data.shareReady ? 'card' : 'link');
+    if (shareType !== 'card' || !this.data.shareReady) return { title: '黄雀 AI 邀请你注册', path: invite.registrationSharePath(this.data.code), imageUrl: cardUtil.DEFAULT_SHARE_IMAGE };
     return { title: (this.data.cardName || '我') + '的黄雀公开名片', path: invite.cardSharePath(this.data.publicId, this.data.code), imageUrl: this.data.shareImageUrl };
   }
 });

@@ -44,6 +44,13 @@ Page({
         sub: '你的形象照着参考视频演，一键生成',
         image: '/assets/home/role-transfer-banner.jpg',
         path: '/pages/video/video?mode=cinematic'
+      },
+      {
+        id: 'business-card',
+        title: '我的名片',
+        sub: '创建、展示并分享你的个人名片',
+        image: '/assets/home/business-card-banner.jpg',
+        path: '/pages/my-card/my-card'
       }
     ],
 
@@ -53,13 +60,6 @@ Page({
       { id: 't2', title: '创作灵感案例', image: '/assets/home/tutorial-video-analysis.jpg', path: '/pages/inspiration/inspiration' },
       { id: 't3', title: '数字化 IP 制作', image: '/assets/home/tutorial-digital-human.jpg', path: '/pages/ip12/ip12' }
     ]
-  },
-
-  onLoad() {
-    const app = getApp();
-    if (!app || !app.globalData || !app.globalData.redirectLegacyHomeLaunch) return;
-    app.globalData.redirectLegacyHomeLaunch = false;
-    wx.reLaunch({ url: '/pages/my-card/my-card' });
   },
 
   onShow() {
@@ -81,8 +81,6 @@ Page({
   },
 
   onUnload() { pricing.stop(this); },
-
-  backToCard() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
 
   // 受保护功能：未登录先去登录
   _guardNav(path, onAllowed) {
@@ -156,7 +154,14 @@ Page({
     if (current !== this.data.bannerCurrent) this.setData({ bannerCurrent: current });
   },
 
-  onTapRoleTransfer(e) { this._guardNav(e.currentTarget.dataset.path || '/pages/video/video'); },
+  onTapRoleTransfer(e) {
+    const path = e.currentTarget.dataset.path || '/pages/video/video';
+    if (path === '/pages/my-card/my-card') {
+      if (!api.getToken()) return wx.navigateTo({ url: api.loginUrl(path) });
+      return wx.navigateTo({ url: path });
+    }
+    return this._guardNav(path);
+  },
 
   onTapTutorial(e) {
     const id = e.currentTarget.dataset.id;

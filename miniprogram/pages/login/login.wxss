@@ -6,6 +6,13 @@
 .tabs { display: flex; margin-bottom: 30rpx; border-bottom: 1rpx solid var(--line); }
 .tab { flex: 1; text-align: center; padding: 20rpx 0; color: var(--text-muted); font-size: 29rpx; }
 .tab.active { color: var(--primary); border-bottom: 4rpx solid var(--primary); font-weight: 600; }
+.invite-notice {
+  margin: -6rpx 0 26rpx; padding: 18rpx 20rpx; text-align: center;
+  color: var(--secondary); background: rgba(240, 165, 75, .08);
+  border: 1rpx solid rgba(240, 165, 75, .34); border-radius: 12rpx;
+  font-size: 23rpx; line-height: 1.6;
+}
+.invite-notice.error { color: var(--error); border-color: rgba(255, 82, 128, .35); background: rgba(255, 82, 128, .07); }
 .login-scope-note { margin: -8rpx 0 28rpx; padding: 18rpx 20rpx; border: 1rpx solid rgba(240,165,75,.35); border-radius: 14rpx; color: var(--text-muted); background: rgba(240,165,75,.06); font-size: 22rpx; line-height: 1.65; }
 .login-method-title { margin-bottom: 16rpx; color: var(--text); font-size: 29rpx; font-weight: 600; text-align: center; }
 .btn-card { margin-bottom: 30rpx; padding: 24rpx; border: 2rpx solid var(--primary); border-radius: 14rpx; color: var(--primary); font-size: 29rpx; font-weight: 600; text-align: center; }

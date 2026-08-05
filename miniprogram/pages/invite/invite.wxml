@@ -6,11 +6,18 @@
     <view class="card invite-code-card">
       <view class="section-label">我的邀请码</view><view class="invite-code">{{code}}</view>
       <view class="invite-actions">
-        <button wx:if="{{shareReady}}" class="action-button primary" open-type="share">分享我的名片，邀请好友</button>
-        <button wx:else class="action-button primary" bindtap="goCardEdit">创建并公开名片</button>
-        <button class="action-button" bindtap="copyCode">复制邀请码（备用）</button>
+        <view class="invite-action-grid">
+          <view class="invite-action-item">
+            <button class="action-button" open-type="share" data-share-type="link">链接邀请</button>
+          </view>
+          <view class="invite-action-item">
+            <button wx:if="{{shareReady}}" class="action-button primary" open-type="share" data-share-type="card">名片邀请</button>
+            <button wx:else class="action-button primary" bindtap="promptCardInvite">名片邀请</button>
+          </view>
+        </view>
+        <button class="copy-code-button" bindtap="copyCode">复制邀请码（备用）</button>
       </view>
-      <view class="share-guide">{{shareReady ? '点击上方按钮会打开微信好友列表；好友完成注册后，会自动计入你的邀请关系。' : '完成并公开名片后，即可分享给微信好友。'}}</view>
+      <view class="share-guide">链接邀请可直接进入注册；名片邀请会先展示你的公开名片。只有好友完成新账号注册后，才会绑定邀请关系。</view>
       <view wx:if="{{shareReady}}" class="preview-link" bindtap="openMyCard">先预览我的名片 ›</view>
     </view>
     <view class="stats-grid">

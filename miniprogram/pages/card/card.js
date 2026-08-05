@@ -1,6 +1,7 @@
 const api = require('../../utils/api.js');
 const invite = require('../../utils/invite.js');
 const cardUtil = require('../../utils/card.js');
+const inviteContext = require('../../utils/invite-context.js');
 
 function cardView(source, includeEmpty) {
   const card = source || {};
@@ -24,7 +25,12 @@ function canShareCard(state) {
 }
 
 Page({
-  data: { loading: true, error: '', card: {}, isMine: false, ownerHint: false, joining: false, shareReady: false, shareImageUrl: '', publicId: '', inviteCode: '', attributionToken: '' },
+  data: {
+    loading: true, error: '', card: {}, isMine: false, ownerHint: false,
+    joining: false, shareReady: false, shareImageUrl: '', publicId: '',
+    inviteCode: '', attributionToken: '', inviteValidatedAt: 0,
+    inviteExpiresAt: 0, inviter: null
+  },
 
   onShow() { if (this.data.joining) this.setData({ joining: false }); },
 
@@ -41,48 +47,45 @@ Page({
   loadOwnerPreview(id, code) {
     this._shareId = Number(this._shareId || 0) + 1;
     this.setData({ loading: true, error: '', isMine: false, shareReady: false });
-    return cardUtil.loginCardSession().then((session) => {
-      const data = session.data || {};
-      const current = data.card;
-      if (session.state !== 'owner') {
-        if (id) { this.loadPublic(id, code); return; }
-        throw new Error('当前微信还没有名片');
-      }
-      if (!current) { this.loadMine(id, code); return; }
-      if (id && current.public_id !== id) { this.loadPublic(id, code); return; }
-      this.showMine(current);
-    }).catch((error) => {
-      if (id) { this.loadPublic(id, code); return; }
-      this.setData({ loading: false, error: error.message || '名片读取失败' });
-    });
+    if (api.getToken()) return this.loadMine(id, code);
+    if (id) { this.loadPublic(id, code); return Promise.resolve(); }
+    this.setData({ loading: false, error: '请先登录后管理自己的名片。' });
+    return Promise.resolve();
   },
 
   loadPublic(id, code) {
     this._shareId = Number(this._shareId || 0) + 1;
     if (wx.hideShareMenu) wx.hideShareMenu();
-    this.setData({ loading: true, error: '', isMine: false, ownerHint: false, shareReady: false, attributionToken: '' });
+    this.setData({
+      loading: true, error: '', isMine: false, ownerHint: false, shareReady: false,
+      inviteCode: code, attributionToken: '', inviteValidatedAt: 0,
+      inviteExpiresAt: 0, inviter: null
+    });
     const query = '?id=' + encodeURIComponent(id) + (code ? '&invite=' + encodeURIComponent(code) : '');
-    api.request('/api/auth/card/public' + query, { method: 'GET', auth: false }).then((res) => {
+    return api.request('/api/auth/card/public' + query, { method: 'GET', auth: false }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !(data.card || data.id || data.public_id)) throw new Error(data.detail || '名片不存在或已取消公开');
-      // 归因只接受该公开页服务端的校验结果，URL 和本机时间都不能单独建立关系。
       const attributionToken = data.invite_attribution_token || data.attribution_token;
       const inviteValid = code && attributionToken && (data.invite_valid === true || (data.invite && data.invite.valid === true));
-      if (inviteValid) {
-        cardUtil.rememberValidInvite(code, attributionToken, data.invite_expires_at || data.attribution_expires_at, data.invite_validated_at || data.server_time);
-      }
       const source = data.card || data;
       const card = cardView(source);
-      this.setData({ loading: false, card: card, isMine: false, ownerHint: false, publicId: source.public_id || id, shareReady: false, shareImageUrl: '', attributionToken: inviteValid ? attributionToken : '' });
+      this.setData({
+        loading: false, card: card, isMine: false, ownerHint: false,
+        publicId: source.public_id || id, shareReady: false, shareImageUrl: '',
+        attributionToken: inviteValid ? attributionToken : '',
+        inviteValidatedAt: inviteValid ? (data.invite_validated_at || data.server_time || 0) : 0,
+        inviteExpiresAt: inviteValid ? (data.invite_expires_at || data.attribution_expires_at || 0) : 0,
+        inviter: inviteValid ? (data.inviter || null) : null
+      });
     }).catch((error) => this.setData({ loading: false, error: error.message || '名片加载失败' }));
   },
 
   loadMine(expectedId, code) {
     this._shareId = Number(this._shareId || 0) + 1;
-    if (!api.getCardToken() && !api.getToken()) { this.setData({ loading: false, error: '请通过他人分享的名片进入，或登录后管理自己的名片。' }); return; }
+    if (!api.getToken()) { this.setData({ loading: false, error: '请先登录后管理自己的名片。' }); return; }
     if (wx.hideShareMenu) wx.hideShareMenu();
     this.setData({ loading: true, error: '', shareReady: false });
-    return api.request('/api/auth/card/me', { method: 'GET', cardAuth: true }).then((res) => {
+    return api.request('/api/auth/card/me?create=0', { method: 'GET' }).then((res) => {
       const data = res.data || {};
       if (res.statusCode !== 200 || !data.card) throw new Error(data.detail || '你还没有完成名片');
       if (expectedId && data.card.public_id !== expectedId) { this.loadPublic(expectedId, code); return; }
@@ -102,12 +105,43 @@ Page({
   },
 
   goJoin() {
-    if (this.data.joining) return;
+    if (this.data.joining) return Promise.resolve(false);
     this.setData({ joining: true });
-    if (this.data.attributionToken) {
-      api.request('/api/auth/invite/journey/start', { method: 'POST', auth: false, data: { invite_attribution_token: this.data.attributionToken } }).catch(() => {});
+    if (api.getToken()) {
+      inviteContext.clear();
+      this.setData({ joining: false });
+      wx.switchTab({ url: '/pages/home/home' });
+      return Promise.resolve(true);
     }
-    wx.navigateTo({ url: '/pages/card-edit/card-edit?source=invite', fail: () => this.setData({ joining: false }) });
+    if (!this.data.attributionToken || !invite.validInviteCode(this.data.inviteCode)) {
+      this.setData({ joining: false });
+      if (wx.showToast) wx.showToast({ title: '邀请信息已失效，请重新打开分享名片', icon: 'none' });
+      return Promise.resolve(false);
+    }
+    return api.request('/api/auth/invite/journey/start', {
+      method: 'POST', auth: false,
+      data: { invite_attribution_token: this.data.attributionToken }
+    }).then((res) => {
+      const data = res.data || {};
+      if (res.statusCode !== 200) throw new Error(data.detail || '邀请信息登记失败，请重试');
+      const saved = inviteContext.saveCard({
+        code: this.data.inviteCode,
+        inviter: this.data.inviter,
+        invite_attribution_token: this.data.attributionToken,
+        invite_validated_at: this.data.inviteValidatedAt,
+        invite_expires_at: this.data.inviteExpiresAt
+      });
+      if (!saved) throw new Error('邀请信息保存失败，请重新打开分享名片');
+      wx.navigateTo({
+        url: '/pages/login/login?mode=register',
+        fail: () => this.setData({ joining: false })
+      });
+      return true;
+    }).catch((error) => {
+      this.setData({ joining: false });
+      if (wx.showToast) wx.showToast({ title: error.message || '邀请信息登记失败，请重试', icon: 'none' });
+      return false;
+    });
   },
   goEdit() { wx.navigateTo({ url: '/pages/card-edit/card-edit' }); },
   callPhone() {

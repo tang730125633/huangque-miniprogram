@@ -48,7 +48,7 @@ const profileWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/p
 assert.match(profileJs, /membership\.buildMembershipView\(user\)/);
 assert.match(profileWxml, /membership\.discountText/);
 assert.match(profileJs, /goRecharge\(\) \{ wx\.navigateTo\(\{ url: '\/pages\/recharge\/recharge' \}\); \}/);
-assert.match(profileJs, /goCard\(\) \{ wx\.switchTab\(\{ url: '\/pages\/my-card\/my-card' \}\); \}/);
+assert.match(profileJs, /goCard\(\) \{ wx\.navigateTo\(\{ url: '\/pages\/my-card\/my-card' \}\); \}/);
 assert.match(profileWxml, /wx:if="\{\{membership\.status !== 'active'\}\}"/);
 assert.match(profileWxml, /¥\{\{membershipPriceYuan\}\} · 赠 \{\{membershipBonusPoints\}\} 点/);
 assert.doesNotMatch(profileWxml, /¥499|赠 1000 点/);
