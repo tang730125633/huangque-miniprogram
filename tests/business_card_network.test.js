@@ -193,7 +193,7 @@ const cardUtilSource = fs.readFileSync(path.join(root, 'miniprogram/utils/card.j
 const customTabBar = require('../miniprogram/custom-tab-bar/index.js');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
 assert.match(myCardPage, /openAccount\(\) \{ wx\.switchTab\(\{ url: '\/pages\/profile\/profile' \}\); \}/);
-assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['我的名片', '黄雀AI工作台']);
+assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
 assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
 assert.match(publicCard, /auth: false/);
 assert.match(publicCard, /retry\(\)/);
@@ -335,7 +335,7 @@ assert.match(myCardWxml, /bindtap="openInvitePlanet"/);
 assert.match(myCardWxml, /邀请星球/);
 assert.match(myCardWxml, /查看我的邀请关系与上下级/);
 assert.match(myCardWxss, /\.planet-entry/);
-assert.match(homePage, /backToCard\(\) \{ wx\.switchTab\(\{ url: '\/pages\/my-card\/my-card' \}\); \}/);
+assert.doesNotMatch(homePage, /backToCard/);
 assert.match(homeWxml, /我的名片/);
 assert.match(myCardWxml, /disabled="\{\{binding\}\}"/);
 assert.match(rechargePage, /充值前先修改初始密码/);

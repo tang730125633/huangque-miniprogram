@@ -1,8 +1,3 @@
-const OUTER_ITEMS = [
-  { pagePath: '/pages/my-card/my-card', text: '我的名片', symbol: '▣' },
-  { pagePath: '/pages/home/home', text: '黄雀AI工作台', symbol: '⌂' }
-];
-
 const WORKBENCH_ITEMS = [
   { pagePath: '/pages/home/home', text: '首页', symbol: '⌂' },
   { pagePath: '/pages/inspiration/inspiration', text: '一键跟创', symbol: '✦' },
@@ -16,13 +11,13 @@ const LOGIN_REQUIRED = {
 };
 
 function navigationForRoute(route) {
-  return route === 'pages/my-card/my-card' ? OUTER_ITEMS : WORKBENCH_ITEMS;
+  return WORKBENCH_ITEMS;
 }
 
 if (typeof Component === 'function') Component({
   data: {
-    selected: '/pages/my-card/my-card',
-    items: OUTER_ITEMS,
+    selected: '/pages/home/home',
+    items: WORKBENCH_ITEMS,
     switching: false
   },
 
@@ -37,7 +32,7 @@ if (typeof Component === 'function') Component({
   methods: {
     syncNavigation() {
       const pages = getCurrentPages();
-      const route = pages.length ? pages[pages.length - 1].route : 'pages/my-card/my-card';
+      const route = pages.length ? pages[pages.length - 1].route : 'pages/home/home';
       this.setData({ selected: '/' + route, items: navigationForRoute(route) });
     },
 
@@ -55,4 +50,4 @@ if (typeof Component === 'function') Component({
   }
 });
 
-if (typeof module !== 'undefined') module.exports = { OUTER_ITEMS, WORKBENCH_ITEMS, LOGIN_REQUIRED, navigationForRoute };
+if (typeof module !== 'undefined') module.exports = { WORKBENCH_ITEMS, LOGIN_REQUIRED, navigationForRoute };

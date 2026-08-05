@@ -55,13 +55,6 @@ Page({
     ]
   },
 
-  onLoad() {
-    const app = getApp();
-    if (!app || !app.globalData || !app.globalData.redirectLegacyHomeLaunch) return;
-    app.globalData.redirectLegacyHomeLaunch = false;
-    wx.reLaunch({ url: '/pages/my-card/my-card' });
-  },
-
   onShow() {
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
@@ -81,8 +74,6 @@ Page({
   },
 
   onUnload() { pricing.stop(this); },
-
-  backToCard() { wx.switchTab({ url: '/pages/my-card/my-card' }); },
 
   // 受保护功能：未登录先去登录
   _guardNav(path, onAllowed) {
