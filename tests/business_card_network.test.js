@@ -119,29 +119,91 @@ require('node:test')('owner hint falls back when the current account has no card
     else store.hq_token = originalToken;
   }
 });
-require('node:test')('joining records the server-validated journey without blocking navigation', () => {
+require('node:test')('viewing a shared card does not persist invitation attribution', async () => {
   const cardApi = require('../miniprogram/utils/api.js');
-  let request;
-  let requestCount = 0;
-  let target;
-  cardApi.request = function (requestPath, options) {
-    requestCount += 1;
-    request = { path: requestPath, options };
-    return Promise.reject(new Error('analytics unavailable'));
-  };
-  global.wx.navigateTo = function (options) { target = options.url; };
+  const originalRequest = cardApi.request;
+  delete store.hq_pending_registration_invite;
+  cardApi.request = () => Promise.resolve({
+    statusCode: 200,
+    data: {
+      card: { public_id: 'public-1', name: '王小明' },
+      invite_valid: true,
+      invite_attribution_token: 'signed-token',
+      invite_validated_at: validatedAt,
+      invite_expires_at: validatedAt + card.ATTRIBUTION_TTL,
+      inviter: { account_id: 'owner-1', display_name: '王小明' }
+    }
+  });
   const context = {
-    data: { attributionToken: 'signed-token', joining: false },
+    _shareId: 0,
+    data: {},
     setData(patch) { Object.assign(this.data, patch); }
   };
-  cardPageDefinition.goJoin.call(context);
-  cardPageDefinition.goJoin.call(context);
-  assert.deepStrictEqual(request, {
-    path: '/api/auth/invite/journey/start',
-    options: { method: 'POST', auth: false, data: { invite_attribution_token: 'signed-token' } }
-  });
-  assert.strictEqual(requestCount, 1);
-  assert.strictEqual(target, '/pages/card-edit/card-edit?source=invite');
+  try {
+    await cardPageDefinition.loadPublic.call(context, 'public-1', 'ABCD23');
+    assert.strictEqual(store.hq_pending_registration_invite, undefined);
+    assert.strictEqual(context.data.attributionToken, 'signed-token');
+  } finally {
+    cardApi.request = originalRequest;
+  }
+});
+require('node:test')('logged-in card CTA returns home without binding invitation', async () => {
+  const cardApi = require('../miniprogram/utils/api.js');
+  const originalRequest = cardApi.request;
+  const originalToken = store.hq_token;
+  let requestCount = 0;
+  let target = '';
+  store.hq_token = 'account-token';
+  store.hq_pending_registration_invite = { code: 'OLD123' };
+  cardApi.request = () => { requestCount += 1; return Promise.resolve({ statusCode: 200, data: {} }); };
+  global.wx.switchTab = (options) => { target = options.url; };
+  const context = { data: { joining: false }, setData(patch) { Object.assign(this.data, patch); } };
+  try {
+    await cardPageDefinition.goJoin.call(context);
+    assert.strictEqual(requestCount, 0);
+    assert.strictEqual(store.hq_pending_registration_invite, undefined);
+    assert.strictEqual(target, '/pages/home/home');
+  } finally {
+    cardApi.request = originalRequest;
+    if (originalToken === undefined) delete store.hq_token;
+    else store.hq_token = originalToken;
+  }
+});
+require('node:test')('guest card CTA records journey and opens invited registration', async () => {
+  const cardApi = require('../miniprogram/utils/api.js');
+  const originalRequest = cardApi.request;
+  const originalToken = store.hq_token;
+  let request;
+  let target = '';
+  delete store.hq_token;
+  delete store.hq_pending_registration_invite;
+  cardApi.request = (requestPath, options) => {
+    request = { path: requestPath, options };
+    return Promise.resolve({ statusCode: 200, data: { journey_id: 'journey-1' } });
+  };
+  global.wx.navigateTo = (options) => { target = options.url; };
+  const context = {
+    data: {
+      inviteCode: 'ABCD23', attributionToken: 'signed-token', joining: false,
+      inviteValidatedAt: validatedAt, inviteExpiresAt: validatedAt + card.ATTRIBUTION_TTL,
+      inviter: { account_id: 'owner-1', display_name: '王小明' }
+    },
+    setData(patch) { Object.assign(this.data, patch); }
+  };
+  try {
+    await cardPageDefinition.goJoin.call(context);
+    assert.deepStrictEqual(request, {
+      path: '/api/auth/invite/journey/start',
+      options: { method: 'POST', auth: false, data: { invite_attribution_token: 'signed-token' } }
+    });
+    assert.strictEqual(store.hq_pending_registration_invite.code, 'ABCD23');
+    assert.strictEqual(store.hq_pending_registration_invite.source, 'card');
+    assert.strictEqual(target, '/pages/login/login?mode=register');
+  } finally {
+    cardApi.request = originalRequest;
+    if (originalToken === undefined) delete store.hq_token;
+    else store.hq_token = originalToken;
+  }
 });
 const recharge = require('../miniprogram/pages/recharge/recharge.js');
 const commercePricing = { membershipPriceYuan: 399, membershipBonusPoints: 900 };
@@ -199,9 +261,12 @@ assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((i
 assert.match(publicCard, /auth: false/);
 assert.match(publicCard, /retry\(\)/);
 assert.match(publicCard, /data\.invite_valid === true/);
-assert.match(publicCard, /rememberValidInvite/);
+assert.doesNotMatch(publicCard, /rememberValidInvite/);
+assert.match(publicCard, /inviteContext\.saveCard/);
 assert.match(publicCard, /invite_attribution_token/);
 assert.match(publicCard, /\/api\/auth\/invite\/journey\/start/);
+assert.match(publicCard, /\/pages\/login\/login\?mode=register/);
+assert.match(publicCard, /wx\.switchTab\(\{ url: '\/pages\/home\/home' \}\)/);
 assert.match(publicCard, /prepareShareImage\(this, card\)/);
 assert.match(publicCard, /imageUrl: this\.data\.shareImageUrl/);
 assert.match(publicCard, /wx\.hideShareMenu\(\)/);
@@ -221,7 +286,7 @@ assert.doesNotMatch(loginPage, /loginCardAccount|loginWithCard/);
 assert.match(loginWxml, /注册并登录/);
 assert.match(loginWxml, /你正在通过/);
 assert.doesNotMatch(loginWxml, /邀请码（选填）|新用户注册即送|名片账号|先创建我的名片/);
-assert.match(publicCard, /card-edit\/card-edit\?source=invite/);
+assert.doesNotMatch(publicCard, /card-edit\/card-edit\?source=invite/);
 assert.match(editCard, /card\.privacy\.phone/);
 assert.match(editCard, /card\.privacy\.email/);
 assert.match(editCard, /card\.privacy\.address/);
