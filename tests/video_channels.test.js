@@ -129,5 +129,12 @@ function pageFor(engine) {
     method: 'POST', data: {}, idempotencyKey: 'mp-video-sora-test-1234'
   });
   assert.strictEqual(requestOptions.header['Idempotency-Key'], 'mp-video-sora-test-1234');
+
+  const avatar = pageFor('grok');
+  avatar._chooseImage = (_, done) => done('data:image/jpeg;base64,YXZhdGFy');
+  avatar._pollAvatar = () => {};
+  avatar._chooseAvatarImage();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(requestOptions.header['Idempotency-Key'], /^mp-video-/);
   console.log('video channel tests passed');
 })().catch((error) => { console.error(error); process.exit(1); });
