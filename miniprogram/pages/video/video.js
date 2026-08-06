@@ -2135,7 +2135,10 @@ Page({
   _chooseAvatarImage() {
     this._chooseImage('image/jpeg', (url) => {
       this.setData({ avatarBusy: true, avatarNote: '建形象中，约 25 秒…' });
-      api.request('/api/gen/avatar', { method: 'POST', data: { image_data: url }, timeout: 60000 })
+      api.request('/api/gen/avatar', {
+        method: 'POST', data: { image_data: url }, timeout: 60000,
+        idempotencyKey: officialVideoRequestKey()
+      })
         .then((res) => {
           const d = res.data || {};
           if (!d.job_id) {
