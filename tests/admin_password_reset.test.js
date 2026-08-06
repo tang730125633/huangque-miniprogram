@@ -22,7 +22,7 @@ api.request = (requestPath, options) => {
 
 const context = {
   data: {
-    users: [{ username: 'alice', display_name: 'Alice' }],
+    users: [{ id: 7, account: 'ali**', display_name: 'Alice' }],
     target: {}, newPassword: '', confirmPassword: '', saving: false
   },
   setData(next) { Object.assign(this.data, next); },
@@ -30,7 +30,7 @@ const context = {
   refreshAll() { this.refreshed = true; }
 };
 
-page.openPasswordReset.call(context, { currentTarget: { dataset: { username: 'alice' } } });
+page.openPasswordReset.call(context, { currentTarget: { dataset: { userId: 7 } } });
 assert.strictEqual(context.data.showPasswordReset, true);
 context.data.newPassword = 'temporary456';
 context.data.confirmPassword = 'different456';
@@ -46,7 +46,7 @@ modal.success({ confirm: true });
 setImmediate(() => {
   assert.deepStrictEqual(calls[0], {
     path: '/api/admin/users/password/reset',
-    options: { method: 'POST', data: { username: 'alice', new_password: 'temporary456' } }
+    options: { method: 'POST', data: { user_id: 7, new_password: 'temporary456' } }
   });
   assert.strictEqual(context.data.showPasswordReset, false);
   assert.strictEqual(context.data.newPassword, '');
