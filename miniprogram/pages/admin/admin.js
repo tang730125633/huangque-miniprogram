@@ -96,8 +96,8 @@ Page({
   },
 
   openAdjust(e) {
-    const username = e.currentTarget.dataset.username;
-    const user = this.data.users.find((item) => item.username === username);
+    const userId = String(e.currentTarget.dataset.userId || '');
+    const user = this.data.users.find((item) => String(item.id) === userId);
     if (!user) return;
     this.setData({ showAdjust: true, target: user, delta: '', reason: '' });
   },
@@ -106,8 +106,8 @@ Page({
     this.setData({ showAdjust: false, target: {}, delta: '', reason: '' });
   },
   openPasswordReset(e) {
-    const username = e.currentTarget.dataset.username;
-    const user = this.data.users.find((item) => item.username === username);
+    const userId = String(e.currentTarget.dataset.userId || '');
+    const user = this.data.users.find((item) => String(item.id) === userId);
     if (!user) return;
     this.setData({ showPasswordReset: true, target: user, newPassword: '', confirmPassword: '' });
   },
@@ -141,18 +141,18 @@ Page({
     }
     wx.showModal({
       title: delta > 0 ? '确认增加点数' : '确认扣减点数',
-      content: target.username + '\n' + target.points + ' → ' + after + ' 点\n原因：' + reason,
+      content: (target.account || target.display_name) + '\n' + target.points + ' → ' + after + ' 点\n原因：' + reason,
       confirmText: '确认调整',
       confirmColor: delta > 0 ? '#e24ba0' : '#C2413A',
-      success: (r) => { if (r.confirm) this.doAdjust(delta, reason); }
+      success: (r) => { if (r.confirm) this.doAdjust(target.id, delta, reason); }
     });
   },
 
-  doAdjust(delta, reason) {
+  doAdjust(userId, delta, reason) {
     this.setData({ saving: true });
     api.request('/api/admin/points/adjust', {
       method: 'POST',
-      data: { username: this.data.target.username, delta, reason }
+      data: { user_id: userId, delta, reason }
     }).then((res) => {
       const d = res.data || {};
       if (res.statusCode !== 200) throw new Error(d.detail || '点数调整失败');
@@ -179,18 +179,18 @@ Page({
     }
     wx.showModal({
       title: '确认重置密码',
-      content: this.data.target.username + '\n该用户的全部登录态会立即失效，下次登录必须改密。',
+      content: (this.data.target.account || this.data.target.display_name) + '\n该用户的全部登录态会立即失效，下次登录必须改密。',
       confirmText: '确认重置',
       confirmColor: '#C2413A',
-      success: (r) => { if (r.confirm) this.doPasswordReset(password); }
+      success: (r) => { if (r.confirm) this.doPasswordReset(this.data.target.id, password); }
     });
   },
 
-  doPasswordReset(password) {
+  doPasswordReset(userId, password) {
     this.setData({ saving: true });
     api.request('/api/admin/users/password/reset', {
       method: 'POST',
-      data: { username: this.data.target.username, new_password: password }
+      data: { user_id: userId, new_password: password }
     }).then((res) => {
       const d = res.data || {};
       if (res.statusCode !== 200) throw new Error(d.detail || '密码重置失败');

@@ -25,18 +25,18 @@
     <view wx:if="{{loading}}" class="empty">正在加载…</view>
     <view wx:elif="{{!users.length}}" class="empty">没有找到账号</view>
     <view wx:else class="user-list">
-      <view class="user-row" wx:for="{{users}}" wx:key="username" data-username="{{item.username}}" bindtap="openAdjust">
+      <view class="user-row" wx:for="{{users}}" wx:key="id" data-user-id="{{item.id}}" bindtap="openAdjust">
         <view class="user-main">
           <view class="user-name-line">
-            <text class="user-name">{{item.display_name || item.username}}</text>
+            <text class="user-name">{{item.display_name || item.account}}</text>
             <text wx:if="{{item.role==='admin'}}" class="mini-admin">管理员</text>
           </view>
-          <view class="muted small">{{item.username}} · {{item.created_label}}</view>
+          <view class="muted small">{{item.account}} · {{item.created_label}}</view>
         </view>
         <view class="points-side">
           <text class="points-value">{{item.points}}</text>
           <text class="muted tiny">点</text>
-          <view class="password-reset-link" data-username="{{item.username}}" catchtap="openPasswordReset">重置密码</view>
+          <view class="password-reset-link" data-user-id="{{item.id}}" catchtap="openPasswordReset">重置密码</view>
         </view>
       </view>
     </view>
@@ -62,8 +62,8 @@
   <view class="adjust-modal" catchtap="stopBubble">
     <view class="modal-title">重置用户密码</view>
     <view class="target-card">
-      <view class="target-name">{{target.display_name || target.username}}</view>
-      <view class="muted small">{{target.username}}</view>
+      <view class="target-name">{{target.display_name || target.account}}</view>
+      <view class="muted small">{{target.account}}</view>
     </view>
     <view class="reset-warning">重置后会注销该用户全部登录态；用户使用临时密码登录后必须立即改密。</view>
     <view class="field-label">新临时密码</view>
@@ -81,8 +81,8 @@
   <view class="adjust-modal" catchtap="stopBubble">
     <view class="modal-title">调整账户点数</view>
     <view class="target-card">
-      <view class="target-name">{{target.display_name || target.username}}</view>
-      <view class="muted small">{{target.username}} · 当前 {{target.points}} 点</view>
+      <view class="target-name">{{target.display_name || target.account}}</view>
+      <view class="muted small">{{target.account}} · 当前 {{target.points}} 点</view>
     </view>
     <view class="field-label">调整数量</view>
     <input class="field-input" type="number" value="{{delta}}" placeholder="增加填正数，扣减填负数" placeholder-class="placeholder" bindinput="onDelta" />
