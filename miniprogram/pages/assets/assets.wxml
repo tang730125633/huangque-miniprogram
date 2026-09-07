@@ -1,4 +1,5 @@
 <view class="container">
+  <view class="page-heading"><view class="page-eyebrow">YOUR COLLECTION</view><view class="page-heading-title">作品集</view><view class="page-heading-copy">把灵感留在这里，随时回看与分享。</view></view>
 
   <!-- 分类 tabs -->
   <view class="tabs">

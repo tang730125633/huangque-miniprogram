@@ -273,7 +273,7 @@ test('opens the launched card feature from invitation planet actions', () => {
   assert.match(wxml, /权限不够，需要体验官及以上权限/);
   assert.match(wxml, /class="planet-avatar fallback name-\{\{item\.name_size\}\}">\{\{item\.name\}\}<\/view>/);
   assert.match(wxml, /wx:if="\{\{selectedNode\.role !== 'self'\}\}" class="focus-button/);
-  assert.match(wxml, /class="galaxy-background" src="\/assets\/network-galaxy-v1\.jpg" mode="aspectFill"/);
+  assert.doesNotMatch(wxml, /network-galaxy-v1/);
   assert.match(wxml, /catchwheel="onGraphWheel"/);
   assert.match(wxml, /bindchange="onGraphMove" bindscale="onGraphScale"/);
   assert.doesNotMatch(wxml, /class="identity-legend"/);
@@ -284,10 +284,10 @@ test('opens the launched card feature from invitation planet actions', () => {
   assert.doesNotMatch(wxml, /class="chevron"/);
 
   const wxss = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/network/network.wxss'), 'utf8');
-  assert.match(wxss, /identity-dot\.initiator[\s\S]*background: #f2c45f !important/);
-  assert.match(wxss, /identity-dot\.partner[\s\S]*background: #ed5eae !important/);
-  assert.match(wxss, /identity-dot\.experience[\s\S]*background: #5d9cff !important/);
-  assert.match(wxss, /identity-dot\.nonmember[\s\S]*background: #8791a3 !important/);
+  assert.match(wxss, /identity-initiator \.planet-body/);
+  assert.match(wxss, /identity-partner \.planet-body/);
+  assert.match(wxss, /identity-experience \.planet-body/);
+  assert.match(wxss, /identity-nonmember \.planet-body/);
 });
 
 test('hydrates only the node selected by the user', async () => {

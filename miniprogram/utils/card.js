@@ -153,17 +153,17 @@ function prepareShareImage(page, card) {
     }
     try {
       const context = wx.createCanvasContext(SHARE_CANVAS_ID, page);
-      context.setFillStyle('#0b0912');
+      context.setFillStyle('#f2e8d7');
       context.fillRect(0, 0, 500, 400);
       context.setTextAlign('center');
       context.setTextBaseline('middle');
-      context.setFillStyle('#f4a847');
+      context.setFillStyle('#876b3f');
       context.setFontSize(112);
       context.fillText(Array.from(name)[0], 250, 168);
-      context.setFillStyle('#ffffff');
+      context.setFillStyle('#29271f');
       context.setFontSize(Array.from(name).length > 8 ? 30 : 38);
       context.fillText(Array.from(name).slice(0, 12).join(''), 250, 292, 420);
-      context.setFillStyle('#9f98b3');
+      context.setFillStyle('#756b58');
       context.setFontSize(22);
       context.fillText('黄雀公开名片', 250, 352);
       context.draw(false, () => {

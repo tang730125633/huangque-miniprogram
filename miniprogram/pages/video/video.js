@@ -165,10 +165,10 @@ const PHASE_LABEL = {
 };
 
 // 语义色（深色主题）
-const C_MUTED = '#948da8';
-const C_INFO = '#4d8dff';
-const C_OK = '#2bd576';
-const C_ERR = '#ff5c8a';
+const C_MUTED = '#756b58';
+const C_INFO = '#536f65';
+const C_OK = '#416b50';
+const C_ERR = '#a34235';
 
 Page({
   data: {
@@ -224,7 +224,7 @@ Page({
     videoPromptTemplates: promptTemplates.VIDEO_TEMPLATES,
     videoPromptTemplateKey: 'product',
     videoTplSubject: '黄雀 AI 视觉服务',
-    videoTplScene: '紫粉霓虹的未来空间',
+    videoTplScene: '自然光洒落的暖色创作室',
     videoTplAction: '缓慢旋转展示核心亮点',
     videoTplStyle: '高级、真实、细腻的电影光影',
     promptUndo: '',
@@ -761,7 +761,7 @@ Page({
         officialDuration: 5, officialResolution: '720p',
         soraModel: 'sora-2', soraDuration: 4, soraResolutions: soraResolutions('sora-2'), soraResolution: '720p',
         prompt: '', promptUndo: '', canUndoPrompt: false, refPreviews: [], editVideoPath: '', editVideoName: '', editDuration: 0, editCost: null,
-        videoPromptTemplateKey: 'product', videoTplSubject: '黄雀 AI 视觉服务', videoTplScene: '紫粉霓虹的未来空间',
+        videoPromptTemplateKey: 'product', videoTplSubject: '黄雀 AI 视觉服务', videoTplScene: '自然光洒落的暖色创作室',
         videoTplAction: '缓慢旋转展示核心亮点', videoTplStyle: '高级、真实、细腻的电影光影'
       }));
       this._syncGenPricing();
@@ -1948,7 +1948,7 @@ Page({
     wx.showModal({
       title: '删除形象',
       content: '只会从“我的形象”列表移除，不影响已生成作品。替换形象可先新建，再删除旧形象。',
-      confirmText: '删除', confirmColor: '#ff5c8a',
+      confirmText: '删除', confirmColor: '#a34235',
       success: (res) => { if (res.confirm) this._deleteAvatarRequest(avatar.id); }
     });
   },

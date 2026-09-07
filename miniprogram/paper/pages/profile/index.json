@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "paper-screen": "/paper/components/screen/index"
+  },
+  "navigationStyle": "custom",
+  "navigationBarTextStyle": "black"
+}

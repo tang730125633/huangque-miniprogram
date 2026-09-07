@@ -1,4 +1,5 @@
 <view class="container">
+  <view class="page-heading"><view class="page-eyebrow">VOICE STUDIO</view><view class="page-heading-title">让文字，有声音</view><view class="page-heading-copy">找到合适的音色，讲出你的故事。</view></view>
 
   <!-- 点数条 -->
   <view class="points-bar">

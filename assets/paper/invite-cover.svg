@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+ <defs><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter></defs>
+ <rect width="1000" height="1000" fill="#f2e8d7"/><rect width="1000" height="1000" filter="url(#grain)" opacity=".09"/>
+ <rect x="46" y="46" width="908" height="908" rx="20" fill="none" stroke="#c9b994" stroke-width="2"/>
+ <g transform="translate(0 100)"><circle cx="500" cy="246" r="104" fill="#f8f0df" stroke="#a68d60" stroke-width="2"/>
+ <text x="500" y="278" font-family="Songti SC,STSong,serif" font-size="96" text-anchor="middle" fill="#876b3f">雀</text>
+ <text x="500" y="448" font-family="Songti SC,STSong,serif" font-size="62" text-anchor="middle" fill="#29271f">让想法，在这里生长。</text>
+ <text x="500" y="520" font-family="PingFang SC,sans-serif" font-size="27" text-anchor="middle" fill="#756b58">图片 · 声音 · 视频 · 文案</text>
+ <path d="M390 590H610" stroke="#c9b994" stroke-width="2"/>
+ <text x="500" y="658" font-family="PingFang SC,sans-serif" font-size="25" text-anchor="middle" letter-spacing="5" fill="#876b3f">黄雀 AI · 随身创作室</text>
+</g></svg>

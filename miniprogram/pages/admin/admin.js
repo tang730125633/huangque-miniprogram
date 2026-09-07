@@ -143,7 +143,7 @@ Page({
       title: delta > 0 ? '确认增加点数' : '确认扣减点数',
       content: (target.account || target.display_name) + '\n' + target.points + ' → ' + after + ' 点\n原因：' + reason,
       confirmText: '确认调整',
-      confirmColor: delta > 0 ? '#e24ba0' : '#C2413A',
+      confirmColor: delta > 0 ? '#876b3f' : '#C2413A',
       success: (r) => { if (r.confirm) this.doAdjust(target.id, delta, reason); }
     });
   },

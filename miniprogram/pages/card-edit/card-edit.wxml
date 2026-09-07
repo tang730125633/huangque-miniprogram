@@ -29,14 +29,14 @@
       <view class="field"><text>手机号 *</text><input disabled="{{loading}}" type="number" maxlength="11" value="{{card.phone}}" data-field="phone" bindinput="input" placeholder="请输入手机号" /></view>
       <view class="field"><text>所在城市</text><input disabled="{{loading}}" value="{{card.address}}" data-field="address" bindinput="input" placeholder="广州 · 天河" /></view>
     </view>
-    <view class="switch-line"><text>在公开名片显示手机号</text><switch disabled="{{loading}}" checked="{{card.privacy.phone}}" data-field="phone" bindchange="setPrivacy" color="#e24ba0" /></view>
+    <view class="switch-line"><text>在公开名片显示手机号</text><switch disabled="{{loading}}" checked="{{card.privacy.phone}}" data-field="phone" bindchange="setPrivacy" color="#876b3f" /></view>
     <view class="field"><text>标签</text><input disabled="{{loading}}" value="{{card.tags}}" data-field="tags" bindinput="input" placeholder="AI、品牌、摄影（逗号分隔）" /></view>
     <view class="field"><text>作品集 / 官网</text><input disabled="{{loading}}" value="{{card.links}}" data-field="links" bindinput="input" placeholder="选填链接" /></view>
     <view class="field"><text>邮箱</text><input disabled="{{loading}}" value="{{card.email}}" data-field="email" bindinput="input" placeholder="选填" /></view>
-    <view class="switch-line"><text>在公开名片显示邮箱</text><switch disabled="{{loading}}" checked="{{card.privacy.email}}" data-field="email" bindchange="setPrivacy" color="#e24ba0" /></view>
-    <view class="switch-line"><text>在公开名片显示城市 / 地址</text><switch disabled="{{loading}}" checked="{{card.privacy.address}}" data-field="address" bindchange="setPrivacy" color="#e24ba0" /></view>
+    <view class="switch-line"><text>在公开名片显示邮箱</text><switch disabled="{{loading}}" checked="{{card.privacy.email}}" data-field="email" bindchange="setPrivacy" color="#876b3f" /></view>
+    <view class="switch-line"><text>在公开名片显示城市 / 地址</text><switch disabled="{{loading}}" checked="{{card.privacy.address}}" data-field="address" bindchange="setPrivacy" color="#876b3f" /></view>
     <view class="qr-line"><view><view>微信二维码</view><view class="media-hint">选填，公开状态可单独控制</view></view><view class="small-button" data-field="wechat_qr" bindtap="chooseMedia">{{card.wechat_qr ? '重新选择' : '选择图片'}}</view></view>
-    <view class="switch-line"><text>在公开名片显示微信二维码</text><switch disabled="{{loading}}" checked="{{card.privacy.wechat_qr}}" data-field="wechat_qr" bindchange="setPrivacy" color="#e24ba0" /></view>
+    <view class="switch-line"><text>在公开名片显示微信二维码</text><switch disabled="{{loading}}" checked="{{card.privacy.wechat_qr}}" data-field="wechat_qr" bindchange="setPrivacy" color="#876b3f" /></view>
   </view>
 
   <view class="form-section">

@@ -24,7 +24,7 @@ function checkLatest() {
       content: notice.detail || '',
       confirmText: '我知道了',
       cancelText: '稍后提醒',
-      confirmColor: '#b048c8',
+      confirmColor: '#876b3f',
       success(result) {
         const action = result.confirm ? 'read' : 'snooze-today';
         api.request('/api/auth/notifications/' + encodeURIComponent(notice.id) + '/' + action, {
