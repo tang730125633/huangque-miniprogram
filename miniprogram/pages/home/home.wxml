@@ -18,7 +18,7 @@
     <view class="rt-swiper-wrap"><swiper class="rt-swiper" circular="{{banners.length > 1}}" indicator-dots="{{false}}" autoplay="{{bannerAutoplay && banners.length > 1}}" interval="5000" duration="300" bindchange="onBannerChange"><swiper-item wx:for="{{banners}}" wx:key="id"><view class="rt-banner" bindtap="onTapRoleTransfer" data-path="{{item.path}}"><view class="rt-text"><view class="rt-kicker">创作的更多可能 / 0{{index+1}}</view><view class="rt-title">{{item.title}}</view><view class="rt-sub">{{item.sub}}</view></view><view class="banner-art" aria-hidden="true"><view class="art-sheet back"></view><view class="art-sheet front"><text>{{item.symbol}}</text></view></view></view></swiper-item></swiper><view class="rt-page">{{bannerCurrent + 1}} / {{banners.length}}</view></view>
     <view class="section-head"><text class="section-title">灵感小册</text><text class="section-note">教程与创作案例</text></view>
     <scroll-view class="tut-scroll" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="tut-card" wx:for="{{tutorials}}" wx:key="id" bindtap="onTapTutorial" data-id="{{item.id}}"><view class="tut-cover cover-{{index}}"><text class="tut-number">0{{index+1}}</text><text class="tut-symbol">{{item.symbol}}</text><text class="tut-edition">HUANGQUE / STUDIO</text></view><view class="tut-name">{{item.title}} ↗</view></view></scroll-view>
-    <view class="build-version">让每一次创作，都留下温度。<view class="version-label">v0.079.paper3</view></view>
+    <view class="build-version">让每一次创作，都留下温度。<view class="version-label">v0.079.paper4</view></view>
     <view class="bottom-safe"></view>
   </view>
   <view wx:if="{{videoIp12PromptVisible}}" class="ip12-prompt-mask" catchtap="skipVideoIp12Prompt">
