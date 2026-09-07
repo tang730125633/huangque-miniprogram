@@ -2,7 +2,7 @@ const api = require('./api');
 const formats = [
   { id: 'image', name: '图片', endpoint: 'image', rule: 'image.openai.std', detail: '1 张图片 · 标准画质' },
   { id: 'audio', name: '音频', endpoint: 'audio', rule: 'audio.tts', detail: '按输入文稿配音 · 最多 1000 字' },
-  { id: 'video', name: '视频', endpoint: 'xiaole_video', rule: 'video.minimax_h3.768p', detail: '5 秒视频 · 2K · 竖屏' },
+  { id: 'video', name: '视频', endpoint: 'xiaole_video', rule: 'video.minimax_h3.768p', detail: '5 秒视频 · 768P · 竖屏' },
   { id: 'text', name: '文案', endpoint: 'copy', rule: 'text.copy', detail: '1 份文案' }
 ];
 function format(id) { const f = formats.find(x => x.id === id); if (!f) throw new Error('作品类型无效'); return f; }
@@ -11,7 +11,7 @@ function payload(draft) {
   if (!prompt || prompt.length > 1000) throw new Error('请填写 1–1000 字创作内容');
   const p = { prompt };
   if (f.id === 'image') Object.assign(p, { provider: 'openai', quality: 'standard', count: 1, ratio: '1:1' });
-  if (f.id === 'video') Object.assign(p, { channel: 'minimax', operation: 'generate', duration: 5, resolution: '2k', ratio: '9:16' });
+  if (f.id === 'video') Object.assign(p, { channel: 'minimax', operation: 'generate', duration: 5, resolution: '768p', ratio: '9:16' });
   if (f.id === 'audio') {
     if (!draft.voice) throw new Error('请先选择音色');
     Object.assign(p, { text: prompt, voice: draft.voice, speed: 1 });

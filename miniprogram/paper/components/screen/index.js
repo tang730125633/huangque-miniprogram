@@ -74,8 +74,11 @@ Component({
       const pending=api.read().jobIds||[];
       const tracked=await Promise.all(pending.slice(0,12).filter(id=>!map.has(id)).map(id=>api.request('/api/gen/job/'+encodeURIComponent(id)).then(creation.jobView).catch(e=>{if(e.status===404)return null;throw e;})));
       tracked.filter(Boolean).forEach(j=>map.set(j.id,j));
-      await Promise.all([...map.values()].map(async j=>{if(j.kind==='image'&&j.url)j.displayUrl=await api.mediaSource(j.url).catch(()=> '');}));
-      if(valid()){const works=[...map.values()].sort((a,b)=>b.id-a.id);this.setData({works,hasMore:batches.some(b=>b.length>=30)});this.applyFilter();}
+      const works=[...map.values()].sort((a,b)=>b.id-a.id);
+      const page=this.properties.pageId;
+      const images=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='image'&&j.url);
+      for(let i=0;i<images.length;i+=4)await Promise.all(images.slice(i,i+4).map(async j=>{j.displayUrl=await api.mediaSource(j.url).catch(()=> '');}));
+      if(valid()){this.setData({works,hasMore:batches.some(b=>b.length>=30)});this.applyFilter();}
     },
     field(e) { const key=e.currentTarget.dataset.field;if(['promptInput','username','password','feedbackInput','search'].includes(key)){this.setData({[key]:e.detail.value});if(key==='search')this.applyFilter();} },
     cardField(e) {const key=e.currentTarget.dataset.field;if(['name','headline','company','bio','email','address'].includes(key))this.setData({['card.'+key]:e.detail.value});},
@@ -86,7 +89,7 @@ Component({
     requireLogin(){if(api.session())return true;this.navigate('login');return false;},
     consentChange(e){this.setData({consent:e.detail.value.includes('agree')});},
     login(){this.run(async()=>{if(!this.data.consent)throw new Error('请阅读并同意账号登录说明');if(!this.data.username.trim()||!this.data.password)throw new Error('请填写账号与密码');await api.login(this.data.username,this.data.password);this.setData({password:''});this.navigate('home');});},
-    logout(){this.run(async()=>{await api.request('/api/auth/logout','POST',{});api.setSession(null);this.setData({user:null,password:'',works:[],card:emptyCard});this.navigate('login');});},
+    logout(){this.run(async()=>{try{await api.request('/api/auth/logout','POST',{});}catch(_){}api.setSession(null);this.setData({user:null,password:'',works:[],card:emptyCard});this.navigate('login');});},
     chooseKind(e){const kind=e.currentTarget.dataset.kind;const f=creation.format(kind);this.setData({kind,kindName:f.name,formatDetail:f.detail,quote:null});if(kind==='audio'&&api.session())this.run(()=>this.loadVoices());},
     draft(){return {kind:this.data.kind,prompt:this.data.promptInput,voice:this.data.voice,reference:this.reference||''};},
     startChat(){if(!this.requireLogin())return;this.run(async()=>{if(!this.data.promptInput.trim())throw new Error('先写下一点想法吧');api.save({draft:this.draft()});this.navigate('chat');});},
