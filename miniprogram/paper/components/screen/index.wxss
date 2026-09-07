@@ -216,7 +216,7 @@
 
 /* Agent conversation: messages first, controls second. */
 .agent-status { display:flex; align-items:center; gap:10rpx; margin:8rpx 0 30rpx; color:#52675b; font-size:22rpx; font-weight:600; }
-.status-dot { width:12rpx; height:12rpx; border-radius:50%; background:#4f8b68; box-shadow:0 0 0 7rpx rgba(79,139,104,.12); }
+.status-dot { width:12rpx; height:12rpx; border-radius:50%; background:#9a6a21; box-shadow:0 0 0 7rpx rgba(154,106,33,.12); }
 .agent-mode { margin-left:auto; padding:7rpx 13rpx; border:1rpx solid #d8d4ca; border-radius:999rpx; color:#747a73; background:rgba(255,255,255,.6); font-size:18rpx; font-weight:500; }
 .agent-thread { padding:4rpx 0 14rpx; }
 .agent-message { display:flex; align-items:flex-start; gap:16rpx; margin-bottom:28rpx; }
