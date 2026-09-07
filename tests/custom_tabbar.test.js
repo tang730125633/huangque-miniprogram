@@ -23,7 +23,7 @@ const context = {
 Object.assign(context, definition.methods);
 
 context.syncNavigation();
-assert.deepStrictEqual(context.data.items.map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
+assert.deepStrictEqual(context.data.items.map((item) => item.text), ['对话', '作品', '我的']);
 assert.ok(context.data.items.every((item) => item.symbol));
 context.switchTab({ currentTarget: { dataset: { path: '/pages/home/home' } } });
 assert.deepStrictEqual(switches, []);
@@ -38,7 +38,7 @@ assert.deepStrictEqual(switches, ['/pages/profile/profile']);
 
 route = 'pages/my-card/my-card';
 context.syncNavigation();
-assert.deepStrictEqual(context.data.items.map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
+assert.deepStrictEqual(context.data.items.map((item) => item.text), ['对话', '作品', '我的']);
 assert.ok(context.data.items.every((item) => item.symbol));
 assert.deepStrictEqual(navigation.navigationForRoute('pages/my-card/my-card'), navigation.WORKBENCH_ITEMS);
 

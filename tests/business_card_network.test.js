@@ -225,9 +225,8 @@ assert.strictEqual(directPreviewConfig.setting.urlCheck, false);
 assert.strictEqual(appJson.pages[0], 'pages/home/home');
 assert.strictEqual(appJson.tabBar.custom, true);
 assert.deepStrictEqual(appJson.tabBar.list.map((item) => [item.pagePath, item.text]), [
-  ['pages/home/home', '黄雀AI工作台'],
-  ['pages/inspiration/inspiration', '一键跟创'],
-  ['pages/assets/assets', '历史作品'],
+  ['pages/home/home', '对话'],
+  ['pages/assets/assets', '作品'],
   ['pages/profile/profile', '我的']
 ]);
 const publicCard = fs.readFileSync(path.join(root, 'miniprogram/pages/card/card.js'), 'utf8');
@@ -256,8 +255,8 @@ const customTabBar = require('../miniprogram/custom-tab-bar/index.js');
 assert.match(publicCard, /\/api\/auth\/card\/public/);
 assert.match(publicCard, /\/api\/auth\/card\/me\?create=0/);
 assert.doesNotMatch(publicCard, /loginCardSession|cardAuth: true/);
-assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
-assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['首页', '一键跟创', '历史作品', '我的']);
+assert.deepStrictEqual(customTabBar.navigationForRoute('pages/my-card/my-card').map((item) => item.text), ['对话', '作品', '我的']);
+assert.deepStrictEqual(customTabBar.navigationForRoute('pages/home/home').map((item) => item.text), ['对话', '作品', '我的']);
 assert.match(publicCard, /auth: false/);
 assert.match(publicCard, /retry\(\)/);
 assert.match(publicCard, /data\.invite_valid === true/);

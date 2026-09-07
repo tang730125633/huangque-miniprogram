@@ -23,15 +23,10 @@ require('../miniprogram/pages/home/home.js');
 
 app.onLaunch.call(app, { path: 'pages/home/home', query: {} });
 if (homeDefinition.onLoad) homeDefinition.onLoad.call({});
-assert.deepStrictEqual(launches, []);
+assert.deepStrictEqual(launches, ['/paper/pages/home/index']);
 assert.strictEqual(Object.prototype.hasOwnProperty.call(app.globalData, 'redirectLegacyHomeLaunch'), false);
 
-if (homeDefinition.onLoad) homeDefinition.onLoad.call({});
-assert.deepStrictEqual(launches, []);
-
 app.onLaunch.call(app, { path: 'pages/my-card/my-card', query: {} });
-if (homeDefinition.onLoad) homeDefinition.onLoad.call({});
-assert.deepStrictEqual(launches, []);
 
 const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../miniprogram/app.json'), 'utf8'));
 const homeWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/home/home.wxml'), 'utf8');
@@ -39,7 +34,6 @@ assert.match(homeWxml, /v0\.079\.paper5/);
 assert.strictEqual(appJson.pages[0], 'pages/home/home');
 assert.deepStrictEqual(appJson.tabBar.list.map((item) => item.pagePath), [
   'pages/home/home',
-  'pages/inspiration/inspiration',
   'pages/assets/assets',
   'pages/profile/profile'
 ]);

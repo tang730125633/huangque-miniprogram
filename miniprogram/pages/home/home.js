@@ -54,9 +54,18 @@ Page({
     ]
   },
 
+  onLoad() {
+    this._openingPaper = true;
+    wx.reLaunch({
+      url: '/paper/pages/home/index',
+      fail: () => { this._openingPaper = false; }
+    });
+  },
+
   openPaper() { wx.navigateTo({ url: '/paper/pages/home/index' }); },
 
   onShow() {
+    if (this._openingPaper) return;
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();
     // swiper 只在首页可见时运行，避免切到其它 tab 后后台定时切页造成卡顿。
