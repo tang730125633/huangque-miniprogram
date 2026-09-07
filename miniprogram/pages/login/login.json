@@ -1,4 +1,8 @@
 {
   "navigationBarTitleText": "登录",
-  "usingComponents": {}
+  "usingComponents": {},
+  "navigationBarBackgroundColor": "#f2e8d7",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#f2e8d7",
+  "backgroundTextStyle": "dark"
 }

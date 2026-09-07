@@ -715,4 +715,4 @@
 
 .bottom-safe { height: calc(150rpx + constant(safe-area-inset-bottom)); height: calc(150rpx + env(safe-area-inset-bottom)); }
 
-.paper-entry{width:calc(100% - 56rpx);box-sizing:border-box;position:relative;z-index:2;display:block;margin:180rpx 28rpx 0;padding:30rpx;text-align:left;background:#f2e8d7;color:#29271f;border:1rpx solid #b9a684;border-radius:22rpx;line-height:1.6}.paper-entry-kicker{font-size:21rpx;color:#907447;letter-spacing:3rpx}.paper-entry-title{font-size:36rpx;font-weight:600;margin:10rpx 0}.paper-entry-copy{font-size:24rpx;color:#756b57}
+.home .paper-entry{width:calc(100% - 56rpx);box-sizing:border-box;position:relative;z-index:2;display:block;margin:180rpx 28rpx 0;padding:30rpx;text-align:left;background:#f2e8d7;color:#29271f;border:1rpx solid #b9a684;border-radius:22rpx;line-height:1.6}.paper-entry-kicker{font-size:21rpx;color:#907447;letter-spacing:3rpx}.paper-entry-title{font-size:36rpx;font-weight:600;margin:10rpx 0}.paper-entry-copy{font-size:24rpx;color:#756b57}
