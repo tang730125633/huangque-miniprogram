@@ -34,12 +34,66 @@
     "backgroundColor": "#100c18",
     "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/home/home", "text": "黄雀AI工作台", "iconPath": "assets/tabbar/home.png", "selectedIconPath": "assets/tabbar/home_on.png" },
-      { "pagePath": "pages/inspiration/inspiration", "text": "一键跟创", "iconPath": "assets/tabbar/idea.png", "selectedIconPath": "assets/tabbar/idea_on.png" },
-      { "pagePath": "pages/assets/assets", "text": "历史作品", "iconPath": "assets/tabbar/history.png", "selectedIconPath": "assets/tabbar/history_on.png" },
-      { "pagePath": "pages/profile/profile", "text": "我的", "iconPath": "assets/tabbar/profile.png", "selectedIconPath": "assets/tabbar/profile_on.png" }
+      {
+        "pagePath": "pages/home/home",
+        "text": "黄雀AI工作台",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home_on.png"
+      },
+      {
+        "pagePath": "pages/inspiration/inspiration",
+        "text": "一键跟创",
+        "iconPath": "assets/tabbar/idea.png",
+        "selectedIconPath": "assets/tabbar/idea_on.png"
+      },
+      {
+        "pagePath": "pages/assets/assets",
+        "text": "历史作品",
+        "iconPath": "assets/tabbar/history.png",
+        "selectedIconPath": "assets/tabbar/history_on.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile_on.png"
+      }
     ]
   },
   "style": "v2",
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "subPackages": [
+    {
+      "root": "paper",
+      "name": "paper",
+      "pages": [
+        "pages/home/index",
+        "pages/works/index",
+        "pages/profile/index",
+        "pages/membership/index",
+        "pages/benefits/index",
+        "pages/points/index",
+        "pages/invite/index",
+        "pages/card/index",
+        "pages/card-edit/index",
+        "pages/privacy/index",
+        "pages/card-works/index",
+        "pages/card-public/index",
+        "pages/messages/index",
+        "pages/notifications/index",
+        "pages/help/index",
+        "pages/feedback/index",
+        "pages/security/index",
+        "pages/image-detail/index",
+        "pages/video-detail/index",
+        "pages/audio-detail/index",
+        "pages/processing/index",
+        "pages/failed/index",
+        "pages/login/index",
+        "pages/chat/index",
+        "pages/confirm/index",
+        "pages/text-detail/index"
+      ]
+    }
+  ]
 }

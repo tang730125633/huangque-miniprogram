@@ -1,4 +1,5 @@
 <view class="home">
+  <button class="paper-entry" bindtap="openPaper"><view class="paper-entry-kicker">NEW · 暖纸创作</view><view class="paper-entry-title">让想法，在这里生长 ↗</view><view class="paper-entry-copy">图片 · 配音 · 视频 · 文案</view></button>
 
   <!-- 顶部沉浸式黑色留白（含胶囊安全区） -->
   <view class="top-spacer">

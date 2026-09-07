@@ -62,6 +62,8 @@ Page({
     ]
   },
 
+  openPaper() { wx.navigateTo({ url: '/paper/pages/home/index' }); },
+
   onShow() {
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.syncNavigation) tabBar.syncNavigation();

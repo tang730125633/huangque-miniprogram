@@ -4,6 +4,7 @@ const CARD_TOKEN_KEY = 'hq_card_token';
 const LEGACY_CARD_BIND_INTENT_KEY = 'hq_card_bind_intent';
 const LOGIN_PAGE = '/pages/login/login';
 const LOGIN_REDIRECTS = {
+  paper: '/paper/pages/home/index',
   ip12: '/pages/ip12/ip12',
   'my-card': '/pages/my-card/my-card',
   'card-edit': '/pages/card-edit/card-edit'
@@ -51,6 +52,7 @@ function clearCardBindIntent() {
 // 登录回跳只接受明确登记的小程序内部页面，避免把启动参数当成任意导航地址。
 function loginRedirect(value) {
   value = String(value || '');
+  if (value === 'paper' || /^\/?paper\/pages\/[a-z-]+\/index$/.test(value)) return 'paper';
   if (value === 'ip12' || value === '/pages/ip12/ip12' || value === 'pages/ip12/ip12') return 'ip12';
   if (value === 'my-card' || value === '/pages/my-card/my-card' || value === 'pages/my-card/my-card') return 'my-card';
   if (value === 'card-edit' || value === '/pages/card-edit/card-edit' || value === 'pages/card-edit/card-edit') return 'card-edit';
@@ -118,13 +120,13 @@ function request(path, options) {
       header: header,
       timeout: options.timeout || 60000,
       success: function (res) {
-        if (res.statusCode === 401 && cardToken) {
+        if (res.statusCode === 401 && cardToken && cardToken === getCardToken()) {
           clearCardToken();
-        } else if (res.statusCode === 401 && options.auth !== false) {
+        } else if (res.statusCode === 401 && !cardToken && options.auth !== false && token === getToken()) {
           clearToken();
           const pages = getCurrentPages();
           const cur = pages.length ? pages[pages.length - 1].route : '';
-          if (!authRedirecting && cur.indexOf('pages/login/login') === -1) {
+          if (options.redirectOn401 !== false && !authRedirecting && cur.indexOf('pages/login/login') === -1) {
             authRedirecting = true;
             const url = loginUrl(cur);
             wx.reLaunch({ url, fail: () => { authRedirecting = false; } });
@@ -156,16 +158,17 @@ const _dlCache = {};
 function downloadProtected(url) {
   url = absUrl(url);
   const cacheable = !/\.pdf(?:[?#]|$)/i.test(url);
-  if (cacheable && _dlCache[url]) return Promise.resolve(_dlCache[url]);
+  const token = getToken();
+  const cacheKey = token + ':' + url;
+  if (cacheable && _dlCache[cacheKey]) return Promise.resolve(_dlCache[cacheKey]);
   return new Promise(function (resolve, reject) {
     const header = {};
-    const token = getToken();
-    if (token) header['Authorization'] = 'Bearer ' + token;
+    if (token && url.indexOf(getBase() + '/') === 0) header['Authorization'] = 'Bearer ' + token;
     wx.downloadFile({
       url: url, header: header,
       success: function (res) {
         if (res.statusCode === 200 && res.tempFilePath) {
-          if (cacheable) _dlCache[url] = res.tempFilePath;
+          if (cacheable) _dlCache[cacheKey] = res.tempFilePath;
           resolve(res.tempFilePath);
         } else {
           const error = new Error('download ' + res.statusCode);
