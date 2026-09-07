@@ -21,17 +21,17 @@
     "pages/login/login"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#f2e8d7",
+    "navigationBarBackgroundColor": "#f6f4ef",
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "黄雀 AI",
-    "backgroundColor": "#f2e8d7",
+    "backgroundColor": "#f6f4ef",
     "backgroundTextStyle": "dark"
   },
   "tabBar": {
     "custom": true,
-    "color": "#756b58",
-    "selectedColor": "#72572e",
-    "backgroundColor": "#f5eddc",
+    "color": "#787d76",
+    "selectedColor": "#75501b",
+    "backgroundColor": "#fbfaf7",
     "borderStyle": "white",
     "list": [
       {

@@ -1,34 +1,84 @@
 <view class="home">
   <view class="brandbar">
-    <view class="brand-lockup"><view class="brand-seal">雀</view><view><text class="brand">黄雀 AI</text><view class="brand-tagline">你的随身创作室</view></view></view>
+    <view class="brand-lockup">
+      <view class="brand-seal">雀</view>
+      <view><text class="brand">黄雀 AI</text><view class="brand-tagline">CREATIVE STUDIO</view></view>
+    </view>
     <view class="pts" bindtap="onTapPoints">{{points === null ? '登录 / 注册' : points + ' 点'}}</view>
   </view>
+
   <view class="content">
-    <view class="home-intro"><view class="eyebrow">A LITTLE IDEA, A NEW BEGINNING</view><view class="home-title">让想法，<text class="title-second">在这里生长。</text></view><view class="home-copy">一张图，一段声音，一个值得记录的故事。</view></view>
-    <button class="paper-entry" bindtap="openPaper"><view class="paper-entry-top"><text class="paper-entry-kicker">与黄雀一起创作</text><text class="entry-star">✧</text></view><view class="paper-entry-title">今天，想做点什么？</view><view class="paper-entry-bottom"><text class="paper-entry-copy">把想法交给我，我们慢慢把它做好。</text><text class="entry-arrow">↗</text></view></button>
-    <view class="section-head"><text class="section-title">从这里开始</text><text class="section-note">创作工具</text></view>
-    <view class="mosaic">
-      <view class="primary-card" bindtap="onTapPrimaryCreation"><view class="pc-title">视频创作</view><view class="pc-sub">让静止的灵感流动起来</view><view class="film-art" aria-hidden="true"><view class="film-frame"><text>▷</text></view><view class="film-lines"></view></view><view class="pc-price">{{videoFromPrice ? videoFromPrice + ' 点/秒起' : '实时价格加载中'}}</view></view>
-      <view class="right-col">
-        <view class="mini-card mc-image" bindtap="onTapImageCreation"><view><view class="mc-title">智能生图 / 改图</view><view class="mc-sub">描绘你心中的画面</view></view><view class="tool-mark">▧</view></view>
-        <view class="mini-card mc-video" bindtap="onTapVideoAnalysis"><view><view class="mc-title">一键跟创</view><view class="mc-sub">好灵感，也可以属于你</view></view><view class="tool-mark">✧</view></view>
+    <view class="home-intro">
+      <view class="eyebrow"><view class="eyebrow-dot" />你的随身 AI 创作室</view>
+      <view class="home-title">把一个想法，<text class="title-second">变成作品。</text></view>
+      <view class="home-copy">视频、图片和个人 IP，从一句话开始。</view>
+    </view>
+
+    <button class="paper-entry" bindtap="openPaper">
+      <view class="entry-icon"><image src="/assets/icons/sparkle.svg" mode="aspectFit" /></view>
+      <view class="entry-main">
+        <view class="paper-entry-kicker">黄雀创作助手</view>
+        <view class="paper-entry-title">今天，想做点什么？</view>
+        <view class="paper-entry-copy">说出想法，我们一起把它做好。</view>
+      </view>
+      <view class="entry-arrow">→</view>
+    </button>
+
+    <view class="section-head"><text class="section-title">快速开始</text><text class="section-note">3 种创作方式</text></view>
+    <view class="primary-card" bindtap="onTapPrimaryCreation">
+      <view class="primary-copy">
+        <view class="card-kicker">VIDEO CREATION</view><view class="pc-title">视频创作</view>
+        <view class="pc-sub">文生视频、图生视频和电影化身</view>
+        <view class="pc-price">{{videoFromPrice ? videoFromPrice + ' 点/秒起' : '实时价格加载中'}}</view>
+      </view>
+      <view class="video-orb"><image src="/assets/icons/play.svg" mode="aspectFit" /></view>
+    </view>
+
+    <view class="quick-grid">
+      <view class="mini-card mc-image" bindtap="onTapImageCreation">
+        <view class="mini-icon image-icon"><image src="/assets/icons/em_bulb.svg" mode="aspectFit" /></view>
+        <view class="mc-title">智能生图 / 改图</view><view class="mc-sub">描述画面，或上传参考图</view><view class="mini-link">开始作图 ↗</view>
+      </view>
+      <view class="mini-card mc-video" bindtap="onTapVideoAnalysis">
+        <view class="mini-icon follow-icon">✦</view>
+        <view class="mc-title">一键跟创</view><view class="mc-sub">从真实案例快速开始</view><view class="mini-link">挑选灵感 ↗</view>
       </view>
     </view>
-    <view class="dh-entry" bindtap="onTapDigitalHuman"><view class="dh-avatar">人</view><view class="dh-copy"><view class="dh-title">数字化 IP</view><view class="dh-sub">找到属于你的表达方式</view></view><text class="dh-cta">建立档案 ↗</text></view>
-    <view class="rt-swiper-wrap"><swiper class="rt-swiper" circular="{{banners.length > 1}}" indicator-dots="{{false}}" autoplay="{{bannerAutoplay && banners.length > 1}}" interval="5000" duration="300" bindchange="onBannerChange"><swiper-item wx:for="{{banners}}" wx:key="id"><view class="rt-banner" bindtap="onTapRoleTransfer" data-path="{{item.path}}"><view class="rt-text"><view class="rt-kicker">创作的更多可能 / 0{{index+1}}</view><view class="rt-title">{{item.title}}</view><view class="rt-sub">{{item.sub}}</view></view><view class="banner-art" aria-hidden="true"><view class="art-sheet back"></view><view class="art-sheet front"><text>{{item.symbol}}</text></view></view></view></swiper-item></swiper><view class="rt-page">{{bannerCurrent + 1}} / {{banners.length}}</view></view>
-    <view class="section-head"><text class="section-title">灵感小册</text><text class="section-note">教程与创作案例</text></view>
-    <scroll-view class="tut-scroll" scroll-x enable-flex enhanced show-scrollbar="{{false}}"><view class="tut-card" wx:for="{{tutorials}}" wx:key="id" bindtap="onTapTutorial" data-id="{{item.id}}"><view class="tut-cover cover-{{index}}"><text class="tut-number">0{{index+1}}</text><text class="tut-symbol">{{item.symbol}}</text><text class="tut-edition">HUANGQUE / STUDIO</text></view><view class="tut-name">{{item.title}} ↗</view></view></scroll-view>
-    <view class="build-version">让每一次创作，都留下温度。<view class="version-label">v0.079.paper4</view></view>
-    <view class="bottom-safe"></view>
+
+    <view class="dh-entry" bindtap="onTapDigitalHuman">
+      <view class="dh-avatar">人</view><view class="dh-copy"><view class="dh-title">数字化 IP</view><view class="dh-sub">建立你的个人表达与内容方向</view></view><text class="dh-cta">建立档案 →</text>
+    </view>
+
+    <view class="section-head editorial-head"><text class="section-title">更多可能</text><text class="section-note">每周更新</text></view>
+    <view class="rt-swiper-wrap">
+      <swiper class="rt-swiper" circular="{{banners.length > 1}}" indicator-dots="{{false}}" autoplay="{{bannerAutoplay && banners.length > 1}}" interval="5000" duration="300" bindchange="onBannerChange">
+        <swiper-item wx:for="{{banners}}" wx:key="id">
+          <view class="rt-banner" bindtap="onTapRoleTransfer" data-path="{{item.path}}">
+            <view class="rt-text"><view class="rt-kicker">FEATURE / 0{{index+1}}</view><view class="rt-title">{{item.title}}</view><view class="rt-sub">{{item.sub}}</view></view>
+            <view class="banner-art" aria-hidden="true"><view class="art-sheet back" /><view class="art-sheet front"><text>{{item.symbol}}</text></view></view>
+          </view>
+        </swiper-item>
+      </swiper>
+      <view class="rt-page">0{{bannerCurrent + 1}} / 0{{banners.length}}</view>
+    </view>
+
+    <view class="section-head"><text class="section-title">灵感小册</text><text class="section-note">教程与案例</text></view>
+    <scroll-view class="tut-scroll" scroll-x enable-flex enhanced show-scrollbar="{{false}}">
+      <view class="tut-card" wx:for="{{tutorials}}" wx:key="id" bindtap="onTapTutorial" data-id="{{item.id}}">
+        <view class="tut-cover cover-{{index}}"><text class="tut-number">0{{index+1}}</text><text class="tut-symbol">{{item.symbol}}</text><text class="tut-edition">HUANGQUE STUDIO</text></view>
+        <view class="tut-name">{{item.title}} <text>↗</text></view>
+      </view>
+    </scroll-view>
+
+    <view class="build-version">让每一次创作，都更靠近你。<view class="version-label">v0.079.paper5</view></view><view class="bottom-safe" />
   </view>
+
   <view wx:if="{{videoIp12PromptVisible}}" class="ip12-prompt-mask" catchtap="skipVideoIp12Prompt">
     <view class="ip12-prompt" catchtap="keepVideoIp12Prompt">
       <button class="ip12-prompt-skip" bindtap="skipVideoIp12Prompt" aria-label="暂时跳过">跳过</button>
-      <view class="ip12-prompt-kicker">让每条视频更像你</view>
-      <view class="ip12-prompt-title">先建立数字化 IP 档案？</view>
+      <view class="ip12-prompt-kicker">让每条视频更像你</view><view class="ip12-prompt-title">先建立数字化 IP 档案？</view>
       <view class="ip12-prompt-copy">完成定位、受众与内容方向后，AI 能为后续视频创作提供更贴合你的建议。现在不方便，也可以直接继续。</view>
-      <button class="ip12-prompt-primary" bindtap="createIp12BeforeVideo">去创建档案</button>
-      <button class="ip12-prompt-secondary" bindtap="continueToVideo">继续创作</button>
+      <button class="ip12-prompt-primary" bindtap="createIp12BeforeVideo">去创建档案</button><button class="ip12-prompt-secondary" bindtap="continueToVideo">继续创作</button>
     </view>
   </view>
 </view>
