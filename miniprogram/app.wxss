@@ -1,21 +1,22 @@
 /* 黄雀设计系统 · 暖纸创作室 */
 page {
-  --bg: #f2e8d7;
-  --surface: rgba(255,253,247,.72);
-  --surface-muted: #ebe1cf;
-  --text: #29271f;
-  --text-muted: #756b58;
-  --line: #d5c7ad;
-  --primary: #876b3f;          /* 主色·暖棕 */
-  --primary-soft: #e9ddc5;
-  --primary-ink: #72572e;
-  --secondary: #876b3f;        /* 点数·暖橙 */
-  --accent: #536f65;
+  --bg: #f6f4ef;
+  --surface: rgba(255,255,255,.82);
+  --surface-muted: #ebe8e0;
+  --text: #20231e;
+  --text-muted: #666b64;
+  --text-soft: #8c8f89;
+  --line: #ddd9d0;
+  --primary: #9a6a21;          /* 主色·暖金 */
+  --primary-soft: #f1e5ca;
+  --primary-ink: #75501b;
+  --secondary: #9a6a21;        /* 点数·暖金 */
+  --accent: #52675b;
   --success: #416b50;
   --warning: #90662e;
   --error: #a34235;
-  --grad: #30352b;
-  --grad-blue: #536f65;
+  --grad: #202620;
+  --grad-blue: #52675b;
 
   /* TDesign 主题 token → 对齐暖纸主题 */
   --td-brand-color: var(--primary);
@@ -31,8 +32,7 @@ page {
   --td-radius-default: 12rpx;
 
   background-color: var(--bg);
-  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIj48ZmlsdGVyIGlkPSJncmFpbiI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNzIiIG51bU9jdGF2ZXM9IjMiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmF0ZSIgdmFsdWVzPSIwIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI2dyYWluKSIgb3BhY2l0eT0iMC4xNSIvPjwvc3ZnPg=="), radial-gradient(ellipse at 12% 12%, #faf4e7, transparent 70%);
-  background-size: 180px 180px, 100% 100%;
+  background-image: radial-gradient(circle at 88% 0%, rgba(226,209,171,.55), transparent 30%), linear-gradient(180deg, #faf9f6 0%, var(--bg) 38%, #f2efe8 100%);
   color: var(--text);
   font-size: 28rpx;
   font-family: -apple-system, "PingFang SC", sans-serif;

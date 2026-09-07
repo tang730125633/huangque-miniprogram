@@ -43,8 +43,8 @@ test('home carousel includes the My Card slide as a paper card without changing 
   const wxss = fs.readFileSync(path.join(root, 'miniprogram/pages/home/home.wxss'), 'utf8');
   assert.match(wxml, /<swiper[\s\S]*wx:for="\{\{banners\}\}"/);
   assert.match(wxml, /class="banner-art"/);
-  assert.match(wxss, /\.rt-swiper-wrap\s*\{[^}]*height:\s*220rpx;/);
-  assert.match(wxss, /\.rt-swiper\s*\{[^}]*height:\s*220rpx;/);
+  assert.match(wxss, /\.rt-swiper-wrap\s*\{[^}]*height:\s*210rpx;/);
+  assert.match(wxss, /\.rt-swiper\s*\{[^}]*height:\s*210rpx;/);
   assert.doesNotMatch(wxml, /business-card-banner\.jpg/);
 });
 
