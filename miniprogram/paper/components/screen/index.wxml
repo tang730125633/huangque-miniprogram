@@ -27,11 +27,11 @@
     </block>
 
     <block wx:elif="{{pageId==='chat'}}">
-      <view class="hq-view agent-status"><view class="hq-view status-dot"/><text class="hq-text">黄雀 Agent 在线</text><text class="hq-text agent-mode">创作规划</text></view>
+      <view class="hq-view agent-status"><view class="hq-view status-dot"/><text class="hq-text">黄雀 Agent</text><text class="hq-text agent-mode">方案整理模式</text></view>
       <view class="hq-view agent-thread">
         <view class="hq-view agent-message">
           <view class="hq-view agent-avatar">雀</view>
-          <view class="hq-view message-stack"><view class="hq-view message-meta">黄雀 Agent</view><view class="hq-view agent-bubble">把你想做的内容告诉我。我会先理解目标、补齐关键细节，再给你一份可确认的创作方案。</view></view>
+          <view class="hq-view message-stack"><view class="hq-view message-meta">黄雀 Agent</view><view class="hq-view agent-bubble">把你想做的内容告诉我。我会把目标、主体和风格整理成一份可确认的创作方案。</view></view>
         </view>
         <view wx:if="{{promptInput}}" class="hq-view user-message"><view class="hq-view message-meta user-meta">你</view><view class="hq-view user-bubble preserve">{{promptInput}}</view></view>
         <view class="hq-view agent-message plan-message">
