@@ -43,6 +43,7 @@ const draft={kind:'image',prompt:'晨光中的茶杯'};
  handler=o=>o.success({statusCode:401,data:{detail:'expired'}});await assert.rejects(api.request('/api/auth/me'));assert.equal(api.session(),null);
  const j=c.jobView({id:1,kind:'image',status:'error',refunded:false,cost:20});assert.equal(j.refunded,false);assert.equal(j.failed,true);
  const config=JSON.parse(fs.readFileSync(path.join(__dirname,'../miniprogram/app.json')));const wxml=fs.readFileSync(path.join(__dirname,'../miniprogram/paper/components/screen/index.wxml'),'utf8');
+ assert.match(wxml,/class="hq-view agent-status"/);assert.match(wxml,/class="hq-view user-message"/);assert.match(wxml,/class="hq-view agent-composer"/);assert.match(wxml,/>\u8ba9 Agent \u6574\u7406\u65b9\u6848 \u2192</);
  for(const route of config.subPackages.find(p=>p.root==='paper').pages){const cfg=JSON.parse(fs.readFileSync(path.join(__dirname,'../miniprogram/paper',route+'.json')));assert.equal(cfg.usingComponents['paper-screen'],'/paper/components/screen/index');for(const ext of ['js','json','wxml'])assert(fs.existsSync(path.join(__dirname,'../miniprogram/paper',route+'.'+ext)));assert(wxml.includes("pageId==='"+route.split('/')[1]+"'"),route);}
  let component;global.Component=x=>component=x;require('../miniprogram/paper/components/screen/index');
  for(const match of wxml.matchAll(/data-route="([a-z-]+)"/g))assert(config.subPackages[0].pages.includes('pages/'+match[1]+'/index'),match[1]);

@@ -116,7 +116,7 @@ module.exports = [
   },
   {
     "id": "chat",
-    "title": "创作对话",
+    "title": "黄雀 Agent",
     "number": "23"
   },
   {
