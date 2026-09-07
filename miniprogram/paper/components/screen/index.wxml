@@ -27,13 +27,35 @@
     </block>
 
     <block wx:elif="{{pageId==='chat'}}">
-      <view class="hq-view chat-date">一次新的创作</view><view class="hq-view assistant-label"><view class="hq-view mini-brand">雀</view><text class="hq-text">把需求，慢慢说清楚</text></view>
-      <view class="hq-view filter-row"><button wx:for="{{formats}}" wx:key="id" class="hq-button filter {{kind===item.id?'active':''}}" data-kind="{{item.id}}" bindtap="chooseKind">{{item.name}}</button></view>
-      <view class="hq-view composer"><textarea class="hq-textarea" value="{{promptInput}}" placeholder="描述用途、主体、风格与希望调整的地方…" maxlength="1000" data-field="promptInput" bindinput="field" aria-label="创作需求"/><view class="hq-view composer-foot"><button class="hq-button text-button" bindtap="chooseReference">＋ 参考图</button><text class="hq-text muted small">{{promptInput.length}} / 1000</text></view></view>
-      <view wx:if="{{referencePath}}" class="hq-view reference-card"><image class="hq-image" src="{{referencePath}}" mode="aspectFill"/><button class="hq-button text-button" bindtap="removeReference">移除参考图</button></view>
+      <view class="hq-view agent-status"><view class="hq-view status-dot"/><text class="hq-text">黄雀 Agent 在线</text><text class="hq-text agent-mode">创作规划</text></view>
+      <view class="hq-view agent-thread">
+        <view class="hq-view agent-message">
+          <view class="hq-view agent-avatar">雀</view>
+          <view class="hq-view message-stack"><view class="hq-view message-meta">黄雀 Agent</view><view class="hq-view agent-bubble">把你想做的内容告诉我。我会先理解目标、补齐关键细节，再给你一份可确认的创作方案。</view></view>
+        </view>
+        <view wx:if="{{promptInput}}" class="hq-view user-message"><view class="hq-view message-meta user-meta">你</view><view class="hq-view user-bubble preserve">{{promptInput}}</view></view>
+        <view class="hq-view agent-message plan-message">
+          <view class="hq-view agent-avatar small-avatar">✦</view>
+          <view class="hq-view message-stack">
+            <view class="hq-view message-meta">当前上下文</view>
+            <view class="hq-view agent-plan-card">
+              <view class="hq-view plan-card-head"><view class="hq-view plan-kind">{{kindName}}</view><text class="hq-text plan-ready">已识别</text></view>
+              <view class="hq-view plan-detail">{{formatDetail}}</view>
+              <view wx:if="{{kind==='audio'}}" class="hq-view plan-note">输入内容将直接作为配音文稿。</view>
+              <view class="hq-view plan-safe">下一步先查看实时报价，你确认前不会创建付费任务。</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="hq-view agent-composer">
+        <view class="hq-view agent-format-row"><text class="hq-text composer-label">我想做</text><view class="hq-view filter-row"><button wx:for="{{formats}}" wx:key="id" class="hq-button filter {{kind===item.id?'active':''}}" data-kind="{{item.id}}" bindtap="chooseKind">{{item.name}}</button></view></view>
+        <textarea class="hq-textarea" value="{{promptInput}}" placeholder="继续补充用途、主体、风格或需要调整的地方…" maxlength="1000" data-field="promptInput" bindinput="field" aria-label="向黄雀 Agent 发送创作需求"/>
+        <view class="hq-view composer-foot"><button class="hq-button attachment-button" bindtap="chooseReference">＋ 参考图</button><text class="hq-text muted small">{{promptInput.length}} / 1000</text></view>
+      </view>
+      <view wx:if="{{referencePath}}" class="hq-view reference-card agent-reference"><image class="hq-image" src="{{referencePath}}" mode="aspectFill"/><view class="hq-view flex-grow"><view class="hq-view">已加入参考图</view><text class="hq-text muted small">Agent 将结合这张图理解需求</text></view><button class="hq-button text-button" bindtap="removeReference">移除</button></view>
       <picker wx:if="{{kind==='audio'}}" range="{{voices}}" range-key="name" bindchange="chooseVoice"><view class="hq-view field picker-field">音色：{{voiceName||'请选择音色'}}　⌄</view></picker>
-      <view class="hq-view card"><view class="hq-view eyebrow">本次创作</view><view class="hq-view section-title">{{kindName}} · 按你的描述制作</view><view class="hq-view body-copy">{{formatDetail}}</view><view wx:if="{{kind==='audio'}}" class="hq-view note">输入内容会直接作为配音文稿，请先确认文字。</view><view class="hq-view small muted">下一步查看当前积分价格。确认前不会创建付费任务。</view></view>
-      <button class="hq-button primary" bindtap="confirmPlan" disabled="{{busy}}">查看方案与积分</button><button class="hq-button secondary" bindtap="sendPrompt">保存当前需求</button>
+      <button class="hq-button primary agent-primary" bindtap="confirmPlan" disabled="{{busy}}">让 Agent 整理方案 →</button><button class="hq-button agent-save" bindtap="sendPrompt">保存这次对话草稿</button>
     </block>
 
     <block wx:elif="{{pageId==='confirm'}}">
