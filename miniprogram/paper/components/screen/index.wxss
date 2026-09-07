@@ -301,3 +301,31 @@
 .tabbar { border-color:#ddd8cf; background:#faf8f3; box-shadow:none; }
 .tab.selected { color:#20231e; }
 .tab.selected .tab-line { background:#9a7335; }
+
+/* paper7: one real Agent conversation, sized for hesitant mobile users. */
+.home-composer .hq-textarea { min-height:150rpx; height:auto; font-size:32rpx; line-height:1.75; }
+.input-help { margin:18rpx 0; color:#6f746d; font-size:24rpx; line-height:1.6; }
+.send-text { display:flex; align-items:center; justify-content:center; width:100%; min-height:96rpx; border-radius:20rpx; color:#fffdf8; background:#202620; text-align:center; font-size:32rpx; font-weight:650; }
+.easy-title { margin:2rpx 0 20rpx; color:#4e544d; font-size:27rpx; font-weight:600; }
+.easy-prompts { display:grid; grid-template-columns:1fr 1fr; gap:18rpx; margin-bottom:48rpx; }
+.easy-prompt { display:flex; align-items:center; justify-content:center; min-height:94rpx; padding:18rpx 16rpx; border:1rpx solid #d8d4ca; border-radius:20rpx; color:#32372f; background:rgba(255,255,255,.62); text-align:center; font-size:27rpx; }
+.agent-chat-content { display:flex; flex-direction:column; height:calc(100vh - 150rpx); overflow:hidden; padding-bottom:calc(24rpx + env(safe-area-inset-bottom)); }
+.agent-chat-content .agent-status { min-height:64rpx; margin:0 0 18rpx; font-size:27rpx; }
+.agent-chat-content .agent-mode { padding:9rpx 16rpx; font-size:22rpx; }
+.agent-thread { flex:1; min-height:0; height:auto; padding:8rpx 0 28rpx; }
+.agent-thread-end { height:20rpx; }
+.agent-empty { display:flex; gap:20rpx; align-items:flex-start; padding:36rpx 0; color:#4d534c; font-size:30rpx; line-height:1.85; }
+.agent-message { gap:18rpx; margin-bottom:34rpx; }
+.agent-avatar { width:66rpx; height:66rpx; border-radius:20rpx; font-size:34rpx; }
+.message-meta { margin-bottom:10rpx; font-size:23rpx; }
+.agent-bubble,.user-bubble { padding:25rpx 27rpx; font-size:30rpx; line-height:1.75; }
+.user-message { margin:0 0 36rpx 92rpx; }
+.answer-help,.agent-quote { margin-top:16rpx; padding:18rpx 20rpx; border-radius:16rpx; color:#675531; background:#f4ead5; font-size:25rpx; line-height:1.7; }
+.agent-quote .hq-text { font-weight:700; }
+.agent-actions { display:flex; flex-wrap:wrap; gap:14rpx; margin-top:18rpx; }
+.agent-action { min-height:88rpx; padding:16rpx 22rpx; border:1rpx solid #cfcac0; border-radius:18rpx; color:#333831; background:#fff; font-size:26rpx; text-align:center; }
+.agent-action.primary-action { color:#fffdf8; border-color:#202620; background:#202620; }
+.agent-chat-content .agent-composer { margin:12rpx 0 0; padding:22rpx; border-radius:24rpx; }
+.agent-chat-content .agent-composer .hq-textarea { min-height:100rpx; height:auto; padding:4rpx; font-size:31rpx; line-height:1.7; }
+.agent-chat-content .agent-composer .input-help { margin:10rpx 0 16rpx; }
+.error-banner .text-button { color:inherit; font-weight:650; }
