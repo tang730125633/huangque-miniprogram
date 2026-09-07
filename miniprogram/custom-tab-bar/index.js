@@ -1,7 +1,6 @@
 const WORKBENCH_ITEMS = [
-  { pagePath: '/pages/home/home', text: '首页', symbol: '⌂' },
-  { pagePath: '/pages/inspiration/inspiration', text: '一键跟创', symbol: '✦' },
-  { pagePath: '/pages/assets/assets', text: '历史作品', symbol: '◷' },
+  { pagePath: '/pages/home/home', text: '对话', symbol: '•••' },
+  { pagePath: '/pages/assets/assets', text: '作品', symbol: '▣' },
   { pagePath: '/pages/profile/profile', text: '我的', symbol: '○' }
 ];
 
