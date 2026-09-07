@@ -31,7 +31,7 @@ Page({
     promptTemplates: promptTemplates.IMAGE_TEMPLATES,
     promptTemplateKey: 'poster',
     tplBrand: '黄雀 AI',
-    tplColor: '紫粉霓虹',
+    tplColor: '暖米色与鼠尾草绿',
     tplSelling: '三秒生成视觉内容',
     tplPrice: '免费体验',
     promptUndo: '',
@@ -196,7 +196,7 @@ Page({
       prompt: typeof saved.prompt === 'string' ? saved.prompt : '',
       promptTemplateKey: promptTemplates.IMAGE_TEMPLATES.some((item) => item.key === saved.promptTemplateKey) ? saved.promptTemplateKey : 'poster',
       tplBrand: typeof saved.tplBrand === 'string' ? saved.tplBrand : '黄雀 AI',
-      tplColor: typeof saved.tplColor === 'string' ? saved.tplColor : '紫粉霓虹',
+      tplColor: typeof saved.tplColor === 'string' ? saved.tplColor : '暖米色与鼠尾草绿',
       tplSelling: typeof saved.tplSelling === 'string' ? saved.tplSelling : '三秒生成视觉内容',
       tplPrice: typeof saved.tplPrice === 'string' ? saved.tplPrice : '免费体验',
       promptUndo: typeof saved.promptUndo === 'string' ? saved.promptUndo : '',
@@ -257,7 +257,7 @@ Page({
     drafts.clear(this._draftKey());
     this._refImages = [];
     this.setData({
-      prompt: '', promptTemplateKey: 'poster', tplBrand: '黄雀 AI', tplColor: '紫粉霓虹',
+      prompt: '', promptTemplateKey: 'poster', tplBrand: '黄雀 AI', tplColor: '暖米色与鼠尾草绿',
       tplSelling: '三秒生成视觉内容', tplPrice: '免费体验', promptUndo: '', canUndoPrompt: false,
       engine: 'nb2', ratio: '9:16', quality: 'hd', count: 1, maxCount: 2, maxRefCount: IMAGE_REF_LIMITS.nb2,
       refPreviews: [], refBusy: false, hasDraft: false, draftStatus: '草稿已清空', draftStatusError: false
@@ -310,7 +310,7 @@ Page({
       prompt: result.prompt,
       ratio: result.ratio
     }, () => this.saveDraft());
-    this.setNote('模板已润色，可继续修改提示词', '#2F6FED');
+    this.setNote('模板已润色，可继续修改提示词', '#536f65');
     wx.showToast({ title: '已套用模板', icon: 'none' });
   },
   undoPromptTemplate() {
@@ -320,7 +320,7 @@ Page({
   },
 
   selectEngine(e) {
-    if (this.data.refBusy) { this.setNote('参考图保存中，请稍候', '#2F6FED'); return; }
+    if (this.data.refBusy) { this.setNote('参考图保存中，请稍候', '#536f65'); return; }
     const engine = e.currentTarget.dataset.k;
     const nextLimit = this._refLimit(engine);
     const removed = (this.data.refPreviews || []).length - nextLimit;
@@ -347,7 +347,7 @@ Page({
     const removed = (this.data.refPreviews || []).length - refPreviews.length;
     this._refImages = (this._refImages || []).slice(0, maxRefCount);
     this.setData(patch, () => this.updateCost());
-    if (removed) this.setNote('已切换引擎，仅保留前 ' + maxRefCount + ' 张参考图', '#2F6FED');
+    if (removed) this.setNote('已切换引擎，仅保留前 ' + maxRefCount + ' 张参考图', '#536f65');
   },
   selectRatio(e) { this.setData({ ratio: e.currentTarget.dataset.v }, () => this.saveDraft()); },
   selectQuality(e) { this.setData({ quality: e.currentTarget.dataset.v }, () => { this.updateCost(); this.saveDraft(); }); },
@@ -480,7 +480,7 @@ Page({
 
     const engine = this.data.engine;
     const body = { prompt, ratio: this.data.ratio, quality: this.data.quality, count: this.data.count };
-    if (this.data.refBusy) { this.setNote('参考图保存中，请稍候', '#2F6FED'); return; }
+    if (this.data.refBusy) { this.setNote('参考图保存中，请稍候', '#536f65'); return; }
     const refImages = this._refImages || [];
     if (this.data.refPreviews.length !== refImages.length) {
       this.setNote('部分参考图已失效，请移除后重新选择', '#C2413A'); return;
@@ -506,7 +506,7 @@ Page({
         this.setData({ pricingChecking: false });
         this._applyPricing(latest.prices);
         if (latest.changed) {
-          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', '#2F6FED');
+          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', '#536f65');
           return;
         }
         this._submitGenerate(endpoint, body);
@@ -521,7 +521,7 @@ Page({
 
   _submitGenerate(endpoint, body) {
     this.setData({ busy: true, resultUrl: '', thumbs: [] });
-    this.setNote('提交中…', '#2F6FED');
+    this.setNote('提交中…', '#536f65');
     const t0 = Date.now();
     this.saveDraft('已自动保存');
     const submittedDraft = JSON.stringify(this._draftPayload(this.data));
@@ -573,10 +573,10 @@ Page({
             this.setNote('失败：' + (d.error || d.detail || d.status) + ' · 已退点', '#C2413A');
           } else if (sec > POLL_TIMEOUT_SEC) {
             this.setData({ busy: false });
-            this.setNote('仍在处理，请稍后下拉刷新查看历史', '#2F6FED');
+            this.setNote('仍在处理，请稍后下拉刷新查看历史', '#536f65');
             this.loadHistory();
           } else {
-            this.setNote('生成中（' + sec + 's）· 可留在本页等待', '#2F6FED');
+            this.setNote('生成中（' + sec + 's）· 可留在本页等待', '#536f65');
             setTimeout(tick, POLL_INTERVAL);
           }
         })

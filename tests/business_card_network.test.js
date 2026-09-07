@@ -359,7 +359,7 @@ assert.match(networkWxml, /wx:key="node_id"/);
 assert.match(networkWxml, /item\.avatar/);
 assert.match(networkWxml, /bindtap="openPersonOptions"/);
 assert.match(network, /查看他的关系/);
-assert.match(networkWxml, /查看他的星球/);
+assert.match(networkWxml, /查看他的关系图/);
 assert.doesNotMatch(networkWxml, /class="branch-action"/);
 assert.match(invitePage, /\/api\/auth\/card\/me\?create=0/);
 assert.match(invitePage, /invite\.cardSharePath\(this\.data\.publicId, this\.data\.code\)/);

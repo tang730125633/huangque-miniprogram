@@ -519,7 +519,7 @@
     <navigator class="audio-consent-link" url="/pages/legal/legal?type=voiceprint">查看完整《声纹授权协议》</navigator>
     <checkbox-group bindchange="onTalkAudioConsentChange">
       <label class="audio-consent-check">
-        <checkbox value="agreed" checked="{{talkAudioConsentChecked}}" color="#e24ba0"></checkbox>
+        <checkbox value="agreed" checked="{{talkAudioConsentChecked}}" color="#876b3f"></checkbox>
         <text>我已阅读并单独同意《声纹授权协议》</text>
       </label>
     </checkbox-group>

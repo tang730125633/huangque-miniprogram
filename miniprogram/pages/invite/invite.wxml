@@ -1,4 +1,5 @@
 <view class="container invite-page">
+  <view class="page-heading"><view class="page-eyebrow">GROW TOGETHER</view><view class="page-heading-title">好创意，一起分享</view><view class="page-heading-copy">邀请同路人，让创作多一份陪伴。</view></view>
   <canvas canvas-id="cardShareCover" style="position:fixed;left:-600px;top:-500px;width:500px;height:400px;opacity:0;pointer-events:none;" />
   <view wx:if="{{loading}}" class="card loading-state">正在读取邀请数据…</view>
   <view wx:elif="{{error}}" class="card error-state">{{error}}</view>

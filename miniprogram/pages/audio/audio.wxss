@@ -1,5 +1,5 @@
 .small { font-size: 22rpx; }
-.ph { color: #6f6980; }
+.ph { color: var(--text-muted); }
 
 .points-bar {
   display: flex; align-items: center; justify-content: space-between;
@@ -20,7 +20,7 @@
   background: var(--surface-muted); border: 1rpx solid var(--line); border-radius: 14rpx;
 }
 .vtab { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 10rpx; color: var(--text-muted); font-size: 26rpx; }
-.vtab.on { color: #fff; background: var(--primary); font-weight: 600; }
+.vtab.on { color: #fff8e8; background: var(--primary); font-weight: 600; }
 
 .voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 .voice-card {
@@ -28,8 +28,8 @@
   background: var(--surface-muted); border: 1rpx solid var(--line);
 }
 .voice-card.on { background: var(--primary-soft); border-color: var(--primary); }
-.voice-name { font-size: 27rpx; font-weight: 600; color: var(--text); }
-.voice-card.on .voice-name { color: var(--primary-ink); }
+.voice-name { padding-right:46rpx; line-height:1.45; word-break:break-word; font-size: 27rpx; font-weight: 600; color: var(--text); }
+.voice-card.on .voice-name { padding-right:46rpx; line-height:1.45; word-break:break-word; color: var(--primary-ink); }
 .voice-sub { font-size: 21rpx; color: var(--text-muted); margin-top: 6rpx; }
 .voice-play {
   position: absolute; right: 16rpx; top: 16rpx; width: 48rpx; height: 48rpx;
@@ -70,4 +70,4 @@
 }
 
 .ai-disclosure { margin: 12rpx 8rpx 4rpx; text-align: center; color: var(--text-muted); font-size: 21rpx; line-height: 1.6; }
-.ai-badge { margin-left: 10rpx; padding: 3rpx 10rpx; border-radius: 999rpx; background: rgba(226,75,160,.16); color: #ff8dca; font-size: 19rpx; font-weight: 500; }
+.ai-badge { margin-left: 10rpx; padding: 3rpx 10rpx; border-radius: 999rpx; background: rgba(151,119,69,0.16); color: var(--primary-ink); font-size: 19rpx; font-weight: 500; }

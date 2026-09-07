@@ -21,44 +21,36 @@ Page({
     bannerCurrent: 0,
     bannerAutoplay: true,
 
-    // 位图素材路径集中于此，便于 Codex 后续批量替换
-    assets: {
-      creativeSymbol: '/assets/home/creative-symbol.png',
-      imageToolIcon: '/assets/home/image-tool-icon.png',
-      videoAnalysisIcon: '/assets/home/video-analysis-icon.png',
-      digitalHumanAvatar: '/assets/home/digital-human-avatar.png'
-    },
-
     // 顶部轮播（可扩展）
     banners: [
       {
         id: 'video-mix',
         title: 'AI 营销混剪',
         sub: '多段素材，智能生成营销短片',
-        image: '/assets/home/video-mix-banner.jpg',
+        symbol: '映',
         path: '/pages/video/video?mode=cinematic'
       },
       {
         id: 'role-transfer',
         title: '电影化身 · 动作模仿',
         sub: '你的形象照着参考视频演，一键生成',
-        image: '/assets/home/role-transfer-banner.jpg',
+        symbol: '演',
         path: '/pages/video/video?mode=cinematic'
       },
       {
         id: 'business-card',
         title: '我的名片',
         sub: '创建、展示并分享你的个人名片',
-        image: '/assets/home/business-card-banner.jpg',
+        symbol: '名',
         path: '/pages/my-card/my-card'
       }
     ],
 
     // 教程与创作案例
     tutorials: [
-      { id: 't1', title: 'AI 灵感作图入门', image: '/assets/home/tutorial-image-creation.jpg', path: '/pages/banana/banana' },
-      { id: 't2', title: '创作灵感案例', image: '/assets/home/tutorial-video-analysis.jpg', path: '/pages/inspiration/inspiration' },
-      { id: 't3', title: '数字化 IP 制作', image: '/assets/home/tutorial-digital-human.jpg', path: '/pages/ip12/ip12' }
+      { id: 't1', title: 'AI 灵感作图入门', symbol: '画', path: '/pages/banana/banana' },
+      { id: 't2', title: '创作灵感案例', symbol: '创', path: '/pages/inspiration/inspiration' },
+      { id: 't3', title: '数字化 IP 制作', symbol: '我', path: '/pages/ip12/ip12' }
     ]
   },
 

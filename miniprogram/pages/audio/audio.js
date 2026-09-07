@@ -135,7 +135,7 @@ Page({
         this.setData({ pricingChecking: false });
         this._applyPricing(latest.prices);
         if (latest.changed) {
-          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', '#2F6FED');
+          this.setNote('价格已更新为 ' + latest.cost + ' 点，请确认后重新提交', '#536f65');
           return;
         }
         this._submitGenerate(text, latest.cost);
@@ -156,7 +156,7 @@ Page({
 
     this.setData({ busy: true, resultUrl: '', playing: false });
     if (this._audio) this._audio.stop();
-    this.setNote('提交中…', '#2F6FED');
+    this.setNote('提交中…', '#536f65');
 
     const body = {
       text: text,
@@ -203,7 +203,7 @@ Page({
           this.setData({ busy: false });
           this.setNote('生成超时，请稍后重试', '#C2413A');
         } else {
-          this.setNote('生成中…（' + ((n + 1) * 2) + 's）', '#2F6FED');
+          this.setNote('生成中…（' + ((n + 1) * 2) + 's）', '#536f65');
           setTimeout(() => this.poll(id, n + 1), POLL_INTERVAL);
         }
       })

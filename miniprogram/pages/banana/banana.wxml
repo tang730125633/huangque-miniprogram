@@ -1,4 +1,5 @@
 <view class="container">
+  <view class="page-heading"><view class="page-eyebrow">IMAGE STUDIO</view><view class="page-heading-title">把想象，变成画面</view><view class="page-heading-copy">从一句描述开始，慢慢接近心中的样子。</view></view>
 
   <!-- 点数条 -->
   <view class="points-bar">

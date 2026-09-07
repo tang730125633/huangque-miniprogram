@@ -21,18 +21,18 @@
     "pages/login/login"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#0b0912",
-    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#f2e8d7",
+    "navigationBarTextStyle": "black",
     "navigationBarTitleText": "黄雀 AI",
-    "backgroundColor": "#0b0912",
-    "backgroundTextStyle": "light"
+    "backgroundColor": "#f2e8d7",
+    "backgroundTextStyle": "dark"
   },
   "tabBar": {
     "custom": true,
-    "color": "#948da8",
-    "selectedColor": "#e24ba0",
-    "backgroundColor": "#100c18",
-    "borderStyle": "black",
+    "color": "#756b58",
+    "selectedColor": "#72572e",
+    "backgroundColor": "#f5eddc",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/home",

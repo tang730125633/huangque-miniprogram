@@ -2,8 +2,8 @@
 
   <!-- 沉浸式头图 -->
   <view class="header" style="padding-top: {{statusBarHeight}}px;">
-    <image class="header-bg" src="/assets/inspiration/inspiration-header-bg.webp" mode="aspectFill"></image>
-    <view class="header-fade"></view>
+
+
     <view class="header-inner">
       <view class="h-title">一键跟创</view>
       <view class="h-sub">发现灵感，生成你的营销内容</view>

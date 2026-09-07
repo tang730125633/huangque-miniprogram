@@ -1,4 +1,5 @@
 <view class="container recharge-page">
+  <view class="page-heading"><view class="page-eyebrow">CREATOR ACCOUNT</view><view class="page-heading-title">为下一次灵感蓄力</view><view class="page-heading-copy">查看点数与权益，按需要选择。</view></view>
   <view class="balance-card">
     <view class="balance-label">当前点数</view>
     <view class="balance-value">{{points === null ? '—' : points}}</view>

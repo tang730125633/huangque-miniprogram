@@ -29,23 +29,23 @@ function pageContext() {
   });
 }
 
-test('home carousel includes the My Card slide without changing its footprint', () => {
+test('home carousel includes the My Card slide as a paper card without changing its navigation', () => {
   const banner = pageDefinition.data.banners[2];
   assert.deepStrictEqual(banner, {
     id: 'business-card',
     title: '我的名片',
     sub: '创建、展示并分享你的个人名片',
-    image: '/assets/home/business-card-banner.jpg',
+    symbol: '名',
     path: '/pages/my-card/my-card'
   });
 
   const wxml = fs.readFileSync(path.join(root, 'miniprogram/pages/home/home.wxml'), 'utf8');
   const wxss = fs.readFileSync(path.join(root, 'miniprogram/pages/home/home.wxss'), 'utf8');
   assert.match(wxml, /<swiper[\s\S]*wx:for="\{\{banners\}\}"/);
-  assert.match(wxml, /<image src="\/assets\/home\/business-card-banner\.jpg"><\/image>/);
+  assert.match(wxml, /class="banner-art"/);
   assert.match(wxss, /\.rt-swiper-wrap\s*\{[^}]*height:\s*220rpx;/);
   assert.match(wxss, /\.rt-swiper\s*\{[^}]*height:\s*220rpx;/);
-  assert.ok(fs.existsSync(path.join(root, 'miniprogram/assets/home/business-card-banner.jpg')));
+  assert.doesNotMatch(wxml, /business-card-banner\.jpg/);
 });
 
 test('My Card banner opens the card page for a logged-in account', () => {

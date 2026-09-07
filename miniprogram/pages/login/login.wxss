@@ -31,5 +31,5 @@ button::after{border:0;}
 .voiceprint-agreement-link{color:#816338;font-size:23rpx;text-decoration:underline;}
 .voiceprint-agreement-copy{margin-top:14rpx;color:#756b58;font-size:23rpx;line-height:1.8;}
 .container .btn-primary{display:block;width:100%;min-height:94rpx;padding:24rpx;background:#292b23;border-radius:12rpx;color:#fff8e8;text-align:center;font-size:29rpx;line-height:1.6;box-shadow:none;}
-.container .btn-primary.disabled,.container .btn-primary[disabled]{background:#d8cdb7;color:#716754;opacity:1;}
+.container .btn-primary.disabled{background:#d8cdb7;color:#716754;opacity:1;}
 .foot{text-align:center;font-size:23rpx;line-height:1.8;margin-top:28rpx;color:var(--text-muted);}

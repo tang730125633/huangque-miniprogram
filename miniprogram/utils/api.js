@@ -93,7 +93,7 @@ function showMembershipRequired(detail) {
     content: detail || '请先开通或续费会员后再使用生成能力。',
     confirmText: '查看会员',
     cancelText: '稍后处理',
-    confirmColor: '#b048c8',
+    confirmColor: '#876b3f',
     success: function (result) {
       if (result.confirm) wx.navigateTo({ url: '/pages/recharge/recharge' });
     },

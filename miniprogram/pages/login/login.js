@@ -136,7 +136,7 @@ Page({
               : '账号已创建，欢迎加入黄雀 AI。';
             wx.showModal({
               title: '注册成功', content, showCancel: false,
-              confirmText: '进入首页', confirmColor: '#b048c8',
+              confirmText: '进入首页', confirmColor: '#876b3f',
               success: () => wx.switchTab({ url: '/pages/home/home' })
             });
           } else {

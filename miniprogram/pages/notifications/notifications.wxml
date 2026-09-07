@@ -14,7 +14,7 @@
       <view class="subscribe-detail" wx:if="{{subscriptionConfigured}}">已授权次数：{{subscriptionRemaining}} · 每次授权可接收一条公告</view>
       <view class="subscribe-detail" wx:else>模板配置完成后即可开启微信提醒</view>
     </view>
-    <button class="subscribe-button" disabled="{{!subscriptionConfigured || subscriptionBusy}}" loading="{{subscriptionBusy}}" bindtap="requestAnnouncementSubscription">开启提醒</button>
+    <button class="subscribe-button {{!subscriptionConfigured || subscriptionBusy ? 'disabled' : ''}}" disabled="{{!subscriptionConfigured || subscriptionBusy}}" loading="{{subscriptionBusy}}" bindtap="requestAnnouncementSubscription">开启提醒</button>
   </view>
 
   <view wx:if="{{loading}}" class="state">正在读取消息…</view>

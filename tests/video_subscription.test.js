@@ -22,5 +22,5 @@ assert.ok(submitJob.indexOf('this.data.points < need') < submitJob.indexOf('this
 const batch = source.slice(source.indexOf('submitTalkingBatch()'), source.indexOf('startBatchPolling'));
 assert.match(batch, /this\._requestWorkCompleteSubscription\(\)/);
 assert.doesNotMatch(source, /tmplIds:\s*\[['\"][^'\"]+['\"]\]/);
-assert.match(home, /版本 v0\.077/);
+assert.match(home, /v0\.079\.paper3/);
 console.log('video subscription static checks passed');
