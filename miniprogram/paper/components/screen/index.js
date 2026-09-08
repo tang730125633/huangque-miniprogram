@@ -260,6 +260,16 @@ Component({
       if(!sessions.length)return this.toast('还没有以前的对话');
       wx.showActionSheet({itemList:sessions.map(item=>(item.preview||'以前的对话').slice(0,28)),success:result=>{const item=sessions[result.tapIndex];if(item)this.run(()=>this.restoreAgent(item.sid));}});
     },
+    exportAgentConversation(){
+      const sid=this.data.agentSessionId;
+      if(!sid)return this.toast('请先开始一段对话');
+      if(!wx.shareFileMessage)return this.toast('当前微信版本不支持导出，请升级微信后重试');
+      return this.run(async()=>{
+        const file=await api.mediaSource(api.mediaURL(IP12_API+'/export/'+encodeURIComponent(sid)+'.jsonl'));
+        const date=new Date().toISOString().slice(0,10).replace(/-/g,'');
+        await new Promise((resolve,reject)=>wx.shareFileMessage({filePath:file,fileName:'黄雀对话-'+date+'.jsonl',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('导出失败，请稍后重试'))}));
+      });
+    },
     agentApproval(e){
       const card=this.data.agentDelegations.find(item=>item.key===e.currentTarget.dataset.key);
       if(!card||!card.quoteId)return;
