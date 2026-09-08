@@ -15,7 +15,7 @@ function setSession(value) {
   else{shared.clearToken();identity=null;}
 }
 async function request(path,method='GET',data,extra={}) {
-  if(!/^\/api\//.test(path))throw new Error('接口地址无效');
+  if(!/^\/api\//.test(path)&&!/^\/workbench\/ip12\/api\//.test(path))throw new Error('接口地址无效');
   let res;
   try {res=await shared.request(path,{method,data,idempotencyKey:extra['Idempotency-Key'],redirectOn401:false});}
   catch(_){const e=new Error('网络连接中断，请检查网络和合法域名配置');e.uncertain=true;throw e;}
@@ -30,7 +30,7 @@ function localKey(){const s=session();if(s&&!s.user.username)throw new Error('�
 function read(){try{return wx.getStorageSync(localKey())||{};}catch(_){return {};}}
 function save(patch){const key=localKey();const value=Object.assign({},read(),patch);wx.setStorageSync(key,value);return value;}
 function mediaURL(value){if(typeof value!=='string')return '';if(/^\/(?!\/)/.test(value))return BASE+value;return /^https:\/\/[^\s]+$/i.test(value)?value:'';}
-function protectedMedia(url){return url.indexOf(BASE+'/api/gen/file/')===0;}
+function protectedMedia(url){return url.indexOf(BASE+'/api/gen/file/')===0||url.indexOf(BASE+'/workbench/ip12/')===0;}
 function mediaHeaders(url){const token=shared.getToken();return token&&protectedMedia(url)?{Authorization:'Bearer '+token}:{};}
 function mediaSource(url){return protectedMedia(url)?shared.downloadProtected(url):Promise.resolve(url);}
 module.exports={BASE,session,rememberIdentity,setSession,request,login,read,save,mediaURL,mediaHeaders,mediaSource};
