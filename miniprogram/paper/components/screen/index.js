@@ -52,7 +52,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false,
-    agentDelegations: [], agentReport: {},
+    agentDelegations: [], agentReport: {}, voiceRecording: false, voiceRecognizing: false, voiceSeconds: 0,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
@@ -73,9 +73,9 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,promptInput:draft.prompt||'',kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { this.alive=false; clearTimeout(this.timer); if(this.audio)this.audio.destroy(); }
+    detached() { this.alive=false; clearTimeout(this.timer);this.stopVoiceTimer();if(this.data.voiceRecording&&this.voiceRecorder)this.voiceRecorder.stop();if(this.audio)this.audio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer); if(this.audio)this.audio.pause(); } },
+  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);if(this.data.voiceRecording&&this.voiceRecorder)this.voiceRecorder.stop();if(this.audio)this.audio.pause(); } },
   methods: {
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
@@ -188,6 +188,35 @@ Component({
       const message=this.data.promptInput.trim();
       if(!message)return this.toast('请先写一句想说的话');
       return this.sendAgentMessage(message);
+    },
+    initVoiceInput(){
+      if(this.voiceRecorder)return;
+      this.voiceRecorder=wx.getRecorderManager();
+      this.voiceRecorder.onStart(()=>{if(this.alive){this.setData({voiceRecording:true,voiceSeconds:0});this.startVoiceTimer();}});
+      this.voiceRecorder.onStop(result=>{this.stopVoiceTimer();if(!this.alive)return;this.setData({voiceRecording:false});if(!this.visible)return;if(!result||!result.tempFilePath||Number(result.duration||0)<600)return this.toast('没有听清楚，请再说一次');this.recognizeVoice(result.tempFilePath);});
+      this.voiceRecorder.onError(()=>{this.stopVoiceTimer();if(this.alive)this.setData({voiceRecording:false,voiceRecognizing:false,error:'录音失败，请在微信设置中允许使用麦克风'});});
+    },
+    toggleVoiceInput(){
+      if(this.data.voiceRecognizing||this.data.busy||this.data.agentThinking)return;
+      this.initVoiceInput();
+      if(this.data.voiceRecording)this.voiceRecorder.stop();
+      else this.voiceRecorder.start({duration:60000,format:'mp3',sampleRate:16000,numberOfChannels:1,encodeBitRate:48000});
+    },
+    startVoiceTimer(){this.stopVoiceTimer();this.voiceTimer=setInterval(()=>{if(this.alive)this.setData({voiceSeconds:Math.min(60,this.data.voiceSeconds+1)});},1000);},
+    stopVoiceTimer(){if(this.voiceTimer){clearInterval(this.voiceTimer);this.voiceTimer=null;}},
+    recognizeVoice(filePath){
+      return this.run(async()=>{
+        this.setData({voiceRecognizing:true});
+        try{
+          const audio=await new Promise((resolve,reject)=>wx.getFileSystemManager().readFile({filePath,encoding:'base64',success:result=>resolve(result.data),fail:()=>reject(new Error('无法读取录音，请再说一次'))}));
+          const result=await api.request('/api/gen/speech-to-text','POST',{audio,format:'mp3'},{timeout:180000});
+          const text=String(result.text||'').trim();
+          if(!text)throw new Error('没有听清楚，请靠近手机再说一次');
+          const before=this.data.promptInput.trim();
+          this.setData({promptInput:(before?before+'\n':'')+text});
+          this.toast('已经变成文字，请检查');
+        }finally{if(this.alive)this.setData({voiceRecognizing:false});}
+      });
     },
     async ensureAgentSession() {
       if(this.data.agentSessionId)return this.data.agentSessionId;

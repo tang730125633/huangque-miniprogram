@@ -50,9 +50,10 @@
         <view class="hq-view agent-thread-end"/>
       </scroll-view>
       <view class="hq-view agent-composer">
-        <textarea class="hq-textarea" value="{{promptInput}}" placeholder="把想说的话写在这里…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="sendPrompt" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/>
-        <view class="hq-view input-help">识别错了先修改，确认文字没问题再发送</view>
-        <button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'正在处理':'发送'}}</button>
+        <textarea class="hq-textarea" value="{{promptInput}}" placeholder="可以打字，也可以点下面的语音按钮…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="sendPrompt" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/>
+        <button class="hq-button voice-input {{voiceRecording?'recording':''}}" bindtap="toggleVoiceInput" disabled="{{voiceRecognizing||busy||agentThinking}}" aria-label="{{voiceRecording?'停止录音':'开始语音输入'}}">{{voiceRecognizing?'正在识别，请稍等…':voiceRecording?'■ 停止录音（'+voiceSeconds+' 秒）':'🎙 按一下，说话'}}</button>
+        <view class="hq-view input-help">{{voiceRecording?'正在听，讲完后再按一下停止。':voiceRecognizing?'正在把语音变成文字，不会自动发送。':'录音只用于在线转文字，用完即删除；确认文字后再发送。'}}</view>
+        <button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy&&!voiceRecognizing}}" disabled="{{busy||loading||agentThinking||voiceRecording||voiceRecognizing}}">{{agentThinking?'正在处理':'发送'}}</button>
       </view>
     </block>
 
