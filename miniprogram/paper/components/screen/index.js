@@ -34,11 +34,11 @@ function delegationCards(value) {
     const item=value[domain]||{},quote=item.quote||{};
     return {
       key:domain+':'+String(item.quote_id||item.state||''),
-      domain, state:item.state||'', summary:item.summary||'', question:item.question||'',
+      domain, state:item.state||'', summary:item.summary||'',
       quoteId:item.quote_id||'', cost:quote.cost, points:quote.points,
-      needsApproval:item.state==='needs_approval', needsInput:item.state==='needs_user_input'
+      needsApproval:item.state==='needs_approval'
     };
-  }).filter(item=>item.needsApproval||item.needsInput);
+  }).filter(item=>item.needsApproval);
 }
 Component({
   properties: { pageId: { type: String, value: 'home' } },
