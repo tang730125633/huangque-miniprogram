@@ -3,9 +3,8 @@ const api = require('../../services/api');
 const creation = require('../../services/creation');
 const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
-const IP12_API = '/workbench/ip12/api';
-const IP12_SESSION_KEY = 'hq_hermes_ip12_conversation_id';
-function requestId() { return 'mini-turn-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10); }
+const IP12_API = '/workbench/ip12/api/v4';
+const IP12_SESSION_KEY = 'hq-v4-session-id';
 function agentMessages(items) {
   return (Array.isArray(items)?items:[]).map((item,index)=>({
     domId:'agent-message-'+index,
@@ -30,6 +29,17 @@ function videoWork(item) {
     label:['done','completed'].includes(status)?'已完成':['error','failed'].includes(status)?'生成失败':'正在处理'
   };
 }
+function delegationCards(value) {
+  return Object.keys(value&&typeof value==='object'?value:{}).map(domain=>{
+    const item=value[domain]||{},quote=item.quote||{};
+    return {
+      key:domain+':'+String(item.quote_id||item.state||''),
+      domain, state:item.state||'', summary:item.summary||'', question:item.question||'',
+      quoteId:item.quote_id||'', cost:quote.cost, points:quote.points,
+      needsApproval:item.state==='needs_approval', needsInput:item.state==='needs_user_input'
+    };
+  }).filter(item=>item.needsApproval||item.needsInput);
+}
 Component({
   properties: { pageId: { type: String, value: 'home' } },
   data: {
@@ -41,8 +51,8 @@ Component({
     workFilters: [{id:'all',name:'全部'},{id:'processing',name:'进行中'},{id:'done',name:'已完成'},{id:'failed',name:'失败'}],
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
-    agentMessages: [], agentSessionId: '', agentSessions: [], agentRevision: 0, agentPending: null, agentScrollTarget: '', agentThinking: false,
-    agentReport: {},
+    agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false,
+    agentDelegations: [], agentReport: {},
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
@@ -75,7 +85,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentRevision:0,agentPending:null,agentReport:{}});
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentPending:null,agentDelegations:[],agentReport:{}});
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -99,20 +109,18 @@ Component({
       } catch(e){if(this.alive)this.fail(e);} finally {this.loading=false;if(this.alive)this.setData({loading:false});}
     },
     async loadAgent(valid=()=>this.alive) {
-      const data=await api.request(IP12_API+'/conversations');
+      const data=await api.request(IP12_API+'/sessions');
       if(!valid())return;
-      const sessions=(Array.isArray(data)?data:[]).map(item=>({sid:item.id,preview:item.title||'以前的对话',updated:item.updated||''}));
+      const sessions=Array.isArray(data.sessions)?data.sessions:[];
       const saved=wx.getStorageSync(IP12_SESSION_KEY);
       const current=sessions.find(item=>item.sid===saved)||sessions[0];
       this.setData({agentSessions:sessions.slice(0,8)});
       if(current)await this.restoreAgent(current.sid,valid);
-      else this.setData({agentMessages:[],agentSessionId:'',agentReport:{}});
+      else this.setData({agentMessages:[],agentSessionId:'',agentDelegations:[],agentReport:{}});
       if(!valid())return;
-      const local=api.read(),rawPending=local.ip12Pending||null,outgoing=local.ip12Outgoing||null;
-      const pending=rawPending&&rawPending.body&&rawPending.body.conversation_id?rawPending:null;
-      if(rawPending&&!pending)api.save({ip12Pending:null,ip12Waiting:null});
-      this.setData({agentPending:pending,agentThinking:false});
-      if(this.properties.pageId==='chat'&&pending)setTimeout(()=>this.run(()=>this.recoverAgentReceipt(pending)),0);
+      const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
+      this.setData({agentPending:pending,agentThinking:!!waiting});
+      if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
         this.setData({promptInput:outgoing.message||''});
         if(Date.now()-Number(outgoing.createdAt||0)<=5*60*1000)setTimeout(()=>this.sendAgent(false),0);
@@ -120,13 +128,13 @@ Component({
       }
     },
     async restoreAgent(sid,valid=()=>this.alive) {
-      const data=await api.request(IP12_API+'/conversations/'+encodeURIComponent(sid));
+      const data=await api.request(IP12_API+'/restore/'+encodeURIComponent(sid));
       if(!valid())return;
-      const items=agentMessages(data.messages);
+      const items=agentMessages(data.history);
       for(const item of items)if(item.images.length)item.images=(await Promise.all(item.images.map(raw=>{const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;return api.mediaSource(api.mediaURL(url)).catch(()=>'');}))).filter(Boolean);
       if(!valid())return;
       wx.setStorageSync(IP12_SESSION_KEY,sid);
-      this.setData({agentMessages:items,agentSessionId:sid,agentReport:(data.coach_state&&data.coach_state.foundation_report)||{},agentRevision:Number(data.coach_state&&data.coach_state.revision||0)});
+      this.setData({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null});
       this.scrollAgent(items);
     },
     scrollAgent(items=this.data.agentMessages) {
@@ -183,18 +191,18 @@ Component({
     },
     async ensureAgentSession() {
       if(this.data.agentSessionId)return this.data.agentSessionId;
-      const started=await api.request(IP12_API+'/conversations','POST',{title:'新诊断'});
-      const sid=String(started.id||'');
+      const started=await api.request(IP12_API+'/start','POST',{});
+      const sid=String(started.session_id||'');
       if(!sid)throw new Error('暂时无法开始对话，请稍后重试');
       wx.setStorageSync(IP12_SESSION_KEY,sid);
       this.setData({agentSessionId:sid});
       return sid;
     },
-    sendAgentMessage(message) {
+    sendAgentMessage(message,approval) {
       return this.run(async()=>{
         const sid=await this.ensureAgentSession();
-        if(!this.data.agentRevision)await this.restoreAgent(sid);
-        const body={conversation_id:sid,message:String(message||'').trim(),request_id:requestId(),expected_revision:this.data.agentRevision};
+        const body={session_id:sid,message:String(message||'').trim()};
+        if(approval)body.approval=approval;
         const pending={sid,body,status:'sending',createdAt:Date.now()};
         api.save({ip12Pending:pending,ip12Outgoing:null});this.setData({agentPending:pending,agentThinking:true,promptInput:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[]})});
         this.scrollAgent();
@@ -204,49 +212,80 @@ Component({
     async executeAgent(pending) {
       let data;
       try {
-        data=await api.request(IP12_API+'/chat-complete','POST',pending.body,{timeout:180000});
+        data=await api.request(IP12_API+'/chat','POST',pending.body);
       } catch(error) {
         if(error.uncertain||!error.status||error.status>=500){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,promptInput:pending.body.message});}
         else{api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:pending.body.message});}
         throw error;
       }
-      if(!data.ok){api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:pending.body.message});throw new Error(data.error||'主 Agent 暂时无法回复');}
-      api.save({ip12Pending:null,ip12Waiting:null});
-      await this.restoreAgent(pending.sid);
-      if(this.alive)this.setData({agentPending:null,agentThinking:false});
+      if(!data.async||data.seq===undefined){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,promptInput:pending.body.message});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
+      api.save({ip12Pending:null,ip12Waiting:{sid:pending.sid,seq:data.seq}});
+      this.setData({agentPending:null,agentThinking:true});
+      await this.pollAgent(pending.sid,data.seq);
     },
-    async recoverAgentReceipt(pending,tries=0) {
+    async pollAgent(sid,target,tries=0) {
       if(!this.alive)return;
-      if(tries>=80){api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:pending.body.message});throw new Error('没有找到刚才的回复，文字已保留，请确认后重新发送');}
+      if(tries>=240){api.save({ip12Waiting:null});this.setData({agentThinking:false});throw new Error('处理时间较长，稍后重新打开会自动恢复结果');}
       let data;
-      try{data=await api.request(IP12_API+'/conversations/'+encodeURIComponent(pending.sid)+'?receipt='+encodeURIComponent(pending.body.request_id));}
-      catch(error){if(error.status&&error.status<500)throw error;data={status:'processing'};}
-      if(data.replayed||data.assistant||data.state){api.save({ip12Pending:null});await this.restoreAgent(pending.sid);if(this.alive)this.setData({agentPending:null,agentThinking:false});return;}
-      await new Promise(resolve=>{this.agentTimer=setTimeout(resolve,1500);});
-      return this.recoverAgentReceipt(pending,tries+1);
+      try{data=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid));}
+      catch(error){if(error.status&&error.status<500)throw error;data={state:'working'};}
+      if(data.state==='done'||data.state==='error'){
+        if(Number(data.seq)>=Number(target)){
+          api.save({ip12Waiting:null});
+          await this.restoreAgent(sid);
+          if(this.alive)this.setData({agentThinking:false});
+          return;
+        }
+      }
+      if(data.state==='idle'&&tries>=3){
+        api.save({ip12Waiting:null});
+        await this.restoreAgent(sid);
+        if(this.alive)this.setData({agentThinking:false});
+        throw new Error('后台没有找到刚才的处理结果，请重新发送');
+      }
+      await new Promise(resolve=>{this.agentTimer=setTimeout(resolve,2500);});
+      return this.pollAgent(sid,target,tries+1);
     },
     retryAgent(){
       const pending=this.data.agentPending||api.read().ip12Pending;
       if(!pending||!pending.body)return this.load();
-      return this.run(()=>this.recoverAgentReceipt(pending));
+      return this.run(async()=>{
+        await this.restoreAgent(pending.sid);
+        const found=this.data.agentMessages.some(item=>item.role==='user'&&item.content===pending.body.message);
+        api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:found?'':pending.body.message,error:found?'':'刚才这句话没有送达，请再点一次发送'});
+      });
     },
     switchAgentSession(){
       const sessions=this.data.agentSessions||[];
       if(!sessions.length)return this.toast('还没有以前的对话');
       wx.showActionSheet({itemList:sessions.map(item=>(item.preview||'以前的对话').slice(0,28)),success:result=>{const item=sessions[result.tapIndex];if(item)this.run(()=>this.restoreAgent(item.sid));}});
     },
+    agentApproval(e){
+      const card=this.data.agentDelegations.find(item=>item.key===e.currentTarget.dataset.key);
+      if(!card||!card.quoteId)return;
+      const decision=e.currentTarget.dataset.decision;
+      const send=()=>this.run(async()=>{
+        const latest=await api.request(IP12_API+'/state/'+encodeURIComponent(this.data.agentSessionId));
+        const current=latest[card.domain];
+        if(!current||current.state!=='needs_approval'||current.quote_id!==card.quoteId)throw new Error('报价已经变化，请刷新后重新确认');
+        return true;
+      }).then(ok=>{if(ok)this.sendAgentMessage(decision==='confirm'?'确认执行':'先不执行',{domain:card.domain,quote_id:card.quoteId,decision});});
+      if(decision==='cancel')return send();
+      wx.showModal({title:'确认使用积分',content:'本次将使用 '+card.cost+' 积分，当前余额 '+card.points+' 积分。确认后才会执行。',confirmText:'确认执行',success:result=>{if(result.confirm)send();}});
+    },
     previewAgentImage(e){
       const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)],current=item&&item.images[Number(e.currentTarget.dataset.image)];
       if(current)wx.previewImage({current,urls:item.images});
     },
     openAgentReport(){
-      if(!this.data.agentSessionId)return this.toast('报告还在整理中');
-      const url=IP12_API+'/foundation-report/'+encodeURIComponent(this.data.agentSessionId)+'.pdf';
+      const raw=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
+      if(!raw)return this.toast('报告还在整理中');
+      const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;
       this.run(async()=>{const file=await api.mediaSource(api.mediaURL(url));await new Promise((resolve,reject)=>wx.openDocument({filePath:file,fileType:'pdf',showMenu:true,success:resolve,fail:reject}));});
     },
     confirmAgentReport(){
       if(!this.data.agentSessionId)return;
-      wx.showModal({title:'确认前四步资料？',content:'确认后，黄雀会继续进行选题和文案。',confirmText:'确认并继续',success:result=>{if(result.confirm)this.run(async()=>{const report=this.data.agentReport||{};const data=await api.request(IP12_API+'/foundation-report/confirm','POST',{conversation_id:this.data.agentSessionId,expected_revision:this.data.agentRevision,report_id:report.report_id||'',request_id:requestId()},{timeout:180000});if(!data.ok)throw new Error(data.error||'确认失败');await this.restoreAgent(this.data.agentSessionId);});}});
+      wx.showModal({title:'确认前四步资料？',content:'确认后，主 Agent 会继续进行选题和文案。',confirmText:'确认并继续',success:result=>{if(result.confirm)this.run(async()=>{const data=await api.request(IP12_API+'/confirm','POST',{session_id:this.data.agentSessionId});if(data.seq!==undefined){api.save({ip12Waiting:{sid:this.data.agentSessionId,seq:data.seq}});this.setData({agentThinking:true});await this.pollAgent(this.data.agentSessionId,data.seq);}});}});
     },
     stopThought(){this.setData({stopped:!this.data.stopped});},
     confirmPlan(){if(!this.requireLogin())return;this.run(async()=>{creation.payload(this.draft());api.save({draft:this.draft()});this.navigate('confirm');});},
