@@ -3,23 +3,42 @@ const api = require('../../services/api');
 const creation = require('../../services/creation');
 const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
-function requestId(prefix) { return prefix+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,10); }
+const IP12_API = '/workbench/ip12/api/v4';
+const IP12_SESSION_KEY = 'hq-v4-session-id';
 function agentMessages(items) {
-  return (Array.isArray(items)?items:[]).map((item,index)=>{
-    const pub=item&&typeof item.public==='object'?item.public:{};
-    const batch=pub.batch&&typeof pub.batch==='object'?pub.batch:{};
-    let actions=Array.isArray(pub.actions)?pub.actions:[];
-    if(pub.kind==='platform_picker'&&Array.isArray(pub.platforms))actions=pub.platforms.map(platform=>({intent:'set_platforms',label:platform.label,payload:{platforms:[platform.id]}}));
-    if(pub.kind==='profile_modules'&&Array.isArray(pub.options))actions=pub.options.map(label=>({intent:'',label:'我想修改'+label,payload:{}}));
-    actions=actions.map((action,actionIndex)=>{
-      const payload=Object.assign({},action.payload||{});
-      if(batch.id&&!payload.batch_id)payload.batch_id=batch.id;
-      if(batch.revision&&!payload.expected_revision)payload.expected_revision=batch.revision;
-      if(action.intent==='confirm_payment'&&!payload.expected_quote_expires_at)payload.expected_quote_expires_at=Number(batch.quote_expires_at||(batch.quote&&batch.quote.expires_at)||0);
-      return {key:String(index)+'-'+String(actionIndex),intent:action.intent||'',label:action.label||'继续',primary:!!action.primary,payload};
-    });
-    return Object.assign({},item,{domId:'agent-message-'+String(item.id||index),actions,template:pub.template||'',quoteCost:Number(batch.quote&&batch.quote.total_cost||0)});
-  });
+  return (Array.isArray(items)?items:[]).map((item,index)=>({
+    domId:'agent-message-'+index,
+    role:item&&item.role==='user'?'user':'assistant',
+    content:String(item&&item.content||''),
+    images:Array.isArray(item&&item.images)?item.images:[]
+  }));
+}
+function videoHeight(ratio) {
+  if(['16:9','3:2','21:9','5:4'].includes(String(ratio||'')))return 390;
+  if(String(ratio||'')==='1:1')return 686;
+  return 980;
+}
+function videoWork(item) {
+  const jobId=Number(item.job_id)||0;
+  const status=String(item.status||'done');
+  return {
+    key:'video-'+(jobId||'asset-'+item.id), id:jobId||item.id, jobId, assetOnly:!jobId,
+    kind:'video', status, title:item.text||'视频作品', url:api.mediaURL(item.video_url),
+    coverFile:item.image_file||'', ratio:item.ratio||'', videoHeight:videoHeight(item.ratio),
+    done:['done','completed'].includes(status), failed:['error','failed'].includes(status),
+    label:['done','completed'].includes(status)?'已完成':['error','failed'].includes(status)?'生成失败':'正在处理'
+  };
+}
+function delegationCards(value) {
+  return Object.keys(value&&typeof value==='object'?value:{}).map(domain=>{
+    const item=value[domain]||{},quote=item.quote||{};
+    return {
+      key:domain+':'+String(item.quote_id||item.state||''),
+      domain, state:item.state||'', summary:item.summary||'', question:item.question||'',
+      quoteId:item.quote_id||'', cost:quote.cost, points:quote.points,
+      needsApproval:item.state==='needs_approval', needsInput:item.state==='needs_user_input'
+    };
+  }).filter(item=>item.needsApproval||item.needsInput);
 }
 Component({
   properties: { pageId: { type: String, value: 'home' } },
@@ -32,14 +51,15 @@ Component({
     workFilters: [{id:'all',name:'全部'},{id:'processing',name:'进行中'},{id:'done',name:'已完成'},{id:'failed',name:'失败'}],
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
-    agentMessages: [], agentProjectId: '', agentPending: null, agentScrollTarget: '',
+    agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false,
+    agentDelegations: [], agentReport: {},
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
     helpItems: [
-      {q:'怎样开始一次创作？',a:'选择作品形式并描述需求，确认当前价格后提交。图片、文案、配音和视频分别创建任务。'},
+      {q:'怎样开始一次创作？',a:'在首页直接说你想做什么就行。不知道怎么说，可以先点一条常用问题，黄雀会一步一步问你。'},
       {q:'生成失败后，积分会怎样？',a:'任务状态和退回状态分别显示。仅当服务端确认退回时显示已退回；重试前需再次确认。'},
-      {q:'网络中断后要重新生成吗？',a:'先恢复上次提交。恢复沿用相同请求编号，避免重复创建付费任务。'},
+      {q:'网络中断后要重新发送吗？',a:'先点“检查是否已经发送”。如果记录里已经有这句话，就不要再发；没有找到时，文字会留在输入框里。'},
       {q:'谁能看到我的作品和联系方式？',a:'创作记录按账号隔离。名片只有发布后才公开，邮箱与地址由你分别控制。'}
     ]
   },
@@ -65,7 +85,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentProjectId:'',agentPending:null});
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentPending:null,agentDelegations:[],agentReport:{}});
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -89,10 +109,32 @@ Component({
       } catch(e){if(this.alive)this.fail(e);} finally {this.loading=false;if(this.alive)this.setData({loading:false});}
     },
     async loadAgent(valid=()=>this.alive) {
-      const data=await api.request('/api/creator-agent/bootstrap');
+      const data=await api.request(IP12_API+'/sessions');
       if(!valid())return;
-      const items=agentMessages(data.messages);
-      this.setData({agentMessages:items,agentProjectId:data.project&&data.project.id||'',agentPending:api.read().agentPending||null});
+      const sessions=Array.isArray(data.sessions)?data.sessions:[];
+      const saved=wx.getStorageSync(IP12_SESSION_KEY);
+      const current=sessions.find(item=>item.sid===saved)||sessions[0];
+      this.setData({agentSessions:sessions.slice(0,8)});
+      if(current)await this.restoreAgent(current.sid,valid);
+      else this.setData({agentMessages:[],agentSessionId:'',agentDelegations:[],agentReport:{}});
+      if(!valid())return;
+      const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
+      this.setData({agentPending:pending,agentThinking:!!waiting});
+      if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
+      else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
+        this.setData({promptInput:outgoing.message||''});
+        if(Date.now()-Number(outgoing.createdAt||0)<=5*60*1000)setTimeout(()=>this.sendAgent(false),0);
+        else{api.save({ip12Outgoing:null});this.setData({error:'上次没有发送的文字已保留，请确认后再点发送'});}
+      }
+    },
+    async restoreAgent(sid,valid=()=>this.alive) {
+      const data=await api.request(IP12_API+'/restore/'+encodeURIComponent(sid));
+      if(!valid())return;
+      const items=agentMessages(data.history);
+      for(const item of items)if(item.images.length)item.images=(await Promise.all(item.images.map(raw=>{const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;return api.mediaSource(api.mediaURL(url)).catch(()=>'');}))).filter(Boolean);
+      if(!valid())return;
+      wx.setStorageSync(IP12_SESSION_KEY,sid);
+      this.setData({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null});
       this.scrollAgent(items);
     },
     scrollAgent(items=this.data.agentMessages) {
@@ -100,16 +142,24 @@ Component({
       if(last)setTimeout(()=>{if(this.alive)this.setData({agentScrollTarget:last.domId});},30);
     },
     async loadWorks(valid=()=>this.alive) {
-      const kinds=['image','copy','audio','xiaole_video'];
-      const batches=await Promise.all(kinds.map(kind=>api.request('/api/gen/history?kind='+kind+'&include_failed=1&limit=30').then(r=>(r.items||[]).map(x=>creation.jobView(Object.assign({},x,{kind,result:{url:x.url,text:x.text,prompt:x.prompt}}))))));
-      const map=new Map();batches.flat().forEach(j=>map.set(j.id,j));
+      const kinds=['image','copy','audio'];
+      const [responses,videos]=await Promise.all([
+        Promise.all(kinds.map(kind=>api.request('/api/gen/history?kind='+kind+'&include_failed=1&limit=30'))),
+        api.request('/api/gen/video/assets?limit=60')
+      ]);
+      const batches=responses.map((r,index)=>(r.items||[]).map(x=>Object.assign(creation.jobView(Object.assign({},x,{kind:kinds[index],result:{url:x.url,text:x.text,prompt:x.prompt}})),{key:'job-'+(x.id||x.job_id)})));
+      batches.push((videos.items||[]).map(videoWork));
+      const map=new Map();batches.flat().forEach(j=>map.set(j.key||'job-'+j.id,j));
       const pending=api.read().jobIds||[];
-      const tracked=await Promise.all(pending.slice(0,12).filter(id=>!map.has(id)).map(id=>api.request('/api/gen/job/'+encodeURIComponent(id)).then(creation.jobView).catch(e=>{if(e.status===404)return null;throw e;})));
-      tracked.filter(Boolean).forEach(j=>map.set(j.id,j));
-      const works=[...map.values()].sort((a,b)=>b.id-a.id);
+      const knownJobs=new Set([...map.values()].map(item=>Number(item.jobId||item.id)).filter(Boolean));
+      const tracked=await Promise.all(pending.slice(0,12).filter(id=>!knownJobs.has(Number(id))).map(id=>api.request('/api/gen/job/'+encodeURIComponent(id)).then(job=>Object.assign(creation.jobView(job),{key:'job-'+id})).catch(e=>{if(e.status===404)return null;throw e;})));
+      tracked.filter(Boolean).forEach(j=>map.set(j.key,j));
+      const works=[...map.values()].sort((a,b)=>Number(b.jobId||b.id||0)-Number(a.jobId||a.id||0));
       const page=this.properties.pageId;
       const images=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='image'&&j.url);
       for(let i=0;i<images.length;i+=4)await Promise.all(images.slice(i,i+4).map(async j=>{j.displayUrl=await api.mediaSource(j.url).catch(()=> '');}));
+      const covers=(page==='home'?works.slice(0,3):works.slice(0,12)).filter(j=>j.kind==='video'&&j.coverFile);
+      await Promise.all(covers.map(async j=>{j.displayCover=await api.mediaSource(api.mediaURL('/api/gen/file/'+j.coverFile)).catch(()=>'');}));
       if(valid()){this.setData({works,hasMore:batches.some(b=>b.length>=30)});this.applyFilter();}
     },
     field(e) { const key=e.currentTarget.dataset.field;if(['promptInput','username','password','feedbackInput','search'].includes(key)){this.setData({[key]:e.detail.value});if(key==='search')this.applyFilter();} },
@@ -125,59 +175,126 @@ Component({
     logout(){this.run(async()=>{try{await api.request('/api/auth/logout','POST',{});}catch(_){}api.setSession(null);this.setData({user:null,password:'',works:[],card:emptyCard});this.navigate('login');});},
     chooseKind(e){const kind=e.currentTarget.dataset.kind;const f=creation.format(kind);this.setData({kind,kindName:f.name,formatDetail:f.detail,quote:null});if(kind==='audio'&&api.session())this.run(()=>this.loadVoices());},
     draft(){return {kind:this.data.kind,prompt:this.data.promptInput,voice:this.data.voice,reference:this.reference||''};},
-    startChat(){return this.sendAgent(true);},
-    sendPrompt(){return this.sendAgent(false);},
-    sendAgent(fromHome) {
+    startChat(){
       if(!this.requireLogin())return;
       const message=this.data.promptInput.trim();
       if(!message)return this.toast('请先写一句想说的话');
-      return this.sendAgentMessage(message,'',{},fromHome);
+      api.save({ip12Outgoing:{message,status:'queued',createdAt:Date.now()}});
+      this.navigate('chat');
     },
-    sendAgentMessage(message,intent,payload,fromHome) {
+    sendPrompt(){return this.sendAgent(false);},
+    sendAgent() {
+      if(!this.requireLogin())return;
+      const message=this.data.promptInput.trim();
+      if(!message)return this.toast('请先写一句想说的话');
+      return this.sendAgentMessage(message);
+    },
+    async ensureAgentSession() {
+      if(this.data.agentSessionId)return this.data.agentSessionId;
+      const started=await api.request(IP12_API+'/start','POST',{});
+      const sid=String(started.session_id||'');
+      if(!sid)throw new Error('暂时无法开始对话，请稍后重试');
+      wx.setStorageSync(IP12_SESSION_KEY,sid);
+      this.setData({agentSessionId:sid});
+      return sid;
+    },
+    sendAgentMessage(message,approval) {
       return this.run(async()=>{
-        if(!this.data.agentProjectId)await this.loadAgent();
-        const body={message:String(message||'').trim(),request_id:requestId('creator-turn'),project_id:this.data.agentProjectId};
-        if(intent)body.intent=intent;
-        if(payload&&Object.keys(payload).length)body.payload=payload;
-        const pending={body,fromHome:!!fromHome,createdAt:Date.now()};
-        api.save({agentPending:pending});this.setData({agentPending:pending});
+        const sid=await this.ensureAgentSession();
+        const body={session_id:sid,message:String(message||'').trim()};
+        if(approval)body.approval=approval;
+        const pending={sid,body,status:'sending',createdAt:Date.now()};
+        api.save({ip12Pending:pending,ip12Outgoing:null});this.setData({agentPending:pending,agentThinking:true,promptInput:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[]})});
+        this.scrollAgent();
         await this.executeAgent(pending);
       });
     },
     async executeAgent(pending) {
+      let data;
       try {
-        const data=await api.request('/api/creator-agent/messages','POST',pending.body);
-        api.save({agentPending:null});
-        const items=agentMessages(data.messages);
-        this.setData({agentMessages:items,agentProjectId:data.project&&data.project.id||this.data.agentProjectId,agentPending:null,promptInput:''});
-        this.scrollAgent(items);
-        if(pending.fromHome)this.navigate('chat');
+        data=await api.request(IP12_API+'/chat','POST',pending.body);
       } catch(error) {
-        if(!(error.uncertain||!error.status||error.status>=500||error.code==='idempotency_in_progress')){api.save({agentPending:null});this.setData({agentPending:null});}
+        if(error.uncertain||!error.status||error.status>=500){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,promptInput:pending.body.message});}
+        else{api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:pending.body.message});}
         throw error;
       }
+      if(!data.async||data.seq===undefined){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,promptInput:pending.body.message});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
+      api.save({ip12Pending:null,ip12Waiting:{sid:pending.sid,seq:data.seq}});
+      this.setData({agentPending:null,agentThinking:true});
+      await this.pollAgent(pending.sid,data.seq);
     },
-    retryAgent(){const pending=this.data.agentPending||api.read().agentPending;if(!pending||!pending.body)return this.load();return this.run(()=>this.executeAgent(pending));},
-    agentAction(e) {
-      const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)];
-      const action=item&&item.actions[Number(e.currentTarget.dataset.action)];
-      if(!action)return;
-      const send=()=>{
-        const payload=Object.assign({},action.payload||{});
-        if(action.intent==='confirm_payment')payload.confirmation_id=requestId('creator-confirm');
-        this.sendAgentMessage(action.label,action.intent,payload,false);
-      };
-      if(action.intent!=='confirm_payment')return send();
-      wx.showModal({title:'确认使用积分',content:'这一步将使用 '+item.quoteCost+' 积分并开始生成。确定继续吗？',confirmText:'确认开始',success:result=>{if(result.confirm)send();}});
+    async pollAgent(sid,target,tries=0) {
+      if(!this.alive)return;
+      if(tries>=240){api.save({ip12Waiting:null});this.setData({agentThinking:false});throw new Error('处理时间较长，稍后重新打开会自动恢复结果');}
+      let data;
+      try{data=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid));}
+      catch(error){if(error.status&&error.status<500)throw error;data={state:'working'};}
+      if(data.state==='done'||data.state==='error'){
+        if(Number(data.seq)>=Number(target)){
+          api.save({ip12Waiting:null});
+          await this.restoreAgent(sid);
+          if(this.alive)this.setData({agentThinking:false});
+          return;
+        }
+      }
+      if(data.state==='idle'&&tries>=3){
+        api.save({ip12Waiting:null});
+        await this.restoreAgent(sid);
+        if(this.alive)this.setData({agentThinking:false});
+        throw new Error('后台没有找到刚才的处理结果，请重新发送');
+      }
+      await new Promise(resolve=>{this.agentTimer=setTimeout(resolve,2500);});
+      return this.pollAgent(sid,target,tries+1);
+    },
+    retryAgent(){
+      const pending=this.data.agentPending||api.read().ip12Pending;
+      if(!pending||!pending.body)return this.load();
+      return this.run(async()=>{
+        await this.restoreAgent(pending.sid);
+        const found=this.data.agentMessages.some(item=>item.role==='user'&&item.content===pending.body.message);
+        api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:found?'':pending.body.message,error:found?'':'刚才这句话没有送达，请再点一次发送'});
+      });
+    },
+    switchAgentSession(){
+      const sessions=this.data.agentSessions||[];
+      if(!sessions.length)return this.toast('还没有以前的对话');
+      wx.showActionSheet({itemList:sessions.map(item=>(item.preview||'以前的对话').slice(0,28)),success:result=>{const item=sessions[result.tapIndex];if(item)this.run(()=>this.restoreAgent(item.sid));}});
+    },
+    agentApproval(e){
+      const card=this.data.agentDelegations.find(item=>item.key===e.currentTarget.dataset.key);
+      if(!card||!card.quoteId)return;
+      const decision=e.currentTarget.dataset.decision;
+      const send=()=>this.run(async()=>{
+        const latest=await api.request(IP12_API+'/state/'+encodeURIComponent(this.data.agentSessionId));
+        const current=latest[card.domain];
+        if(!current||current.state!=='needs_approval'||current.quote_id!==card.quoteId)throw new Error('报价已经变化，请刷新后重新确认');
+        return true;
+      }).then(ok=>{if(ok)this.sendAgentMessage(decision==='confirm'?'确认执行':'先不执行',{domain:card.domain,quote_id:card.quoteId,decision});});
+      if(decision==='cancel')return send();
+      wx.showModal({title:'确认使用积分',content:'本次将使用 '+card.cost+' 积分，当前余额 '+card.points+' 积分。确认后才会执行。',confirmText:'确认执行',success:result=>{if(result.confirm)send();}});
+    },
+    previewAgentImage(e){
+      const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)],current=item&&item.images[Number(e.currentTarget.dataset.image)];
+      if(current)wx.previewImage({current,urls:item.images});
+    },
+    openAgentReport(){
+      const raw=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
+      if(!raw)return this.toast('报告还在整理中');
+      const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;
+      this.run(async()=>{const file=await api.mediaSource(api.mediaURL(url));await new Promise((resolve,reject)=>wx.openDocument({filePath:file,fileType:'pdf',showMenu:true,success:resolve,fail:reject}));});
+    },
+    confirmAgentReport(){
+      if(!this.data.agentSessionId)return;
+      wx.showModal({title:'确认前四步资料？',content:'确认后，主 Agent 会继续进行选题和文案。',confirmText:'确认并继续',success:result=>{if(result.confirm)this.run(async()=>{const data=await api.request(IP12_API+'/confirm','POST',{session_id:this.data.agentSessionId});if(data.seq!==undefined){api.save({ip12Waiting:{sid:this.data.agentSessionId,seq:data.seq}});this.setData({agentThinking:true});await this.pollAgent(this.data.agentSessionId,data.seq);}});}});
     },
     stopThought(){this.setData({stopped:!this.data.stopped});},
     confirmPlan(){if(!this.requireLogin())return;this.run(async()=>{creation.payload(this.draft());api.save({draft:this.draft()});this.navigate('confirm');});},
     async loadQuote(){const draft=api.read().draft;if(!draft)throw new Error('请先填写创作需求');const q=await creation.quote(draft);if(this.alive)this.setData({quote:q,promptInput:draft.prompt,kind:draft.kind,kindName:creation.format(draft.kind).name,formatDetail:q.detail});},
     startGeneration(){this.run(async()=>{if(!this.data.quote)throw new Error('请先取得当前报价');try {await creation.submit(api.read().draft,this.data.quote.cost);}catch(e){this.setData({attempt:api.read().attempt||null});if(e.code==='price_changed')await this.loadQuote();throw e;}this.navigate('processing');});},
     recover(){this.run(async()=>{await creation.submit(null,null,true);this.navigate('processing');});},
-    async refreshJob(){clearTimeout(this.timer);const s=api.read().selected;if(!s||!s.id)throw new Error('请从作品列表选择一个任务');const owner=api.session()&&api.session().user.username;const data=await api.request('/api/gen/job/'+encodeURIComponent(s.id));if(!this.alive||!api.session()||owner!==api.session().user.username)return;const job=creation.jobView(data,s.kind);job.displayUrls=await Promise.all(job.urls.map(api.mediaSource));job.displayUrl=job.displayUrls[0]||'';if(!this.alive||!api.session()||owner!==api.session().user.username)return;this.setData({job});if(this.visible&&this.properties.pageId==='processing'&&!job.done&&!job.failed)this.timer=setTimeout(()=>this.refreshJob().catch(e=>this.fail(e)),4000);},
+    async refreshJob(){clearTimeout(this.timer);const s=api.read().selected;if(!s||(!s.id&&!s.asset))throw new Error('请从作品列表选择一个任务');const owner=api.session()&&api.session().user.username;let job;if(s.asset)job=Object.assign({},s.asset);else{const data=await api.request('/api/gen/job/'+encodeURIComponent(s.id));job=creation.jobView(data,s.kind);if(s.kind==='video'){job.kind='video';job.ratio=(data.result&&data.result.ratio)||job.ratio||'';job.videoHeight=videoHeight(job.ratio);}}if(!this.alive||!api.session()||owner!==api.session().user.username)return;job.displayUrls=await Promise.all((job.urls||[job.url]).filter(Boolean).map(api.mediaSource));job.displayUrl=job.displayUrls[0]||'';if(!this.alive||!api.session()||owner!==api.session().user.username)return;this.setData({job});if(this.visible&&this.properties.pageId==='processing'&&!job.done&&!job.failed)this.timer=setTimeout(()=>this.refreshJob().catch(e=>this.fail(e)),4000);},
     refreshTask(){this.run(()=>this.refreshJob());},
-    openWork(e){const id=Number(e.currentTarget.dataset.id),job=this.data.works.find(j=>Number(j.id)===id);if(!job)return;this.run(async()=>{api.save({selected:{id,kind:job.kind}});this.navigate(job.done?job.kind+'-detail':job.failed?'failed':'processing');});},
+    openWork(e){const key=e.currentTarget.dataset.key,job=this.data.works.find(j=>j.key===key);if(!job)return;this.run(async()=>{api.save({selected:job.kind==='video'&&job.done?{asset:job}:{id:job.jobId||job.id,kind:job.kind}});this.navigate(job.done?job.kind+'-detail':job.failed?'failed':'processing');});},
     viewResult(){const j=this.data.job;if(j&&j.done)this.navigate(j.kind+'-detail');},
     retry(){this.run(async()=>{const local=api.read();if(!local.draft||!local.attempt||Number(local.attempt.jobId)!==Number(this.data.job&&this.data.job.id))throw new Error('这件作品的原始需求未保存在此设备，请回首页填写后重新确认');this.navigate('confirm');});},
     applyFilter(){const q=this.data.search.trim().toLowerCase(),page=this.properties.pageId,filter=this.data.filter;this.setData({visibleWorks:this.data.works.filter(w=>{const allowed=page!=='card-works'||(w.done&&['image','video'].includes(w.kind));const matched=page==='works'?(filter==='all'||filter==='done'&&w.done||filter==='failed'&&w.failed||filter==='processing'&&!w.done&&!w.failed):(filter==='all'||w.kind===filter);return allowed&&matched&&(!q||w.title.toLowerCase().includes(q));})});},
@@ -198,7 +315,7 @@ Component({
     publishCard(){wx.showModal({title:this.data.card.published?'收起公开名片？':'发布这张名片？',content:'发布后他人可查看名片中公开的资料与精选作品。邮箱和地址按隐私开关展示。',success:r=>{if(r.confirm)this.run(async()=>{const out=await api.request('/api/auth/card/'+(this.data.card.published?'unpublish':'publish'),'POST',{});this.setData({card:out.card||this.data.card});await this.load();});}});},
     toggleFeatured(e){this.run(async()=>{
       if(!this.requireLogin())return;
-      const job=this.data.works.find(j=>Number(j.id)===Number(e.currentTarget.dataset.id));
+      const job=this.data.works.find(j=>j.key===e.currentTarget.dataset.key);
       if(!job||!job.done||!job.url||!['image','video'].includes(job.kind))throw new Error('请选择已完成的图片或视频');
       const token=api.session().token;
       const current=await api.request('/api/auth/card/me?create=0').catch(e=>{if(e.status===404)return {card:null};throw e;});

@@ -5,17 +5,17 @@
     <block wx:else><button class="hq-button back" bindtap="back" aria-label="返回上一页">‹</button><text class="hq-text nav-title">{{title}}</text></block>
   </view></view>
   <view class="hq-view content {{pageId==='home'||pageId==='works'||pageId==='profile'?'has-tabs':''}} {{pageId==='chat'?'agent-chat-content':''}}">
-    <view wx:if="{{error}}" class="hq-view error-banner" role="alert"><text class="hq-text">{{error}}</text><button wx:if="{{agentPending}}" class="hq-button text-button" bindtap="retryAgent">重新发送</button><button wx:else class="hq-button text-button" bindtap="load">重新加载</button></view>
+    <view wx:if="{{error}}" class="hq-view error-banner" role="alert"><text class="hq-text">{{error}}</text><button wx:if="{{agentPending}}" class="hq-button text-button" bindtap="retryAgent">检查是否已经发送</button><button wx:else class="hq-button text-button" bindtap="load">重新加载</button></view>
     <view wx:if="{{loading}}" class="hq-view loading-note">正在读取你的创作空间…</view>
     <view wx:if="{{!user&&pageId!=='login'}}" class="hq-view guest-strip"><text class="hq-text">登录后查看你的作品与积分</text><button class="hq-button text-button" data-route="login" bindtap="go">登录 ›</button></view>
 
     <block wx:if="{{pageId==='home'}}">
       <view class="hq-view greeting">你好，{{user.display_name||'创作者'}}</view><view class="hq-view hero-title home-title">今天想做点什么？</view>
-      <view class="hq-view composer home-composer"><textarea class="hq-textarea" value="{{promptInput}}" placeholder="像聊天一样，想说什么就写什么…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="startChat" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/><view class="hq-view input-help">可以打字、手写，也可以用手机键盘的语音输入</view><button class="hq-button send-text" bindtap="startChat" loading="{{busy}}" disabled="{{busy||loading}}">发送</button></view>
+      <view class="hq-view composer home-composer"><textarea class="hq-textarea" value="{{promptInput}}" placeholder="像聊天一样，想说什么就写什么…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="startChat" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/><view class="hq-view input-help">可以打字、手写，也可以用手机键盘的语音输入</view><button class="hq-button send-text" bindtap="startChat" loading="{{busy}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'上一句话正在处理':'发送'}}</button></view>
       <view class="hq-view easy-title">不知道怎么说？点一句试试</view>
       <view class="hq-view easy-prompts"><button class="hq-button easy-prompt" data-prompt="我想做一条视频，请一步一步教我。" bindtap="homeShortcut">我想做视频</button><button class="hq-button easy-prompt" data-prompt="帮我写一段文案，请先问我需要什么。" bindtap="homeShortcut">帮我写文案</button><button class="hq-button easy-prompt" data-prompt="帮我想几个适合我的选题。" bindtap="homeShortcut">帮我想选题</button><button class="hq-button easy-prompt" data-prompt="我不太会用，请用最简单的话一步一步教我。" bindtap="homeShortcut">我不太会用</button></view>
       <view class="hq-view section-head"><view class="hq-view section-title">最近创作</view><button class="hq-button text-button" data-route="works" bindtap="go">查看全部 ›</button></view>
-      <button wx:for="{{works}}" wx:key="id" wx:if="{{index<2}}" class="hq-button recent" data-id="{{item.id}}" bindtap="openWork"><image class="hq-image" wx:if="{{item.kind==='image'&&item.url}}" src="{{item.displayUrl||item.url}}" mode="aspectFill"/><view wx:else class="hq-view text-thumb">{{item.kind==='audio'?'声':item.kind==='video'?'影':'文'}}</view><view class="hq-view recent-info"><view class="hq-view truncate">{{item.title}}</view><text class="hq-text muted small">{{item.label}}</text></view><text class="hq-text chevron">›</text></button>
+      <button wx:for="{{works}}" wx:key="key" wx:if="{{index<2}}" class="hq-button recent" data-key="{{item.key}}" bindtap="openWork"><image class="hq-image" wx:if="{{item.kind==='image'&&item.url}}" src="{{item.displayUrl||item.url}}" mode="aspectFill"/><image class="hq-image" wx:elif="{{item.kind==='video'&&item.displayCover}}" src="{{item.displayCover}}" mode="aspectFill"/><view wx:else class="hq-view text-thumb">{{item.kind==='audio'?'声':item.kind==='video'?'影':'文'}}</view><view class="hq-view recent-info"><view class="hq-view truncate">{{item.title}}</view><text class="hq-text muted small">{{item.label}}</text></view><text class="hq-text chevron">›</text></button>
       <view wx:if="{{!works.length&&!loading}}" class="hq-view empty-state"><view class="hq-view empty-symbol">✦</view><view class="hq-view">第一件作品，从这里开始。</view><text class="hq-text muted small">描述想法，确认后再创作。</text></view>
       <view wx:if="{{attempt.status==='unknown'||attempt.status==='submitting'}}" class="hq-view card"><view class="hq-view">上次提交的结果待确认</view><button class="hq-button secondary" bindtap="recover" loading="{{busy}}" disabled="{{busy}}">恢复上次提交</button></view><view class="hq-view bottom-quote">灵感不必完整，我们一起把它做好。</view>
     </block>
@@ -29,26 +29,30 @@
     </block>
 
     <block wx:elif="{{pageId==='chat'}}">
-      <view class="hq-view agent-status"><view class="hq-view status-dot"/><text class="hq-text">黄雀 Agent</text><text class="hq-text agent-mode">可以直接聊天</text></view>
+      <view class="hq-view agent-status"><view class="hq-view status-dot"/><text class="hq-text">黄雀助手 · 已与主站同步</text><button class="hq-button agent-mode" bindtap="switchAgentSession">以前的对话</button></view>
       <scroll-view scroll-y class="agent-thread" scroll-into-view="{{agentScrollTarget}}" enhanced show-scrollbar="{{false}}">
         <view wx:if="{{!agentMessages.length&&!loading}}" class="hq-view agent-empty"><view class="hq-view agent-avatar">雀</view><view class="hq-view">像和人聊天一样告诉我就行。<br/>说错了也没关系，可以继续改。</view></view>
         <block wx:for="{{agentMessages}}" wx:key="domId" wx:for-index="messageIndex">
           <view wx:if="{{item.role==='user'}}" id="{{item.domId}}" class="hq-view user-message"><view class="hq-view message-meta user-meta">你</view><view class="hq-view user-bubble preserve">{{item.content}}</view></view>
           <view wx:else id="{{item.domId}}" class="hq-view agent-message">
             <view class="hq-view agent-avatar">雀</view>
-            <view class="hq-view message-stack"><view class="hq-view message-meta">黄雀 Agent</view><view class="hq-view agent-bubble preserve">{{item.content}}</view>
-              <view wx:if="{{item.template}}" class="hq-view answer-help">不知道怎么回答？可以照着说：{{item.template}}</view>
-              <view wx:if="{{item.quoteCost}}" class="hq-view agent-quote">预计使用 <text class="hq-text">{{item.quoteCost}} 积分</text>，确认前不会扣除。</view>
-              <view wx:if="{{item.actions.length}}" class="hq-view agent-actions"><button wx:for="{{item.actions}}" wx:key="key" wx:for-item="action" wx:for-index="actionIndex" class="hq-button agent-action {{action.primary?'primary-action':''}}" data-message="{{messageIndex}}" data-action="{{actionIndex}}" bindtap="agentAction" disabled="{{busy}}">{{action.label}}</button></view>
+            <view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble preserve">{{item.content}}</view>
+              <view wx:if="{{item.images.length}}" class="hq-view agent-images"><image wx:for="{{item.images}}" wx:key="*this" class="hq-image agent-image" src="{{item}}" mode="aspectFill" bindtap="previewAgentImage" data-message="{{messageIndex}}" data-image="{{index}}"/></view>
             </view>
           </view>
         </block>
+        <view wx:if="{{agentThinking}}" class="hq-view agent-message"><view class="hq-view agent-avatar">雀</view><view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble">正在处理，请稍等一下…</view></view></view>
+        <view wx:for="{{agentDelegations}}" wx:key="key" class="hq-view agent-task-card">
+          <view wx:if="{{item.needsInput}}" class="hq-view"><view class="hq-view task-title">还需要你说一句</view><view class="hq-view preserve">{{item.question||item.summary}}</view></view>
+          <view wx:if="{{item.needsApproval}}" class="hq-view"><view class="hq-view task-title">执行前请确认</view><view class="hq-view preserve">{{item.summary}}</view><view class="hq-view task-cost">本次 {{item.cost}} 积分 · 余额 {{item.points}} 积分</view><view class="hq-view task-actions"><button class="hq-button task-cancel" data-key="{{item.key}}" data-decision="cancel" bindtap="agentApproval">先不执行</button><button class="hq-button task-confirm" data-key="{{item.key}}" data-decision="confirm" bindtap="agentApproval">确认执行</button></view></view>
+        </view>
+        <view wx:if="{{agentReport.status==='final'||agentReport.status==='draft_ready'}}" class="hq-view agent-task-card"><view class="hq-view task-title">前四步资料已经整理好</view><view class="hq-view task-actions"><button class="hq-button task-cancel" bindtap="openAgentReport">查看报告</button><button wx:if="{{!agentReport.confirmed}}" class="hq-button task-confirm" bindtap="confirmAgentReport">确认并继续</button></view></view>
         <view class="hq-view agent-thread-end"/>
       </scroll-view>
       <view class="hq-view agent-composer">
         <textarea class="hq-textarea" value="{{promptInput}}" placeholder="把想说的话写在这里…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="sendPrompt" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/>
         <view class="hq-view input-help">识别错了先修改，确认文字没问题再发送</view>
-        <button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy}}" disabled="{{busy||loading}}">发送</button>
+        <button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'正在处理':'发送'}}</button>
       </view>
     </block>
 
@@ -72,8 +76,8 @@
       <input class="hq-input search-input" value="{{search}}" data-field="search" bindinput="field" placeholder="搜索作品描述" aria-label="搜索作品"/>
       <scroll-view scroll-x class="filter-scroll"><view class="hq-view filter-row"><button wx:for="{{pageId==='works'?workFilters:filters}}" wx:key="id" class="hq-button filter {{filter===item.id?'active':''}}" data-filter="{{item.id}}" bindtap="selectFilter">{{item.name}}</button></view></scroll-view>
       <block wx:if="{{pageId==='card-works'}}"><view class="hq-view note">图片与视频各可精选 3 件。点击下方作品加入名片；已发布的名片会同步更新。</view><view wx:for="{{card.works}}" wx:key="key" class="hq-view menu-row"><text class="hq-text truncate">{{item.title}}</text><button class="hq-button text-button" data-key="{{item.key}}" bindtap="removeFeatured" disabled="{{busy}}">移除</button></view></block>
-      <view wx:if="{{pageId==='works'}}" class="hq-view works-list"><button wx:for="{{visibleWorks}}" wx:key="id" class="hq-button work-row" disabled="{{busy}}" data-id="{{item.id}}" bindtap="openWork"><image wx:if="{{item.kind==='image'&&item.url}}" class="hq-image work-row-image" src="{{item.displayUrl||item.url}}" mode="aspectFill"/><view wx:else class="hq-view work-row-placeholder">{{item.kind==='audio'?'声':item.kind==='video'?'影':'文'}}</view><view class="hq-view work-row-copy"><view class="hq-view work-title">{{item.title}}</view><text class="hq-text small {{item.failed?'failed-text':'muted'}}">{{item.label}}</text></view><text class="hq-text chevron">›</text></button></view>
-      <view wx:else class="hq-view works-grid"><button wx:for="{{visibleWorks}}" wx:key="id" class="hq-button work" disabled="{{busy}}" data-id="{{item.id}}" bindtap="toggleFeatured"><image wx:if="{{item.kind==='image'&&item.url}}" class="hq-image work-image" src="{{item.displayUrl||item.url}}" mode="aspectFill"/><view wx:else class="hq-view work-placeholder">{{item.kind==='audio'?'声':item.kind==='video'?'影':'文'}}</view><view class="hq-view work-meta"><text class="hq-text tag">{{item.label}}</text><text class="hq-text small muted">#{{item.id}}</text></view><view class="hq-view work-title">{{item.title}}</view></button></view>
+      <view wx:if="{{pageId==='works'}}" class="hq-view works-list"><button wx:for="{{visibleWorks}}" wx:key="key" class="hq-button work-row" disabled="{{busy}}" data-key="{{item.key}}" bindtap="openWork"><image wx:if="{{item.kind==='image'&&item.url}}" class="hq-image work-row-image" src="{{item.displayUrl||item.url}}" mode="aspectFill"/><image wx:elif="{{item.kind==='video'&&item.displayCover}}" class="hq-image work-row-image" src="{{item.displayCover}}" mode="aspectFill"/><view wx:else class="hq-view work-row-placeholder">{{item.kind==='audio'?'声':item.kind==='video'?'影':'文'}}</view><view class="hq-view work-row-copy"><view class="hq-view work-title">{{item.title}}</view><text class="hq-text small {{item.failed?'failed-text':'muted'}}">{{item.label}}</text></view><text class="hq-text chevron">›</text></button></view>
+      <view wx:else class="hq-view works-grid"><button wx:for="{{visibleWorks}}" wx:key="key" class="hq-button work" disabled="{{busy}}" data-key="{{item.key}}" bindtap="toggleFeatured"><image wx:if="{{item.kind==='image'&&item.url}}" class="hq-image work-image" src="{{item.displayUrl||item.url}}" mode="aspectFill"/><image wx:elif="{{item.kind==='video'&&item.displayCover}}" class="hq-image work-image" src="{{item.displayCover}}" mode="aspectFill"/><view wx:else class="hq-view work-placeholder">{{item.kind==='audio'?'声':item.kind==='video'?'影':'文'}}</view><view class="hq-view work-meta"><text class="hq-text tag">{{item.label}}</text><text class="hq-text small muted">#{{item.id}}</text></view><view class="hq-view work-title">{{item.title}}</view></button></view>
       <view wx:if="{{!visibleWorks.length&&!loading}}" class="hq-view empty-state"><view class="hq-view empty-symbol">✦</view><view class="hq-view">{{search?'没有找到这件作品':'第一件作品，还在等你。'}}</view><button wx:if="{{search}}" class="hq-button secondary" bindtap="clearSearch">清除搜索与筛选</button><button wx:else class="hq-button primary" data-route="home" bindtap="go">开始创作</button></view><view wx:if="{{hasMore}}" class="hq-view note">当前展示各类型最近 30 条记录。</view>
     </block>
 
@@ -82,7 +86,7 @@
       <view wx:if="{{job&&!job.done}}" class="hq-view note">{{job.label}}。完成后作品会出现在这里。</view>
       <block wx:if="{{job.done}}">
         <image wx:if="{{pageId==='image-detail'&&job.url}}" class="hq-image detail-image" src="{{job.displayUrl}}" mode="widthFix" bindtap="preview" binderror="mediaError"/>
-        <video wx:if="{{pageId==='video-detail'&&job.url}}" class="real-video" src="{{job.displayUrl}}" controls show-fullscreen-btn binderror="mediaError"/>
+        <video wx:if="{{pageId==='video-detail'&&job.url}}" class="real-video" style="height:{{job.videoHeight||900}}rpx" src="{{job.displayUrl}}" object-fit="contain" controls show-fullscreen-btn binderror="mediaError"/>
         <view wx:if="{{pageId==='audio-detail'}}" class="hq-view audio-cover"><view class="hq-view audio-orbit"><text class="hq-text">声</text></view><view class="hq-view audio-time"><text class="hq-text">{{audioTime||0}} 秒</text><text class="hq-text">{{audioDuration||0}} 秒</text></view><button class="hq-button audio-play" bindtap="playAudio">{{playing?'暂停':'播放声音'}}</button></view>
         <view wx:if="{{job.text}}" class="hq-view letter"><text class="hq-text letter-body" user-select>{{job.text}}</text></view>
         <button wx:if="{{pageId==='image-detail'&&job.url}}" class="hq-button primary" bindtap="saveImage" disabled="{{busy}}">保存图片到相册</button><button wx:if="{{job.text}}" class="hq-button primary" bindtap="copyText">复制文稿</button>
