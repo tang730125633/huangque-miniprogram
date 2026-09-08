@@ -38,15 +38,16 @@ const draft={kind:'image',prompt:'晨光中的茶杯'};
  good(releaseQuote,{items:[{key:'image.openai.std',points:20}]});await pending;
  api.setSession({token:'bob-token',user:{username:'bob'}});assert.equal(api.read().attempt,undefined);
  assert.equal(store.get('hq_token'),'bob-token');assert.equal(store.get('hq-paper-session-v1'),undefined);
- assert.deepEqual(api.mediaHeaders('https://cdn.example.com/a.mp4'),{});assert.equal(api.mediaHeaders(api.BASE+'/api/gen/file/1').Authorization,'Bearer bob-token');assert.equal(api.mediaHeaders(api.BASE+'/workbench/ip12/api/v4/media/a.jpg').Authorization,'Bearer bob-token');
- handler=o=>good(o,{sessions:[]});assert.deepEqual(await api.request('/workbench/ip12/api/v4/sessions'),{sessions:[]});assert.match(requests.at(-1).url,/\/workbench\/ip12\/api\/v4\/sessions$/);
+ assert.deepEqual(api.mediaHeaders('https://cdn.example.com/a.mp4'),{});assert.equal(api.mediaHeaders(api.BASE+'/api/gen/file/1').Authorization,'Bearer bob-token');assert.equal(api.mediaHeaders(api.BASE+'/workbench/ip12/api/media/a.jpg').Authorization,'Bearer bob-token');
+ handler=o=>good(o,[]);assert.deepEqual(await api.request('/workbench/ip12/api/conversations','GET',null,{timeout:180000}),[]);assert.match(requests.at(-1).url,/\/workbench\/ip12\/api\/conversations$/);assert.equal(requests.at(-1).timeout,180000);
+ handler=o=>o.success({statusCode:409,data:{error:'页面状态已经变化'}});await assert.rejects(api.request('/workbench/ip12/api/conversations'),/页面状态已经变化/);
  let release;handler=o=>{release=o;};const p=api.request('/api/auth/me');await new Promise(r=>setImmediate(r));api.setSession({token:'new-token',user:{username:'charlie'}});release.success({statusCode:401,data:{detail:'expired'}});await assert.rejects(p);assert.equal(api.session().token,'new-token');
  handler=o=>o.success({statusCode:401,data:{detail:'expired'}});await assert.rejects(api.request('/api/auth/me'));assert.equal(api.session(),null);
  const j=c.jobView({id:1,kind:'image',status:'error',refunded:false,cost:20});assert.equal(j.refunded,false);assert.equal(j.failed,true);
  const config=JSON.parse(fs.readFileSync(path.join(__dirname,'../miniprogram/app.json')));const wxml=fs.readFileSync(path.join(__dirname,'../miniprogram/paper/components/screen/index.wxml'),'utf8');
  assert.match(wxml,/class="hq-view agent-status"/);assert.match(wxml,/wx:for="{{agentMessages}}"/);assert.match(wxml,/class="hq-view agent-composer"/);assert.match(wxml,/'\u53d1\u9001'/);assert.doesNotMatch(wxml,/\u65b9\u6848\u6574\u7406\u6a21\u5f0f|\u8ba9 Agent \u6574\u7406\u65b9\u6848|\u5f53\u524d\u4e0a\u4e0b\u6587/);
  const screenJs=fs.readFileSync(path.join(__dirname,'../miniprogram/paper/components/screen/index.js'),'utf8');
- assert.match(screenJs,/IP12_API = '\/workbench\/ip12\/api\/v4'/);assert.match(screenJs,/IP12_API\+'\/sessions'/);assert.match(screenJs,/IP12_API\+'\/chat'/);assert.match(screenJs,/\/api\/gen\/video\/assets/);assert.doesNotMatch(screenJs,/\/api\/creator-agent/);
+ assert.match(screenJs,/IP12_API = '\/workbench\/ip12\/api'/);assert.match(screenJs,/IP12_API\+'\/conversations'/);assert.match(screenJs,/IP12_API\+'\/chat-complete'/);assert.match(screenJs,/\/api\/gen\/video\/assets/);assert.doesNotMatch(screenJs,/\/api\/v4|\/api\/creator-agent/);
  assert.match(wxml,/class="hq-view easy-prompts"/);assert.match(wxml,/class="hq-view works-list"/);assert.doesNotMatch(wxml,/data-legacy="home"/);
  for(const route of config.subPackages.find(p=>p.root==='paper').pages){const cfg=JSON.parse(fs.readFileSync(path.join(__dirname,'../miniprogram/paper',route+'.json')));assert.equal(cfg.usingComponents['paper-screen'],'/paper/components/screen/index');for(const ext of ['js','json','wxml'])assert(fs.existsSync(path.join(__dirname,'../miniprogram/paper',route+'.'+ext)));assert(wxml.includes("pageId==='"+route.split('/')[1]+"'"),route);}
  let component;global.Component=x=>component=x;require('../miniprogram/paper/components/screen/index');
@@ -56,14 +57,13 @@ const draft={kind:'image',prompt:'晨光中的茶杯'};
  api.setSession({token:'fake-test-token',user:{username:'alice'}});
  const homeStart={data:{promptInput:'你好'},setData(){},requireLogin:()=>true,navigate(route){this.route=route;}};component.methods.startChat.call(homeStart);assert.equal(homeStart.route,'chat');assert.equal(api.read().ip12Outgoing.message,'你好');
  const paperRequest=api.request;api.request=async(path,method,data)=>{
-   if(path==='/workbench/ip12/api/v4/sessions')return {sessions:[{sid:'sid-1',preview:'网页上的同一段对话'}]};
-   if(path==='/workbench/ip12/api/v4/chat'){assert.equal(method,'POST');assert.deepEqual(data,{session_id:'sid-1',message:'你好'});return {async:true,seq:9};}
-   if(path==='/workbench/ip12/api/v4/poll/sid-1')return {state:'done',seq:9,reply:'你好，请慢慢说。'};
-   if(path==='/workbench/ip12/api/v4/restore/sid-1')return {ok:true,history:[{role:'user',content:'你好'},{role:'assistant',content:'你好，请慢慢说。'}],delegations:{},report:{}};
+   if(path==='/workbench/ip12/api/conversations'&&method!=='POST')return [{id:'cid-1',title:'网页上的同一段对话'}];
+   if(path==='/workbench/ip12/api/conversations/cid-1')return {id:'cid-1',messages:[{role:'user',content:'你好'},{role:'assistant',content:'你好，请慢慢说。'}],coach_state:{revision:3,foundation_report:{}},harness_actions:[]};
+   if(path==='/workbench/ip12/api/chat-complete'){assert.equal(method,'POST');assert.equal(data.conversation_id,'cid-1');assert.equal(data.message,'你好');assert.equal(data.expected_revision,3);assert.match(data.request_id,/^mini-turn-[a-z0-9-]+$/);return {ok:true,assistant:'你好，请慢慢说。',state:{revision:4}};}
    throw Error(path);
  };
- const loader={alive:true,properties:{pageId:'home'},data:{agentMessages:[]},setData(p){Object.assign(this.data,p);},restoreAgent:component.methods.restoreAgent,scrollAgent(){}};await component.methods.loadAgent.call(loader);assert.equal(loader.data.agentSessionId,'sid-1');assert.equal(loader.data.agentMessages[1].content,'你好，请慢慢说。');
- const chat={alive:true,data:{promptInput:'你好',agentSessionId:'sid-1',agentMessages:[],agentPending:null,agentDelegations:[]},setData(p){Object.assign(this.data,p);},run:component.methods.run,executeAgent:component.methods.executeAgent,pollAgent:component.methods.pollAgent,restoreAgent:component.methods.restoreAgent,ensureAgentSession:component.methods.ensureAgentSession,sendAgentMessage:component.methods.sendAgentMessage,sendAgent:component.methods.sendAgent,scrollAgent(){},requireLogin:()=>true,fail(e){throw e;}};
+ const loader={alive:true,properties:{pageId:'home'},data:{agentMessages:[]},setData(p){Object.assign(this.data,p);},restoreAgent:component.methods.restoreAgent,scrollAgent(){}};await component.methods.loadAgent.call(loader);assert.equal(loader.data.agentSessionId,'cid-1');assert.equal(loader.data.agentMessages[1].content,'你好，请慢慢说。');
+ const chat={alive:true,data:{promptInput:'你好',agentSessionId:'cid-1',agentRevision:3,agentMessages:[],agentPending:null},setData(p){Object.assign(this.data,p);},run:component.methods.run,executeAgent:component.methods.executeAgent,recoverAgentReceipt:component.methods.recoverAgentReceipt,restoreAgent:component.methods.restoreAgent,ensureAgentSession:component.methods.ensureAgentSession,sendAgentMessage:component.methods.sendAgentMessage,sendAgent:component.methods.sendAgent,scrollAgent(){},requireLogin:()=>true,fail(e){throw e;}};
  await component.methods.sendPrompt.call(chat);assert.equal(chat.data.promptInput,'');assert.deepEqual(chat.data.agentMessages.map(x=>x.content),['你好','你好，请慢慢说。']);assert.equal(api.read().ip12Pending,null);assert.equal(api.read().ip12Waiting,null);api.request=paperRequest;
  const ctx={alive:true,data:{works:[{key:'job-12',id:12,done:true,kind:'image',url:'https://example.com/a.png',title:'茶杯'}],card:{works:[]}},requireLogin:()=>true,setData(p){Object.assign(this.data,p);},toast(){},run:fn=>(ctx.pending=fn())};
  wx.downloadFile=o=>o.success({statusCode:200,tempFilePath:'/test-image'});
