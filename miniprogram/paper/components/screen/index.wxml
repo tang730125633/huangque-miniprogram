@@ -37,7 +37,8 @@
           <view wx:else id="{{item.domId}}" class="hq-view agent-message">
             <view class="hq-view agent-avatar">雀</view>
             <view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble preserve">{{item.content}}</view>
-              <view wx:if="{{item.images.length}}" class="hq-view agent-images"><image wx:for="{{item.images}}" wx:key="*this" class="hq-image agent-image" src="{{item}}" mode="aspectFill" bindtap="previewAgentImage" data-message="{{messageIndex}}" data-image="{{index}}"/></view>
+              <view wx:if="{{item.images.length}}" class="hq-view agent-images"><image wx:for="{{item.images}}" wx:key="*this" class="hq-image agent-image" src="{{item}}" mode="widthFix" bindtap="previewAgentImage" data-message="{{messageIndex}}" data-image="{{index}}"/></view>
+              <view wx:if="{{item.videos.length}}" class="hq-view agent-videos"><video wx:for="{{item.videos}}" wx:key="*this" class="agent-video" src="{{item}}" controls object-fit="contain" show-fullscreen-btn binderror="mediaError"/></view>
             </view>
           </view>
         </block>

@@ -5,13 +5,28 @@ const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
 const IP12_API = '/workbench/ip12/api/v4';
 const IP12_SESSION_KEY = 'hq-v4-session-id';
+function mediaFromContent(value) {
+  const content=String(value||''),images=[],videos=[],known=[];
+  (content.match(/https?:\/\/[^\s<>"']+/g)||[]).forEach(raw=>{
+    const url=raw.replace(/[)）\]}>*_，。；;]+$/,'');
+    if(/\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(url)){images.push(url);known.push(url);}
+    else if(/\.(?:mp4|mov|webm|m3u8)(?:[?#]|$)/i.test(url)){videos.push(url);known.push(url);}
+  });
+  return {
+    content:content.split(/\r?\n/).filter(line=>!known.includes(line.trim().replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
+    images:[...new Set(images)], videos:[...new Set(videos)]
+  };
+}
 function agentMessages(items) {
-  return (Array.isArray(items)?items:[]).map((item,index)=>({
-    domId:'agent-message-'+index,
-    role:item&&item.role==='user'?'user':'assistant',
-    content:String(item&&item.content||''),
-    images:Array.isArray(item&&item.images)?item.images:[]
-  }));
+  return (Array.isArray(items)?items:[]).map((item,index)=>{
+    const media=mediaFromContent(item&&item.content);
+    return {
+      domId:'agent-message-'+index,
+      role:item&&item.role==='user'?'user':'assistant', content:media.content,
+      images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
+      videos:media.videos
+    };
+  });
 }
 function videoHeight(ratio) {
   if(['16:9','3:2','21:9','5:4'].includes(String(ratio||'')))return 390;
@@ -131,7 +146,11 @@ Component({
       const data=await api.request(IP12_API+'/restore/'+encodeURIComponent(sid));
       if(!valid())return;
       const items=agentMessages(data.history);
-      for(const item of items)if(item.images.length)item.images=(await Promise.all(item.images.map(raw=>{const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;return api.mediaSource(api.mediaURL(url)).catch(()=>'');}))).filter(Boolean);
+      for(const item of items){
+        const resolve=raw=>{const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;return api.mediaSource(api.mediaURL(url)).catch(()=>'');};
+        if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
+        if(item.videos.length)item.videos=(await Promise.all(item.videos.map(resolve))).filter(Boolean);
+      }
       if(!valid())return;
       wx.setStorageSync(IP12_SESSION_KEY,sid);
       this.setData({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null});
@@ -234,7 +253,7 @@ Component({
         const body={session_id:sid,message:String(message||'').trim()};
         if(approval)body.approval=approval;
         const pending={sid,body,status:'sending',createdAt:Date.now()};
-        api.save({ip12Pending:pending,ip12Outgoing:null});this.setData({agentPending:pending,agentThinking:true,promptInput:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[]})});
+        api.save({ip12Pending:pending,ip12Outgoing:null});this.setData({agentPending:pending,agentThinking:true,promptInput:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[],videos:[]})});
         this.scrollAgent();
         await this.executeAgent(pending);
       });
