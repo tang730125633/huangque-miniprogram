@@ -51,7 +51,7 @@ Component({
     workFilters: [{id:'all',name:'全部'},{id:'processing',name:'进行中'},{id:'done',name:'已完成'},{id:'failed',name:'失败'}],
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
-    agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false,
+    agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
     agentDelegations: [], agentReport: {}, voiceRecording: false, voiceRecognizing: false, voiceSeconds: 0,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -119,7 +119,7 @@ Component({
       else this.setData({agentMessages:[],agentSessionId:'',agentDelegations:[],agentReport:{}});
       if(!valid())return;
       const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
-      this.setData({agentPending:pending,agentThinking:!!waiting});
+      this.setData({agentPending:pending,agentThinking:!!waiting,agentProgress:waiting?'正在恢复处理进度…':''});
       if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
         this.setData({promptInput:outgoing.message||''});
@@ -185,6 +185,7 @@ Component({
     sendPrompt(){return this.sendAgent(false);},
     sendAgent() {
       if(!this.requireLogin())return;
+      if(this.data.agentThinking)return this.toast('黄雀还在回复，你可以先把下一句话写好');
       const message=this.data.promptInput.trim();
       if(!message)return this.toast('请先写一句想说的话');
       return this.sendAgentMessage(message);
@@ -197,7 +198,7 @@ Component({
       this.voiceRecorder.onError(()=>{this.stopVoiceTimer();if(this.alive)this.setData({voiceRecording:false,voiceRecognizing:false,error:'录音失败，请在微信设置中允许使用麦克风'});});
     },
     toggleVoiceInput(){
-      if(this.data.voiceRecognizing||this.data.busy||this.data.agentThinking)return;
+      if(this.data.voiceRecognizing||this.data.busy)return;
       this.initVoiceInput();
       if(this.data.voiceRecording)this.voiceRecorder.stop();
       else this.voiceRecorder.start({duration:60000,format:'mp3',sampleRate:16000,numberOfChannels:1,encodeBitRate:48000});
@@ -243,18 +244,29 @@ Component({
       try {
         data=await api.request(IP12_API+'/chat','POST',pending.body);
       } catch(error) {
-        if(error.uncertain||!error.status||error.status>=500){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,promptInput:pending.body.message});}
-        else{api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:pending.body.message});}
+        if(error.uncertain||!error.status||error.status>=500){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message});}
+        else{api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:pending.body.message});}
         throw error;
       }
-      if(!data.async||data.seq===undefined){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,promptInput:pending.body.message});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
+      if(!data.async||data.seq===undefined){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
       api.save({ip12Pending:null,ip12Waiting:{sid:pending.sid,seq:data.seq}});
-      this.setData({agentPending:null,agentThinking:true});
-      await this.pollAgent(pending.sid,data.seq);
+      this.setData({agentPending:null,agentThinking:true,agentProgress:'正在理解你的要求…'});
+      this.agentPoll=this.pollAgent(pending.sid,data.seq).catch(error=>this.fail(error));
+    },
+    async updateAgentProgress(sid){
+      let status;
+      try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}catch(_){return;}
+      if(!this.alive||!this.data.agentThinking)return;
+      const active=(status.turns||[]).filter(item=>item.state==='working').sort((a,b)=>Number(b.elapsed||0)-Number(a.elapsed||0))[0]||{};
+      const elapsed=Math.max(0,Math.floor(Number(active.elapsed||0)));
+      const domain=String(status.tool&&status.tool.domain||'');
+      const labels={compose:'正在整理视频方案…',image:'正在处理图片…',collect:'正在读取素材…',copy:'正在整理文案…',audio:'正在处理声音…',video:'正在处理视频…'};
+      const text=labels[domain]||'正在理解你的要求…';
+      this.setData({agentProgress:text+(elapsed>=3?' 已等待 '+elapsed+' 秒':'')});
     },
     async pollAgent(sid,target,tries=0) {
       if(!this.alive)return;
-      if(tries>=240){api.save({ip12Waiting:null});this.setData({agentThinking:false});throw new Error('处理时间较长，稍后重新打开会自动恢复结果');}
+      if(tries>=240){api.save({ip12Waiting:null});this.setData({agentThinking:false,agentProgress:''});throw new Error('处理时间较长，稍后重新打开会自动恢复结果');}
       let data;
       try{data=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid));}
       catch(error){if(error.status&&error.status<500)throw error;data={state:'working'};}
@@ -262,16 +274,17 @@ Component({
         if(Number(data.seq)>=Number(target)){
           api.save({ip12Waiting:null});
           await this.restoreAgent(sid);
-          if(this.alive)this.setData({agentThinking:false});
+          if(this.alive)this.setData({agentThinking:false,agentProgress:''});
           return;
         }
       }
       if(data.state==='idle'&&tries>=3){
         api.save({ip12Waiting:null});
         await this.restoreAgent(sid);
-        if(this.alive)this.setData({agentThinking:false});
+        if(this.alive)this.setData({agentThinking:false,agentProgress:''});
         throw new Error('后台没有找到刚才的处理结果，请重新发送');
       }
+      if(tries%2===0)await this.updateAgentProgress(sid);
       await new Promise(resolve=>{this.agentTimer=setTimeout(resolve,2500);});
       return this.pollAgent(sid,target,tries+1);
     },
@@ -281,7 +294,7 @@ Component({
       return this.run(async()=>{
         await this.restoreAgent(pending.sid);
         const found=this.data.agentMessages.some(item=>item.role==='user'&&item.content===pending.body.message);
-        api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,promptInput:found?'':pending.body.message,error:found?'':'刚才这句话没有送达，请再点一次发送'});
+        api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:found?'':pending.body.message,error:found?'':'刚才这句话没有送达，请再点一次发送'});
       });
     },
     switchAgentSession(){

@@ -41,7 +41,7 @@
             </view>
           </view>
         </block>
-        <view wx:if="{{agentThinking}}" class="hq-view agent-message"><view class="hq-view agent-avatar">雀</view><view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble">正在处理，请稍等一下…</view></view></view>
+        <view wx:if="{{agentThinking}}" class="hq-view agent-message"><view class="hq-view agent-avatar">雀</view><view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble">{{agentProgress||'正在理解你的要求…'}}</view></view></view>
         <view wx:for="{{agentDelegations}}" wx:key="key" class="hq-view agent-task-card">
           <view wx:if="{{item.needsInput}}" class="hq-view"><view class="hq-view task-title">还需要你说一句</view><view class="hq-view preserve">{{item.question||item.summary}}</view></view>
           <view wx:if="{{item.needsApproval}}" class="hq-view"><view class="hq-view task-title">执行前请确认</view><view class="hq-view preserve">{{item.summary}}</view><view class="hq-view task-cost">本次 {{item.cost}} 积分 · 余额 {{item.points}} 积分</view><view class="hq-view task-actions"><button class="hq-button task-cancel" data-key="{{item.key}}" data-decision="cancel" bindtap="agentApproval">先不执行</button><button class="hq-button task-confirm" data-key="{{item.key}}" data-decision="confirm" bindtap="agentApproval">确认执行</button></view></view>
@@ -51,9 +51,9 @@
       </scroll-view>
       <view class="hq-view agent-composer">
         <textarea class="hq-textarea" value="{{promptInput}}" placeholder="可以打字，也可以点下面的语音按钮…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="sendPrompt" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/>
-        <button class="hq-button voice-input {{voiceRecording?'recording':''}}" bindtap="toggleVoiceInput" disabled="{{voiceRecognizing||busy||agentThinking}}" aria-label="{{voiceRecording?'停止录音':'开始语音输入'}}">{{voiceRecognizing?'正在识别，请稍等…':voiceRecording?'■ 停止录音（'+voiceSeconds+' 秒）':'🎙 按一下，说话'}}</button>
-        <view class="hq-view input-help">{{voiceRecording?'正在听，讲完后再按一下停止。':voiceRecognizing?'正在把语音变成文字，不会自动发送。':'录音只用于在线转文字，用完即删除；确认文字后再发送。'}}</view>
-        <button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy&&!voiceRecognizing}}" disabled="{{busy||loading||agentThinking||voiceRecording||voiceRecognizing}}">{{agentThinking?'正在处理':'发送'}}</button>
+        <button class="hq-button voice-input {{voiceRecording?'recording':''}}" bindtap="toggleVoiceInput" disabled="{{voiceRecognizing||busy}}" aria-label="{{voiceRecording?'停止录音':'开始语音输入'}}">{{voiceRecognizing?'正在识别，请稍等…':voiceRecording?'■ 停止录音（'+voiceSeconds+' 秒）':'🎙 按一下，说话'}}</button>
+        <view class="hq-view input-help">{{voiceRecording?'正在听，讲完后再按一下停止。':voiceRecognizing?'正在把语音变成文字，不会自动发送。':agentThinking?'黄雀正在回复，你可以先输入或录好下一句话。':'录音只用于在线转文字，用完即删除；确认文字后再发送。'}}</view>
+        <button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy&&!agentThinking&&!voiceRecognizing}}" disabled="{{busy||loading||agentThinking||voiceRecording||voiceRecognizing}}">{{agentThinking?'等黄雀回复后发送':busy?'正在发送':'发送'}}</button>
       </view>
     </block>
 
