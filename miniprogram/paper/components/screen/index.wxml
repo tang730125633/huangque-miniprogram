@@ -42,7 +42,11 @@
           </view>
         </block>
         <view wx:if="{{agentThinking}}" class="hq-view agent-message"><view class="hq-view agent-avatar">雀</view><view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble">正在处理，请稍等一下…</view></view></view>
-        <view wx:if="{{agentReport.status==='awaiting_confirmation'||agentReport.status==='confirmed'}}" class="hq-view agent-task-card"><view class="hq-view task-title">前四步资料已经整理好</view><view class="hq-view task-actions"><button class="hq-button task-cancel" bindtap="openAgentReport">查看报告</button><button wx:if="{{agentReport.status==='awaiting_confirmation'}}" class="hq-button task-confirm" bindtap="confirmAgentReport">确认并继续</button></view></view>
+        <view wx:for="{{agentDelegations}}" wx:key="key" class="hq-view agent-task-card">
+          <view wx:if="{{item.needsInput}}" class="hq-view"><view class="hq-view task-title">还需要你说一句</view><view class="hq-view preserve">{{item.question||item.summary}}</view></view>
+          <view wx:if="{{item.needsApproval}}" class="hq-view"><view class="hq-view task-title">执行前请确认</view><view class="hq-view preserve">{{item.summary}}</view><view class="hq-view task-cost">本次 {{item.cost}} 积分 · 余额 {{item.points}} 积分</view><view class="hq-view task-actions"><button class="hq-button task-cancel" data-key="{{item.key}}" data-decision="cancel" bindtap="agentApproval">先不执行</button><button class="hq-button task-confirm" data-key="{{item.key}}" data-decision="confirm" bindtap="agentApproval">确认执行</button></view></view>
+        </view>
+        <view wx:if="{{agentReport.status==='final'||agentReport.status==='draft_ready'}}" class="hq-view agent-task-card"><view class="hq-view task-title">前四步资料已经整理好</view><view class="hq-view task-actions"><button class="hq-button task-cancel" bindtap="openAgentReport">查看报告</button><button wx:if="{{!agentReport.confirmed}}" class="hq-button task-confirm" bindtap="confirmAgentReport">确认并继续</button></view></view>
         <view class="hq-view agent-thread-end"/>
       </scroll-view>
       <view class="hq-view agent-composer">
