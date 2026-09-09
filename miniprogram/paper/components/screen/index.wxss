@@ -307,13 +307,11 @@
 
 /* paper7: one real Agent conversation, sized for hesitant mobile users. */
 .home-composer .hq-textarea { min-height:150rpx; height:auto; font-size:32rpx; line-height:1.75; }
-.home-chat-target { display:flex; align-items:center; gap:18rpx; margin:-4rpx -4rpx 20rpx; padding:18rpx; border:1rpx solid #d7d1c5; border-radius:18rpx; background:#f4f0e7; }
+.home-chat-target { display:flex; align-items:center; justify-content:space-between; gap:18rpx; width:100%; min-height:96rpx; box-sizing:border-box; margin:0 0 22rpx; padding:18rpx 20rpx; border:1rpx solid #d7d1c5; border-radius:18rpx; color:#283128; background:#f4f0e7; line-height:1.4; text-align:left; }
 .target-copy { flex:1; min-width:0; }
 .target-label { display:block; color:#77766f; font-size:22rpx; line-height:1.4; }
 .target-name { display:block; margin-top:4rpx; overflow:hidden; color:#283128; font-size:25rpx; font-weight:700; line-height:1.45; text-overflow:ellipsis; white-space:nowrap; }
-.target-actions { display:flex; gap:10rpx; flex:none; }
-.target-button { min-height:88rpx; padding:10rpx 14rpx; border:1rpx solid #cdc6ba; border-radius:14rpx; color:#4f554e; background:#fffdf8; font-size:22rpx; }
-.new-target.selected { color:#fffdf8; border-color:#2c352d; background:#2c352d; }
+.target-next { flex:none; color:#8a672f; font-size:24rpx; font-weight:700; white-space:nowrap; }
 .input-help { margin:18rpx 0; color:#6f746d; font-size:24rpx; line-height:1.6; }
 .send-text { display:flex; align-items:center; justify-content:center; width:100%; min-height:96rpx; border-radius:20rpx; color:#fffdf8; background:#202620; text-align:center; font-size:32rpx; font-weight:650; }
 .easy-title { margin:2rpx 0 20rpx; color:#4e544d; font-size:27rpx; font-weight:600; }

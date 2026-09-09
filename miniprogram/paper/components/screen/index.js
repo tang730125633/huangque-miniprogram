@@ -238,10 +238,10 @@ Component({
       api.save({ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
       this.navigate('chat');
     },
-    chooseHomeAgentSession(){
+    chooseHomeAgentTarget(){
       const sessions=this.data.agentSessions||[];
-      if(!sessions.length)return this.toast('还没有以前的对话');
-      wx.showActionSheet({itemList:sessions.map(item=>((item.sid===this.data.agentSessionId?'当前 · ':'')+(item.preview||'以前的对话').replace(/\s+/g,' ')+(item.turns?' · '+item.turns+'轮':'')).slice(0,28)),success:result=>{const item=sessions[result.tapIndex];if(item){wx.setStorageSync(IP12_SESSION_KEY,item.sid);this.setData({agentSessionId:item.sid,agentTargetLabel:agentSessionLabel(item)});}}});
+      const labels=['＋ 开始新对话'].concat(sessions.map(item=>((item.sid===this.data.agentSessionId?'当前 · ':'')+(item.preview||'以前的对话').replace(/\s+/g,' ')+(item.turns?' · '+item.turns+'轮':'')).slice(0,28)));
+      wx.showActionSheet({itemList:labels,success:result=>{if(result.tapIndex===0)return this.useNewHomeAgentSession();const item=sessions[result.tapIndex-1];if(item){wx.setStorageSync(IP12_SESSION_KEY,item.sid);this.setData({agentSessionId:item.sid,agentTargetLabel:agentSessionLabel(item)});}}});
     },
     useNewHomeAgentSession(){
       wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);
