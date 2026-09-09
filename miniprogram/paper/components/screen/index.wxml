@@ -11,7 +11,7 @@
 
     <block wx:if="{{pageId==='home'}}">
       <view class="hq-view greeting">你好，{{user.display_name||'创作者'}}</view><view class="hq-view hero-title home-title">今天想做点什么？</view>
-      <view class="hq-view composer home-composer"><textarea class="hq-textarea" value="{{promptInput}}" placeholder="像聊天一样，想说什么就写什么…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="startChat" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/><view class="hq-view input-help">可以打字、手写，也可以用手机键盘的语音输入</view><button class="hq-button send-text" bindtap="startChat" loading="{{busy}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'上一句话正在处理':'发送'}}</button></view>
+      <view class="hq-view composer home-composer"><textarea class="hq-textarea" value="{{promptInput}}" placeholder="像聊天一样，想说什么就写什么…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="startChat" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/><view class="hq-view input-help">可以打字，也可以使用手机输入法的手写功能</view><button class="hq-button send-text" bindtap="startChat" loading="{{busy}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'上一句话正在处理':'发送'}}</button></view>
       <view class="hq-view easy-title">不知道怎么说？点一句试试</view>
       <view class="hq-view easy-prompts"><button class="hq-button easy-prompt" data-prompt="我想做一条视频，请一步一步教我。" bindtap="homeShortcut">我想做视频</button><button class="hq-button easy-prompt" data-prompt="帮我写一段文案，请先问我需要什么。" bindtap="homeShortcut">帮我写文案</button><button class="hq-button easy-prompt" data-prompt="帮我想几个适合我的选题。" bindtap="homeShortcut">帮我想选题</button><button class="hq-button easy-prompt" data-prompt="我不太会用，请用最简单的话一步一步教我。" bindtap="homeShortcut">我不太会用</button></view>
       <view class="hq-view section-head"><view class="hq-view section-title">最近创作</view><button class="hq-button text-button" data-route="works" bindtap="go">查看全部 ›</button></view>
@@ -31,6 +31,7 @@
     <block wx:elif="{{pageId==='chat'}}">
       <view class="hq-view agent-status"><view class="hq-view agent-status-label"><view class="hq-view status-dot"/><text class="hq-text">黄雀助手 · 已与主站同步</text></view><view class="hq-view agent-status-actions"><button class="hq-button agent-mode" bindtap="switchAgentSession">以前的对话</button><button class="hq-button agent-mode" bindtap="exportAgentConversation" disabled="{{busy||!agentSessionId}}" aria-label="导出当前对话记录">导出记录</button></view></view>
       <scroll-view scroll-y class="agent-thread" scroll-into-view="{{agentScrollTarget}}" enhanced show-scrollbar="{{false}}">
+        <view wx:if="{{agentHiddenCount}}" class="hq-view history-note">为保持流畅，只显示最近 30 条消息；完整记录仍可导出。</view>
         <view wx:if="{{!agentMessages.length&&!loading}}" class="hq-view agent-empty"><view class="hq-view agent-avatar">雀</view><view class="hq-view">像和人聊天一样告诉我就行。<br/>说错了也没关系，可以继续改。</view></view>
         <block wx:for="{{agentMessages}}" wx:key="domId" wx:for-index="messageIndex">
           <view wx:if="{{item.role==='user'}}" id="{{item.domId}}" class="hq-view user-message"><view class="hq-view message-meta user-meta">你</view><view class="hq-view user-bubble preserve">{{item.content}}</view></view>
@@ -50,10 +51,8 @@
         <view class="hq-view agent-thread-end"/>
       </scroll-view>
       <view class="hq-view agent-composer">
-        <textarea class="hq-textarea" value="{{promptInput}}" placeholder="可以打字，也可以点下面的语音按钮…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="sendPrompt" confirm-type="send" auto-height aria-label="给黄雀 Agent 发消息"/>
-        <button class="hq-button voice-input {{voiceRecording?'recording':''}}" bindtap="toggleVoiceInput" disabled="{{voiceRecognizing||busy}}" aria-label="{{voiceRecording?'停止录音':'开始语音输入'}}">{{voiceRecognizing?'正在识别，请稍等…':voiceRecording?'■ 停止录音（'+voiceSeconds+' 秒）':'🎙 按一下，说话'}}</button>
-        <view class="hq-view input-help">{{voiceRecording?'正在听，讲完后再按一下停止。':voiceRecognizing?'正在把语音变成文字，不会自动发送。':agentThinking?'黄雀正在回复，你可以先输入或录好下一句话。':'录音只用于在线转文字，用完即删除；确认文字后再发送。'}}</view>
-        <button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy&&!agentThinking&&!voiceRecognizing}}" disabled="{{busy||loading||agentThinking||voiceRecording||voiceRecognizing}}">{{agentThinking?'等黄雀回复后发送':busy?'正在发送':'发送'}}</button>
+        <textarea class="hq-textarea" value="{{promptInput}}" placeholder="在这里输入你想说的话…" maxlength="4000" data-field="promptInput" bindinput="field" bindconfirm="sendPrompt" confirm-type="send" cursor-spacing="28" auto-height aria-label="给黄雀 Agent 发消息"/>
+        <view class="hq-view composer-action-row"><text class="hq-text input-help">{{agentThinking?'黄雀正在回复，你可以先写好下一句话。':'输入完成后，点击发送。'}}</text><button class="hq-button send-text" bindtap="sendPrompt" loading="{{busy&&!agentThinking}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'请稍等':busy?'发送中':'发送'}}</button></view>
       </view>
     </block>
 

@@ -318,6 +318,7 @@
 .agent-chat-content .agent-status-actions { width:100%; margin-left:0; }
 .agent-chat-content .agent-mode { flex:1; min-height:72rpx; padding:12rpx 16rpx; font-size:24rpx; }
 .agent-thread { flex:1; min-height:0; height:auto; padding:8rpx 0 28rpx; }
+.history-note { margin:0 0 24rpx; padding:16rpx 20rpx; border-radius:14rpx; color:#716b60; background:#ede9e1; font-size:23rpx; line-height:1.55; text-align:center; }
 .agent-thread-end { height:20rpx; }
 .agent-empty { display:flex; gap:20rpx; align-items:flex-start; padding:36rpx 0; color:#4d534c; font-size:30rpx; line-height:1.85; }
 .agent-message { gap:18rpx; margin-bottom:34rpx; }
@@ -331,10 +332,10 @@
 .agent-action { min-height:88rpx; padding:16rpx 22rpx; border:1rpx solid #cfcac0; border-radius:18rpx; color:#333831; background:#fff; font-size:26rpx; text-align:center; }
 .agent-action.primary-action { color:#fffdf8; border-color:#202620; background:#202620; }
 .agent-chat-content .agent-composer { margin:12rpx 0 0; padding:22rpx; border-radius:24rpx; }
-.agent-chat-content .agent-composer .hq-textarea { min-height:100rpx; height:auto; padding:4rpx; font-size:31rpx; line-height:1.7; }
-.agent-chat-content .agent-composer .input-help { margin:10rpx 0 16rpx; }
-.voice-input { display:flex; align-items:center; justify-content:center; width:100%; min-height:88rpx; margin-top:16rpx; border:1rpx solid #cfc9bd; border-radius:18rpx; color:#333831; background:#f7f3eb; font-size:29rpx; font-weight:650; }
-.voice-input.recording { color:#fff; border-color:#8b463b; background:#8b463b; }
+.agent-chat-content .agent-composer .hq-textarea { min-height:112rpx; max-height:280rpx; height:auto; padding:6rpx 4rpx 18rpx; font-size:31rpx; line-height:1.7; }
+.composer-action-row { display:flex; align-items:center; gap:20rpx; padding-top:16rpx; border-top:1rpx solid #e7e2d9; }
+.agent-chat-content .agent-composer .input-help { flex:1; margin:0; font-size:23rpx; line-height:1.5; }
+.agent-chat-content .send-text { width:156rpx; min-height:78rpx; flex:none; border-radius:18rpx; font-size:28rpx; }
 .error-banner .text-button { color:inherit; font-weight:650; }
 .agent-images { display:grid; grid-template-columns:1fr 1fr; gap:12rpx; margin-top:16rpx; }
 .agent-image { width:100%; height:auto; min-height:180rpx; border-radius:16rpx; background:#eee9de; }

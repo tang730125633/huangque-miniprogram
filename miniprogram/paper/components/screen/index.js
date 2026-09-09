@@ -5,6 +5,15 @@ const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
 const IP12_API = '/workbench/ip12/api/v4';
 const IP12_SESSION_KEY = 'hq-v4-session-id';
+const AGENT_MESSAGE_LIMIT = 30;
+async function agentRead(path) {
+  try{return await api.request(path);}
+  catch(error){
+    if(!error.uncertain&&error.status<500)throw error;
+    await new Promise(resolve=>setTimeout(resolve,1800));
+    return api.request(path);
+  }
+}
 function mediaFromContent(value) {
   const content=String(value||''),images=[],videos=[],known=[];
   (content.match(/https?:\/\/[^\s<>"']+/g)||[]).forEach(raw=>{
@@ -67,7 +76,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentReport: {}, voiceRecording: false, voiceRecognizing: false, voiceSeconds: 0,
+    agentDelegations: [], agentReport: {}, agentHiddenCount: 0,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
@@ -88,9 +97,9 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,promptInput:draft.prompt||'',kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { this.alive=false; clearTimeout(this.timer);this.stopVoiceTimer();if(this.data.voiceRecording&&this.voiceRecorder)this.voiceRecorder.stop();if(this.audio)this.audio.destroy(); }
+    detached() { this.alive=false; clearTimeout(this.timer);if(this.audio)this.audio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);if(this.data.voiceRecording&&this.voiceRecorder)this.voiceRecorder.stop();if(this.audio)this.audio.pause(); } },
+  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);if(this.audio)this.audio.pause(); } },
   methods: {
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
@@ -124,13 +133,14 @@ Component({
       } catch(e){if(this.alive)this.fail(e);} finally {this.loading=false;if(this.alive)this.setData({loading:false});}
     },
     async loadAgent(valid=()=>this.alive) {
-      const data=await api.request(IP12_API+'/sessions');
+      const data=await agentRead(IP12_API+'/sessions');
       if(!valid())return;
       const sessions=Array.isArray(data.sessions)?data.sessions:[];
       const saved=wx.getStorageSync(IP12_SESSION_KEY);
       const current=sessions.find(item=>item.sid===saved)||sessions[0];
       this.setData({agentSessions:sessions.slice(0,8)});
-      if(current)await this.restoreAgent(current.sid,valid);
+      if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
+      else if(current)this.setData({agentSessionId:current.sid});
       else this.setData({agentMessages:[],agentSessionId:'',agentDelegations:[],agentReport:{}});
       if(!valid())return;
       const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
@@ -143,7 +153,7 @@ Component({
       }
     },
     async restoreAgent(sid,valid=()=>this.alive) {
-      const data=await api.request(IP12_API+'/restore/'+encodeURIComponent(sid));
+      const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
       for(const item of items){
@@ -153,7 +163,7 @@ Component({
       }
       if(!valid())return;
       wx.setStorageSync(IP12_SESSION_KEY,sid);
-      this.setData({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null});
+      this.setData({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length)});
       this.scrollAgent(items);
     },
     scrollAgent(items=this.data.agentMessages) {
@@ -161,10 +171,11 @@ Component({
       if(last)setTimeout(()=>{if(this.alive)this.setData({agentScrollTarget:last.domId});},30);
     },
     async loadWorks(valid=()=>this.alive) {
+      const page=this.properties.pageId,limit=page==='home'?6:120;
       const kinds=['image','copy','audio'];
       const [responses,videos]=await Promise.all([
-        Promise.all(kinds.map(kind=>api.request('/api/gen/history?kind='+kind+'&include_failed=1&limit=120'))),
-        api.request('/api/gen/video/assets?limit=120')
+        Promise.all(kinds.map(kind=>api.request('/api/gen/history?kind='+kind+'&include_failed=1&limit='+limit))),
+        api.request('/api/gen/video/assets?limit='+limit)
       ]);
       const batches=responses.map((r,index)=>(r.items||[]).map(x=>Object.assign(creation.jobView(Object.assign({},x,{kind:kinds[index],result:{url:x.url,text:x.text,prompt:x.prompt}})),{key:'job-'+(x.id||x.job_id)})));
       batches.push((videos.items||[]).map(videoWork));
@@ -174,12 +185,11 @@ Component({
       const tracked=await Promise.all(pending.slice(0,12).filter(id=>!knownJobs.has(Number(id))).map(id=>api.request('/api/gen/job/'+encodeURIComponent(id)).then(job=>Object.assign(creation.jobView(job),{key:'job-'+id})).catch(e=>{if(e.status===404)return null;throw e;})));
       tracked.filter(Boolean).forEach(j=>map.set(j.key,j));
       const works=[...map.values()].sort((a,b)=>Number(b.jobId||b.id||0)-Number(a.jobId||a.id||0));
-      const page=this.properties.pageId;
       const images=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='image'&&j.url);
       for(let i=0;i<images.length;i+=4)await Promise.all(images.slice(i,i+4).map(async j=>{j.displayUrl=await api.mediaSource(j.url).catch(()=> '');}));
       const covers=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='video'&&j.coverFile);
       for(let i=0;i<covers.length;i+=4)await Promise.all(covers.slice(i,i+4).map(async j=>{j.displayCover=await api.mediaSource(api.mediaURL('/api/gen/file/'+j.coverFile)).catch(()=>'');}));
-      if(valid()){this.setData({works,hasMore:batches.some(b=>b.length>=120)});this.applyFilter();}
+      if(valid()){this.setData({works,hasMore:page==='works'&&batches.some(b=>b.length>=limit)});this.applyFilter();}
     },
     field(e) { const key=e.currentTarget.dataset.field;if(['promptInput','username','password','feedbackInput','search'].includes(key)){this.setData({[key]:e.detail.value});if(key==='search')this.applyFilter();} },
     cardField(e) {const key=e.currentTarget.dataset.field;if(['name','headline','company','bio','email','address'].includes(key))this.setData({['card.'+key]:e.detail.value});},
@@ -208,35 +218,6 @@ Component({
       const message=this.data.promptInput.trim();
       if(!message)return this.toast('请先写一句想说的话');
       return this.sendAgentMessage(message);
-    },
-    initVoiceInput(){
-      if(this.voiceRecorder)return;
-      this.voiceRecorder=wx.getRecorderManager();
-      this.voiceRecorder.onStart(()=>{if(this.alive){this.setData({voiceRecording:true,voiceSeconds:0});this.startVoiceTimer();}});
-      this.voiceRecorder.onStop(result=>{this.stopVoiceTimer();if(!this.alive)return;this.setData({voiceRecording:false});if(!this.visible)return;if(!result||!result.tempFilePath||Number(result.duration||0)<600)return this.toast('没有听清楚，请再说一次');this.recognizeVoice(result.tempFilePath);});
-      this.voiceRecorder.onError(()=>{this.stopVoiceTimer();if(this.alive)this.setData({voiceRecording:false,voiceRecognizing:false,error:'录音失败，请在微信设置中允许使用麦克风'});});
-    },
-    toggleVoiceInput(){
-      if(this.data.voiceRecognizing||this.data.busy)return;
-      this.initVoiceInput();
-      if(this.data.voiceRecording)this.voiceRecorder.stop();
-      else this.voiceRecorder.start({duration:60000,format:'mp3',sampleRate:16000,numberOfChannels:1,encodeBitRate:48000});
-    },
-    startVoiceTimer(){this.stopVoiceTimer();this.voiceTimer=setInterval(()=>{if(this.alive)this.setData({voiceSeconds:Math.min(60,this.data.voiceSeconds+1)});},1000);},
-    stopVoiceTimer(){if(this.voiceTimer){clearInterval(this.voiceTimer);this.voiceTimer=null;}},
-    recognizeVoice(filePath){
-      return this.run(async()=>{
-        this.setData({voiceRecognizing:true});
-        try{
-          const audio=await new Promise((resolve,reject)=>wx.getFileSystemManager().readFile({filePath,encoding:'base64',success:result=>resolve(result.data),fail:()=>reject(new Error('无法读取录音，请再说一次'))}));
-          const result=await api.request('/api/gen/speech-to-text','POST',{audio,format:'mp3'},{timeout:180000});
-          const text=String(result.text||'').trim();
-          if(!text)throw new Error('没有听清楚，请靠近手机再说一次');
-          const before=this.data.promptInput.trim();
-          this.setData({promptInput:(before?before+'\n':'')+text});
-          this.toast('已经变成文字，请检查');
-        }finally{if(this.alive)this.setData({voiceRecognizing:false});}
-      });
     },
     async ensureAgentSession() {
       if(this.data.agentSessionId)return this.data.agentSessionId;
