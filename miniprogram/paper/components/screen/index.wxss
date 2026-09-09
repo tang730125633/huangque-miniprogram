@@ -262,10 +262,10 @@
 .brand-seal { width:58rpx; height:58rpx; background:#fbf8f2; }
 .brand-name { font-size:36rpx; }
 .content { padding-left:44rpx; padding-right:44rpx; }
-.greeting { margin-top:88rpx; color:#20231e; font-size:34rpx; }
-.home-title { margin:8rpx 0 48rpx; font-size:64rpx; line-height:1.22; }
-.home-composer { min-height:250rpx; margin:0 0 38rpx; padding:30rpx 32rpx 22rpx; border-color:#d9d4ca; border-radius:30rpx; background:rgba(255,255,255,.48); box-shadow:none; }
-.home-composer .hq-textarea { height:126rpx; padding:0; font-size:29rpx; }
+.greeting { margin-top:34rpx; color:#686d66; font-size:30rpx; }
+.home-title { margin:6rpx 0 34rpx; font-size:60rpx; line-height:1.2; letter-spacing:-2rpx; }
+.home-composer { min-height:0; margin:0 0 42rpx; padding:30rpx; border-color:#d7d1c6; border-radius:30rpx; background:rgba(255,255,255,.72); box-shadow:0 16rpx 46rpx rgba(73,56,29,.07); }
+.home-composer .hq-textarea { height:auto; min-height:126rpx; max-height:260rpx; padding:0; font-size:30rpx; line-height:1.7; }
 .home-composer .composer-foot { min-height:78rpx; padding-top:16rpx; border-top:1rpx solid #e3ded5; }
 .home-composer .attachment-button { display:flex; align-items:center; justify-content:center; width:64rpx; height:64rpx; min-height:64rpx; padding:0; border:1rpx solid #d7d2c8; border-radius:50%; color:#20231e; background:transparent; font-size:34rpx; }
 .home-composer .send { width:70rpx; height:70rpx; line-height:70rpx; flex-basis:70rpx; background:#20231e; }
@@ -306,17 +306,25 @@
 .tab.selected .tab-line { background:#9a7335; }
 
 /* paper7: one real Agent conversation, sized for hesitant mobile users. */
-.home-composer .hq-textarea { min-height:150rpx; height:auto; font-size:32rpx; line-height:1.75; }
-.home-chat-target { display:flex; align-items:center; justify-content:space-between; gap:18rpx; width:100%; min-height:96rpx; box-sizing:border-box; margin:0 0 22rpx; padding:18rpx 20rpx; border:1rpx solid #d7d1c5; border-radius:18rpx; color:#283128; background:#f4f0e7; line-height:1.4; text-align:left; }
+.home-composer-note { display:block; margin:4rpx 0 20rpx; color:#858078; font-size:23rpx; line-height:1.5; }
+.home-composer-footer { display:flex; align-items:stretch; gap:14rpx; padding-top:18rpx; border-top:1rpx solid #e3ded5; }
+.home-chat-target { display:flex; align-items:center; justify-content:space-between; gap:14rpx; width:auto; min-width:0; min-height:88rpx; flex:1; box-sizing:border-box; margin:0; padding:14rpx 18rpx; border:0; border-radius:16rpx; color:#283128; background:#f3efe7; line-height:1.35; text-align:left; }
 .target-copy { flex:1; min-width:0; }
-.target-label { display:block; color:#77766f; font-size:22rpx; line-height:1.4; }
-.target-name { display:block; margin-top:4rpx; overflow:hidden; color:#283128; font-size:25rpx; font-weight:700; line-height:1.45; text-overflow:ellipsis; white-space:nowrap; }
-.target-next { flex:none; color:#8a672f; font-size:24rpx; font-weight:700; white-space:nowrap; }
+.target-label { display:block; color:#8c8578; font-size:19rpx; line-height:1.3; }
+.target-name { display:block; margin-top:3rpx; overflow:hidden; color:#343a34; font-size:23rpx; font-weight:650; line-height:1.4; text-overflow:ellipsis; white-space:nowrap; }
+.target-next { flex:none; color:#9a7335; font-size:22rpx; font-weight:700; white-space:nowrap; }
+.home-composer .send-text { width:156rpx; min-height:88rpx; flex:none; border-radius:16rpx; font-size:28rpx; }
 .input-help { margin:18rpx 0; color:#6f746d; font-size:24rpx; line-height:1.6; }
 .send-text { display:flex; align-items:center; justify-content:center; width:100%; min-height:96rpx; border-radius:20rpx; color:#fffdf8; background:#202620; text-align:center; font-size:32rpx; font-weight:650; }
-.easy-title { margin:2rpx 0 20rpx; color:#4e544d; font-size:27rpx; font-weight:600; }
-.easy-prompts { display:grid; grid-template-columns:1fr 1fr; gap:18rpx; margin-bottom:48rpx; }
-.easy-prompt { display:flex; align-items:center; justify-content:center; min-height:94rpx; padding:18rpx 16rpx; border:1rpx solid #d8d4ca; border-radius:20rpx; color:#32372f; background:rgba(255,255,255,.62); text-align:center; font-size:27rpx; }
+.easy-head { display:flex; align-items:flex-end; justify-content:space-between; margin:0 0 20rpx; }
+.easy-title { margin:0; color:#2c312b; font-size:30rpx; font-weight:650; }
+.easy-subtitle { color:#8a857c; font-size:22rpx; }
+.easy-prompts { display:grid; grid-template-columns:1fr 1fr; gap:14rpx; margin-bottom:46rpx; }
+.easy-prompt { display:flex; align-items:center; justify-content:flex-start; gap:14rpx; min-width:0; min-height:112rpx; padding:18rpx; border:1rpx solid #ddd7cc; border-radius:20rpx; color:#32372f; background:rgba(255,255,255,.68); text-align:left; }
+.quick-mark { display:flex; align-items:center; justify-content:center; width:54rpx; height:54rpx; flex:none; border:1rpx solid #b18b4e; border-radius:50%; color:#9a7335; font:27rpx "Songti SC","STSong",serif; }
+.quick-copy { min-width:0; flex:1; }
+.quick-title { display:block; overflow:hidden; color:#303630; font-size:25rpx; font-weight:650; line-height:1.4; text-overflow:ellipsis; white-space:nowrap; }
+.quick-subtitle { display:block; margin-top:4rpx; overflow:hidden; color:#8a857c; font-size:20rpx; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
 .agent-chat-content { display:flex; flex-direction:column; height:calc(100vh - 150rpx); overflow:hidden; padding-bottom:calc(24rpx + env(safe-area-inset-bottom)); }
 .agent-chat-content .agent-status { min-height:64rpx; margin:0 0 18rpx; font-size:27rpx; }
 .agent-chat-content .agent-status { align-items:flex-start; flex-direction:column; }
