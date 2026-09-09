@@ -99,7 +99,7 @@ Component({
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
     agentDelegations: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0,
-    agentAttachments: [], agentAssets: [], agentAssetsOpen: false,
+    agentAttachments: [], agentAssets: [], agentAssetsOpen: false, agentIpDrawerOpen: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
@@ -115,7 +115,7 @@ Component({
       this.alive = true; this.visible = true;
       let statusTop=24, navHeight=48, safeRight=104;
       try { const w=wx.getWindowInfo(); const c=wx.getMenuButtonBoundingClientRect(); statusTop=w.statusBarHeight||24; navHeight=Math.max(44,(c.top-statusTop)*2+c.height); safeRight=w.windowWidth-c.left+12; } catch (_) {}
-      const draft=api.read().draft||{}; this.reference=draft.reference||'';
+      const draft=api.read().draft||{}; this.reference=draft.reference||''; this.agentDraft=draft.prompt||'';
       const f=creation.formats.find(f=>f.id===draft.kind)||creation.formats[0];
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,promptInput:draft.prompt||'',kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
@@ -132,7 +132,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false});
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -171,7 +171,7 @@ Component({
       this.setData({agentPending:pending,agentThinking:!!waiting,agentProgress:waiting?'正在恢复处理进度…':''});
       if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
-        this.setData({promptInput:outgoing.message||''});
+        this.agentDraft=outgoing.message||'';this.setData({promptInput:this.agentDraft});
         if(Date.now()-Number(outgoing.createdAt||0)<=5*60*1000)setTimeout(()=>this.sendAgent(false),0);
         else{api.save({ip12Outgoing:null});this.setData({error:'上次没有发送的文字已保留，请确认后再点发送'});}
       }
@@ -218,6 +218,7 @@ Component({
       if(valid()){this.setData({works,hasMore:page==='works'&&batches.some(b=>b.length>=limit)});this.applyFilter();}
     },
     field(e) { const key=e.currentTarget.dataset.field;if(['promptInput','username','password','feedbackInput','search'].includes(key)){this.setData({[key]:e.detail.value});if(key==='search')this.applyFilter();} },
+    agentInput(e){this.agentDraft=String(e.detail&&e.detail.value||'');},
     cardField(e) {const key=e.currentTarget.dataset.field;if(['name','headline','company','bio','email','address'].includes(key))this.setData({['card.'+key]:e.detail.value});},
     openLegacy(e){const routes={recharge:'/pages/recharge/recharge',invite:'/pages/invite/invite',card:'/pages/my-card/my-card',inspiration:'/pages/inspiration/inspiration',ip12:'/pages/ip12/ip12'};const url=routes[e.currentTarget.dataset.legacy];if(url)wx.navigateTo({url});},
     homeShortcut(e){this.setData({promptInput:e.currentTarget.dataset.prompt||''});},
@@ -252,7 +253,7 @@ Component({
       if(!this.requireLogin())return;
       if(this.data.agentThinking)return this.toast('黄雀还在回复，你可以先把下一句话写好');
       const attached=this.data.agentAttachments||[];
-      const message=this.data.promptInput.trim()||(attached.length?'请查看我发送的素材：'+attached.slice(0,3).map(item=>item.name).join('、')+(attached.length>3?'等 '+attached.length+' 个文件':''):'');
+      const message=String(this.agentDraft===undefined?this.data.promptInput:this.agentDraft).trim()||(attached.length?'请查看我发送的素材：'+attached.slice(0,3).map(item=>item.name).join('、')+(attached.length>3?'等 '+attached.length+' 个文件':''):'');
       if(!message)return this.toast('请先写一句想说的话');
       return this.sendAgentMessage(message);
     },
@@ -273,7 +274,7 @@ Component({
         if(attachments.length)body.attachments=attachments.map(item=>item.fileId);
         if(approval)body.approval=approval;
         const pending={sid,body,attachments,status:'sending',createdAt:Date.now()};
-        api.save({ip12Pending:pending,ip12Outgoing:null});this.setData({agentPending:pending,agentThinking:true,promptInput:'',agentAttachments:[],agentAssetsOpen:false,agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[],videos:[],attachments})});
+        api.save({ip12Pending:pending,ip12Outgoing:null});if(!approval)this.agentDraft='';this.setData({agentPending:pending,agentThinking:true,promptInput:approval?this.data.promptInput:'',agentAttachments:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[],videos:[],attachments})});
         this.scrollAgent();
         await this.executeAgent(pending);
       });
@@ -283,11 +284,12 @@ Component({
       try {
         data=await api.request(IP12_API+'/chat','POST',pending.body);
       } catch(error) {
+        this.agentDraft=pending.body.message;
         if(error.uncertain||!error.status||error.status>=500){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentAttachments:pending.attachments||[]});}
         else{api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentAttachments:pending.attachments||[]});}
         throw error;
       }
-      if(!data.async||data.seq===undefined){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentAttachments:pending.attachments||[]});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
+      if(!data.async||data.seq===undefined){this.agentDraft=pending.body.message;pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentAttachments:pending.attachments||[]});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
       api.save({ip12Pending:null,ip12Waiting:{sid:pending.sid,seq:data.seq}});
       this.setData({agentPending:null,agentThinking:true,agentProgress:'正在理解你的要求…'});
       this.agentPoll=this.pollAgent(pending.sid,data.seq).catch(error=>this.fail(error));
@@ -333,7 +335,7 @@ Component({
       return this.run(async()=>{
         await this.restoreAgent(pending.sid);
         const found=this.data.agentMessages.some(item=>item.role==='user'&&item.content===pending.body.message);
-        api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:found?'':pending.body.message,agentAttachments:found?[]:(pending.attachments||[]),error:found?'':'刚才这句话没有送达，请再点一次发送'});
+        this.agentDraft=found?'':pending.body.message;api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:this.agentDraft,agentAttachments:found?[]:(pending.attachments||[]),error:found?'':'刚才这句话没有送达，请再点一次发送'});
       });
     },
     newAgentConversation(){
@@ -344,7 +346,7 @@ Component({
       const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
-      this.setData({agentSessionId:sid,agentMessages:[],agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentDelegations:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
+      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentDelegations:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
       this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
     },
     addAgentAttachment(item){
@@ -429,6 +431,15 @@ Component({
     previewAgentImage(e){
       const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)],current=item&&item.images[Number(e.currentTarget.dataset.image)];
       if(current)wx.previewImage({current,urls:item.images});
+    },
+    openAgentIpDrawer(){this.setData({agentIpDrawerOpen:true,agentAssetsOpen:false});},
+    closeAgentIpDrawer(){this.setData({agentIpDrawerOpen:false});},
+    keepAgentIpDrawer(){},
+    chooseAgentIpItem(e){
+      const kind=e.currentTarget.dataset.ipKind;
+      if(kind==='report'){this.closeAgentIpDrawer();return this.openAgentReport();}
+      const text=kind==='topics'?'请把我已经确认的选题列出来。':'请把我已经确认的口播稿列出来。';
+      this.agentDraft=text;this.setData({promptInput:text,agentIpDrawerOpen:false});this.toast('已放到输入框，确认后发送');
     },
     openAgentReport(){
       const raw=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
