@@ -6,6 +6,8 @@ const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', add
 const IP12_API = '/workbench/ip12/api/v4';
 const IP12_SESSION_KEY = 'hq-v4-session-id';
 const AGENT_MESSAGE_LIMIT = 30;
+const AGENT_IMAGE_LIMIT = 10;
+const AGENT_ATTACHMENT_LIMIT = 10;
 async function agentRead(path) {
   try{return await api.request(path);}
   catch(error){
@@ -26,6 +28,10 @@ function mediaFromContent(value) {
     images:[...new Set(images)], videos:[...new Set(videos)]
   };
 }
+function ip12MediaPath(value) {
+  const raw=String(value||'');
+  return /^\/?api\/v4\//.test(raw)?'/workbench/ip12/'+raw.replace(/^\//,''):raw;
+}
 function agentMessages(items) {
   return (Array.isArray(items)?items:[]).map((item,index)=>{
     const media=mediaFromContent(item&&item.content);
@@ -33,9 +39,19 @@ function agentMessages(items) {
       domId:'agent-message-'+index,
       role:item&&item.role==='user'?'user':'assistant', content:media.content,
       images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
-      videos:media.videos
+      videos:media.videos, attachments:[]
     };
   });
+}
+function limitAgentImages(items) {
+  let remaining=AGENT_IMAGE_LIMIT,total=0;
+  items.forEach(item=>{total+=(item.images||[]).length;});
+  for(let i=items.length-1;i>=0;i--){
+    const images=items[i].images||[];
+    items[i].images=remaining>0?images.slice(0,remaining):[];
+    remaining-=items[i].images.length;
+  }
+  return Math.max(0,total-AGENT_IMAGE_LIMIT);
 }
 function videoHeight(ratio) {
   if(['16:9','3:2','21:9','5:4'].includes(String(ratio||'')))return 390;
@@ -76,7 +92,8 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentReport: {}, agentHiddenCount: 0,
+    agentDelegations: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0,
+    agentAttachments: [], agentAssets: [], agentAssetsOpen: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
@@ -109,7 +126,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentPending:null,agentDelegations:[],agentReport:{}});
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentPending:null,agentDelegations:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false});
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -153,17 +170,19 @@ Component({
       }
     },
     async restoreAgent(sid,valid=()=>this.alive) {
+      const switching=sid!==this.data.agentSessionId;
       const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
+      const imageHidden=limitAgentImages(items);
       for(const item of items){
-        const resolve=raw=>{const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;return api.mediaSource(api.mediaURL(url)).catch(()=>'');};
+        const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
         if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
         if(item.videos.length)item.videos=(await Promise.all(item.videos.map(resolve))).filter(Boolean);
       }
       if(!valid())return;
       wx.setStorageSync(IP12_SESSION_KEY,sid);
-      this.setData({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length)});
+      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
       this.scrollAgent(items);
     },
     scrollAgent(items=this.data.agentMessages) {
@@ -215,7 +234,8 @@ Component({
     sendAgent() {
       if(!this.requireLogin())return;
       if(this.data.agentThinking)return this.toast('黄雀还在回复，你可以先把下一句话写好');
-      const message=this.data.promptInput.trim();
+      const attached=this.data.agentAttachments||[];
+      const message=this.data.promptInput.trim()||(attached.length?'请查看我发送的素材：'+attached.slice(0,3).map(item=>item.name).join('、')+(attached.length>3?'等 '+attached.length+' 个文件':''):'');
       if(!message)return this.toast('请先写一句想说的话');
       return this.sendAgentMessage(message);
     },
@@ -232,9 +252,11 @@ Component({
       return this.run(async()=>{
         const sid=await this.ensureAgentSession();
         const body={session_id:sid,message:String(message||'').trim()};
+        const attachments=approval?[]:(this.data.agentAttachments||[]).slice();
+        if(attachments.length)body.attachments=attachments.map(item=>item.fileId);
         if(approval)body.approval=approval;
-        const pending={sid,body,status:'sending',createdAt:Date.now()};
-        api.save({ip12Pending:pending,ip12Outgoing:null});this.setData({agentPending:pending,agentThinking:true,promptInput:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[],videos:[]})});
+        const pending={sid,body,attachments,status:'sending',createdAt:Date.now()};
+        api.save({ip12Pending:pending,ip12Outgoing:null});this.setData({agentPending:pending,agentThinking:true,promptInput:'',agentAttachments:[],agentAssetsOpen:false,agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[],videos:[],attachments})});
         this.scrollAgent();
         await this.executeAgent(pending);
       });
@@ -244,11 +266,11 @@ Component({
       try {
         data=await api.request(IP12_API+'/chat','POST',pending.body);
       } catch(error) {
-        if(error.uncertain||!error.status||error.status>=500){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message});}
-        else{api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:pending.body.message});}
+        if(error.uncertain||!error.status||error.status>=500){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentAttachments:pending.attachments||[]});}
+        else{api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentAttachments:pending.attachments||[]});}
         throw error;
       }
-      if(!data.async||data.seq===undefined){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
+      if(!data.async||data.seq===undefined){pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentAttachments:pending.attachments||[]});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
       api.save({ip12Pending:null,ip12Waiting:{sid:pending.sid,seq:data.seq}});
       this.setData({agentPending:null,agentThinking:true,agentProgress:'正在理解你的要求…'});
       this.agentPoll=this.pollAgent(pending.sid,data.seq).catch(error=>this.fail(error));
@@ -294,7 +316,69 @@ Component({
       return this.run(async()=>{
         await this.restoreAgent(pending.sid);
         const found=this.data.agentMessages.some(item=>item.role==='user'&&item.content===pending.body.message);
-        api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:found?'':pending.body.message,error:found?'':'刚才这句话没有送达，请再点一次发送'});
+        api.save({ip12Pending:null});this.setData({agentPending:null,agentThinking:false,agentProgress:'',promptInput:found?'':pending.body.message,agentAttachments:found?[]:(pending.attachments||[]),error:found?'':'刚才这句话没有送达，请再点一次发送'});
+      });
+    },
+    newAgentConversation(){
+      if(this.data.busy||this.data.agentThinking)return;
+      wx.showModal({title:'开始新对话？',content:'以前的对话不会删除，之后仍可查看。',confirmText:'开始',success:result=>{if(result.confirm)this.run(()=>this.startNewAgent());}});
+    },
+    async startNewAgent(){
+      const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
+      if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
+      wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
+      this.setData({agentSessionId:sid,agentMessages:[],agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentDelegations:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
+      this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
+    },
+    addAgentAttachment(item){
+      const items=this.data.agentAttachments||[];
+      if(items.length>=AGENT_ATTACHMENT_LIMIT)return this.toast('一次最多发送 10 个素材');
+      if(items.some(entry=>entry.fileId===item.fileId))return;
+      this.setData({agentAttachments:items.concat(item)});
+    },
+    chooseAgentMedia(e){
+      if(this.data.busy||this.data.agentThinking)return;
+      const kind=e.currentTarget.dataset.kind;
+      wx.chooseMedia({count:kind==='image'?Math.max(1,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length):1,mediaType:[kind],sizeType:['compressed'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.tempFilePath,name:kind==='image'?'图片':'视频',kind,size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='image'?'图片':'视频')+'，请检查微信权限'));}});
+    },
+    chooseAgentAudio(){
+      if(this.data.busy||this.data.agentThinking)return;
+      wx.chooseMessageFile({count:Math.max(1,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length),type:'file',extension:['mp3','wav','m4a','aac','ogg'],success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.path,name:file.name||file.path,kind:'audio',size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择音频，请从微信文件中选择'));}});
+    },
+    uploadAgentFiles(files){
+      return this.run(async()=>{
+        const sid=await this.ensureAgentSession();
+        for(const file of files){
+          const max=file.kind==='video'?100:10;
+          if(file.size>max*1024*1024)throw new Error((file.kind==='video'?'视频':'文件')+'不能超过 '+max+'MB');
+          if((this.data.agentAttachments||[]).length>=AGENT_ATTACHMENT_LIMIT)break;
+          const result=await api.upload(IP12_API+'/upload',file.path,{session_id:sid});
+          this.addAgentAttachment({fileId:result.file_id,name:file.name||result.name,kind:result.kind||file.kind,preview:file.kind==='image'?file.path:'',url:result.url||''});
+        }
+      });
+    },
+    removeAgentAttachment(e){
+      const index=Number(e.currentTarget.dataset.index);
+      this.setData({agentAttachments:(this.data.agentAttachments||[]).filter((_,i)=>i!==index)});
+    },
+    toggleAgentAssets(){
+      if(this.data.agentAssetsOpen)return this.setData({agentAssetsOpen:false});
+      return this.run(async()=>{
+        const sid=await this.ensureAgentSession();
+        const data=await api.request(IP12_API+'/assets?session_id='+encodeURIComponent(sid)+'&limit=10&offset=0');
+        const assets=(data.assets||[]).slice(0,10).map(item=>Object.assign({},item,{kind:/\.(?:mp3|wav|m4a|aac|ogg)$/i.test(item.name||'')?'audio':'image',displayThumb:''}));
+        await Promise.all(assets.map(async item=>{if(item.thumb)item.displayThumb=await api.mediaSource(api.mediaURL(ip12MediaPath(item.thumb))).catch(()=>'');}));
+        this.setData({agentAssets:assets,agentAssetsOpen:true});
+      });
+    },
+    useAgentAsset(e){
+      const item=this.data.agentAssets[Number(e.currentTarget.dataset.index)];
+      if(!item)return;
+      return this.run(async()=>{
+        const result=await api.request(IP12_API+'/assets/use','POST',{session_id:this.data.agentSessionId,asset_id:item.id});
+        let preview='';if(result.kind==='image')preview=await api.mediaSource(api.mediaURL(ip12MediaPath(result.url))).catch(()=>'');
+        this.addAgentAttachment({fileId:result.file_id,name:result.name||item.name,kind:result.kind||item.kind,preview,url:result.url||''});
+        this.setData({agentAssetsOpen:false});
       });
     },
     switchAgentSession(){
