@@ -5,6 +5,7 @@ const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
 const IP12_API = '/workbench/ip12/api/v4';
 const IP12_SESSION_KEY = 'hq-v4-session-id';
+const IP12_NEW_SESSION = '__new__';
 const AGENT_MESSAGE_LIMIT = 30;
 const AGENT_IMAGE_LIMIT = 10;
 const AGENT_ATTACHMENT_LIMIT = 10;
@@ -53,6 +54,11 @@ function limitAgentImages(items) {
   }
   return Math.max(0,total-AGENT_IMAGE_LIMIT);
 }
+function agentSessionLabel(item) {
+  const preview=String(item&&item.preview||'').replace(/\s+/g,' ').trim();
+  const turns=Math.max(0,Number(item&&item.turns||0));
+  return preview?'继续：'+preview.slice(0,18)+(turns?'（'+turns+'轮）':''):'继续上次对话';
+}
 function videoHeight(ratio) {
   if(['16:9','3:2','21:9','5:4'].includes(String(ratio||'')))return 390;
   if(String(ratio||'')==='1:1')return 686;
@@ -91,7 +97,7 @@ Component({
     workFilters: [{id:'all',name:'全部'},{id:'processing',name:'进行中'},{id:'done',name:'已完成'},{id:'failed',name:'失败'}],
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
-    agentMessages: [], agentSessionId: '', agentSessions: [], agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
+    agentMessages: [], agentSessionId: '', agentSessions: [], agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
     agentDelegations: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0,
     agentAttachments: [], agentAssets: [], agentAssetsOpen: false,
     notifications: { finished: true, failed: true, activity: false },
@@ -126,7 +132,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentPending:null,agentDelegations:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false});
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false});
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -153,14 +159,15 @@ Component({
       const data=await agentRead(IP12_API+'/sessions');
       if(!valid())return;
       const sessions=Array.isArray(data.sessions)?data.sessions:[];
-      const saved=wx.getStorageSync(IP12_SESSION_KEY);
-      const current=sessions.find(item=>item.sid===saved)||sessions[0];
+      const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
+      const saved=wx.getStorageSync(IP12_SESSION_KEY),forceNew=saved===IP12_NEW_SESSION||(this.properties.pageId==='chat'&&outgoing&&outgoing.newConversation);
+      const wantedSid=outgoing&&outgoing.sid||saved;
+      const current=forceNew?null:(sessions.find(item=>item.sid===wantedSid)||sessions[0]);
       this.setData({agentSessions:sessions.slice(0,8)});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
-      else if(current)this.setData({agentSessionId:current.sid});
-      else this.setData({agentMessages:[],agentSessionId:'',agentDelegations:[],agentReport:{}});
+      else if(current){wx.setStorageSync(IP12_SESSION_KEY,current.sid);this.setData({agentSessionId:current.sid,agentTargetLabel:agentSessionLabel(current)});}
+      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentReport:{}});
       if(!valid())return;
-      const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
       this.setData({agentPending:pending,agentThinking:!!waiting,agentProgress:waiting?'正在恢复处理进度…':''});
       if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
@@ -227,8 +234,18 @@ Component({
       if(!this.requireLogin())return;
       const message=this.data.promptInput.trim();
       if(!message)return this.toast('请先写一句想说的话');
-      api.save({ip12Outgoing:{message,status:'queued',createdAt:Date.now()}});
+      const sid=this.data.agentSessionId||'';
+      api.save({ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
       this.navigate('chat');
+    },
+    chooseHomeAgentSession(){
+      const sessions=this.data.agentSessions||[];
+      if(!sessions.length)return this.toast('还没有以前的对话');
+      wx.showActionSheet({itemList:sessions.map(item=>((item.sid===this.data.agentSessionId?'当前 · ':'')+(item.preview||'以前的对话').replace(/\s+/g,' ')+(item.turns?' · '+item.turns+'轮':'')).slice(0,28)),success:result=>{const item=sessions[result.tapIndex];if(item){wx.setStorageSync(IP12_SESSION_KEY,item.sid);this.setData({agentSessionId:item.sid,agentTargetLabel:agentSessionLabel(item)});}}});
+    },
+    useNewHomeAgentSession(){
+      wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);
+      this.setData({agentSessionId:'',agentTargetLabel:'新对话'});
     },
     sendPrompt(){return this.sendAgent(false);},
     sendAgent() {
