@@ -4,7 +4,7 @@
     <block wx:if="{{pageId==='home'||pageId==='works'||pageId==='profile'}}"><view class="hq-view brand-seal">雀</view><text class="hq-text brand-name">黄雀</text><text class="hq-text nav-caption">{{title}}</text></block>
     <block wx:else><button class="hq-button back" bindtap="back" aria-label="返回上一页">‹</button><text class="hq-text nav-title">{{title}}</text></block>
   </view></view>
-  <view class="hq-view content {{pageId==='home'||pageId==='works'||pageId==='profile'?'has-tabs':''}} {{pageId==='chat'?'agent-chat-content':''}}">
+  <view class="hq-view content {{pageId==='home'||pageId==='works'||pageId==='profile'?'has-tabs':''}} {{pageId==='chat'?'agent-chat-content':''}}" style="--chat-nav-offset:{{chatNavOffset}}px;">
     <view wx:if="{{error}}" class="hq-view error-banner" role="alert"><text class="hq-text">{{error}}</text><button wx:if="{{agentPending}}" class="hq-button text-button" bindtap="retryAgent">检查是否已经发送</button><button wx:else class="hq-button text-button" bindtap="load">重新加载</button></view>
     <view wx:if="{{loading}}" class="hq-view loading-note">正在读取你的创作空间…</view>
     <view wx:if="{{!user&&pageId!=='login'}}" class="hq-view guest-strip"><text class="hq-text">登录后查看你的作品与积分</text><button class="hq-button text-button" data-route="login" bindtap="go">登录 ›</button></view>
@@ -57,8 +57,8 @@
           <button class="hq-button composer-icon-button voice-unavailable" bindtap="voiceUnavailable" aria-label="语音输入暂未开放"><image class="hq-image composer-icon-image" src="/assets/icons/mic.svg" mode="aspectFit"/><text class="hq-text voice-unavailable-label">暂未开放</text></button>
           <view class="hq-view composer-input-shell"><textarea class="hq-textarea agent-input" value="{{promptInput}}" placeholder="发消息…" maxlength="4000" bindinput="agentInput" bindconfirm="sendPrompt" confirm-type="send" cursor-spacing="28" auto-height show-confirm-bar="{{false}}" aria-label="给黄雀 Agent 发消息"/></view>
           <button class="hq-button composer-icon-button" bindtap="openAgentQuickPhrases" aria-label="快捷短语"><image class="hq-image composer-icon-image" src="/assets/icons/quick.svg" mode="aspectFit"/></button>
-          <button class="hq-button composer-icon-button" bindtap="openAgentTools" aria-label="更多功能"><text class="hq-text composer-plus">＋</text></button>
-          <button class="hq-button compact-send" bindtap="sendPrompt" loading="{{busy&&!agentThinking}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'请稍等':busy?'发送中':'发送'}}</button>
+          <button wx:if="{{!agentHasText&&!agentAttachments.length}}" class="hq-button composer-icon-button" bindtap="openAgentTools" aria-label="更多功能"><text class="hq-text composer-plus">＋</text></button>
+          <button wx:else class="hq-button compact-send" bindtap="sendPrompt" loading="{{busy&&!agentThinking}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'请稍等':busy?'发送中':'发送'}}</button>
         </view>
       </view>
       <view wx:if="{{agentSheet}}" class="hq-view agent-sheet-mask" catchtap="closeAgentSheet"><view class="hq-view agent-sheet" catchtap="keepAgentSheet" role="dialog" aria-label="{{agentSheet==='phrases'?'快捷短语':agentSheet==='assets'?'素材库':'更多功能'}}"><view class="hq-view agent-sheet-head"><view class="hq-view agent-sheet-title">{{agentSheet==='phrases'?'快捷短语':agentSheet==='assets'?'我的素材库':'更多功能'}}</view><button class="hq-button agent-sheet-close" bindtap="closeAgentSheet" aria-label="关闭">×</button></view>
