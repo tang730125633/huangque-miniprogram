@@ -325,7 +325,7 @@
 .quick-copy { min-width:0; flex:1; }
 .quick-title { display:block; overflow:hidden; color:#303630; font-size:25rpx; font-weight:650; line-height:1.4; text-overflow:ellipsis; white-space:nowrap; }
 .quick-subtitle { display:block; margin-top:4rpx; overflow:hidden; color:#8a857c; font-size:20rpx; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
-.agent-chat-content { display:flex; flex-direction:column; height:calc(100vh - 150rpx); overflow:hidden; padding-bottom:calc(24rpx + env(safe-area-inset-bottom)); }
+.agent-chat-content { display:flex; flex-direction:column; height:calc(100vh - var(--chat-nav-offset)); overflow:hidden; padding:12rpx 24rpx 0; }
 .agent-chat-content .agent-status { min-height:64rpx; margin:0 0 18rpx; font-size:27rpx; }
 .agent-chat-content .agent-status { align-items:flex-start; flex-direction:column; }
 .agent-chat-content .agent-status-actions { width:100%; margin-left:0; }
@@ -415,7 +415,7 @@
 @media (prefers-reduced-motion:reduce) { .ip-drawer { animation:none; } }
 
 /* Compact WeChat-style Agent composer. */
-.agent-chat-content .compact-composer { flex:none; margin:0; padding:14rpx 10rpx calc(12rpx + env(safe-area-inset-bottom)); border:0; border-top:1rpx solid #e2dcd2; border-radius:0; background:#fffdf9; box-shadow:0 -10rpx 30rpx rgba(55,45,31,.07); }
+.agent-chat-content .compact-composer { flex:none; margin:0 -24rpx; padding:14rpx 16rpx calc(12rpx + env(safe-area-inset-bottom)); border:0; border-top:1rpx solid #e2dcd2; border-radius:0; background:#fffdf9; box-shadow:0 -10rpx 30rpx rgba(55,45,31,.07); }
 .compact-composer-row { display:flex; min-width:0; align-items:flex-end; gap:8rpx; }
 .composer-icon-button { position:relative; display:flex; width:82rpx; height:82rpx; min-height:82rpx; flex:0 0 82rpx; align-items:center; justify-content:center; padding:0; border:0; border-radius:50%; color:#323832; background:transparent; text-align:center; }
 .composer-icon-image { width:50rpx; height:50rpx; }
