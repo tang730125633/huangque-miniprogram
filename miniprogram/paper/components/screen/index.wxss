@@ -413,3 +413,31 @@
 .ip-drawer-next { flex:none; color:#a7792c; font-size:38rpx; }
 @keyframes ip-drawer-in { from { transform:translateX(100%); } to { transform:translateX(0); } }
 @media (prefers-reduced-motion:reduce) { .ip-drawer { animation:none; } }
+
+/* Compact WeChat-style Agent composer. */
+.agent-chat-content .compact-composer { flex:none; margin:0; padding:14rpx 10rpx calc(12rpx + env(safe-area-inset-bottom)); border:0; border-top:1rpx solid #e2dcd2; border-radius:0; background:#fffdf9; box-shadow:0 -10rpx 30rpx rgba(55,45,31,.07); }
+.compact-composer-row { display:flex; min-width:0; align-items:flex-end; gap:8rpx; }
+.composer-icon-button { position:relative; display:flex; width:82rpx; height:82rpx; min-height:82rpx; flex:0 0 82rpx; align-items:center; justify-content:center; padding:0; border:0; border-radius:50%; color:#323832; background:transparent; text-align:center; }
+.composer-icon-image { width:50rpx; height:50rpx; }
+.voice-unavailable { width:92rpx; flex-basis:92rpx; color:#87827a; }
+.voice-unavailable .composer-icon-image { width:40rpx; height:40rpx; margin-top:-18rpx; opacity:.55; }
+.voice-unavailable-label { position:absolute; right:0; bottom:0; left:0; color:#8a8379; font-size:18rpx; line-height:1.1; white-space:nowrap; }
+.composer-input-shell { min-width:0; flex:1; padding:2rpx; border:1rpx solid #ddd7ce; border-radius:18rpx; background:#fff; }
+.agent-chat-content .compact-composer .agent-input { box-sizing:border-box; width:100%; height:auto; min-height:74rpx; max-height:300rpx; overflow-y:auto; padding:14rpx 18rpx; color:#252a25; font-size:28rpx; line-height:1.55; text-align:left; }
+.composer-plus { font-size:52rpx; font-weight:300; line-height:1; }
+.agent-chat-content .compact-send { display:flex; width:104rpx; height:82rpx; min-height:82rpx; flex:0 0 104rpx; align-items:center; justify-content:center; padding:0; border-radius:16rpx; color:#fffdf8; background:#202620; font-size:25rpx; font-weight:650; line-height:1; text-align:center; }
+.agent-sheet-mask { position:fixed; inset:0; z-index:110; background:rgba(31,29,25,.28); }
+.agent-sheet { position:absolute; right:0; bottom:0; left:0; box-sizing:border-box; max-height:72%; overflow-y:auto; padding:24rpx 26rpx calc(30rpx + env(safe-area-inset-bottom)); border-radius:34rpx 34rpx 0 0; background:#fffdf9; box-shadow:0 -24rpx 70rpx rgba(46,37,24,.18); animation:agent-sheet-in .2s ease-out; }
+.agent-sheet-head { display:flex; min-height:76rpx; align-items:center; justify-content:space-between; border-bottom:1rpx solid #e8e1d7; }
+.agent-sheet-title { color:#252a25; font-size:34rpx; font-weight:700; }
+.agent-sheet-close { display:flex; width:70rpx; height:70rpx; min-height:70rpx; align-items:center; justify-content:center; padding:0; border-radius:50%; color:#5f5a52; background:#f1ece4; font-size:38rpx; line-height:1; }
+.agent-sheet-note { display:block; margin:20rpx 0; color:#736e65; font-size:24rpx; line-height:1.55; }
+.phrase-list { display:flex; flex-direction:column; gap:14rpx; }
+.phrase-item { width:100%; min-height:88rpx; padding:18rpx 22rpx; border:1rpx solid #ded7cd; border-radius:18rpx; color:#303530; background:#fff; font-size:27rpx; line-height:1.45; text-align:left; }
+.phrase-add { display:flex; width:100%; min-height:92rpx; align-items:center; justify-content:center; margin-top:18rpx; border-radius:18rpx; color:#fffdf8; background:#273029; font-size:27rpx; font-weight:650; text-align:center; }
+.tool-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16rpx; padding-top:24rpx; }
+.tool-item { display:flex; min-height:164rpx; align-items:center; justify-content:center; flex-direction:column; gap:12rpx; padding:16rpx 8rpx; border:1rpx solid #ded7cd; border-radius:22rpx; color:#343a34; background:#fff; font-size:24rpx; text-align:center; }
+.tool-item .tool-icon { width:54rpx; height:54rpx; font-size:initial; }
+.agent-sheet .asset-grid { margin-top:24rpx; }
+@keyframes agent-sheet-in { from { transform:translateY(100%); } to { transform:translateY(0); } }
+@media (prefers-reduced-motion:reduce) { .agent-sheet { animation:none; } }
