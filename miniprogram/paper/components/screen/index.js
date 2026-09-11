@@ -47,7 +47,7 @@ function agentMessages(items) {
       domId:'agent-message-'+index,
       role:item&&item.role==='user'?'user':'assistant', content:media.content,
       images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
-      videos:media.videos, attachments:[]
+      videos:media.videos.map((url,videoIndex)=>({url,src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex})), attachments:[]
     };
   });
 }
@@ -192,7 +192,6 @@ Component({
       for(const item of items){
         const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
         if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
-        if(item.videos.length)item.videos=(await Promise.all(item.videos.map(resolve))).filter(Boolean);
       }
       if(!valid())return;
       wx.setStorageSync(IP12_SESSION_KEY,sid);
@@ -461,6 +460,19 @@ Component({
     previewAgentImage(e){
       const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)],current=item&&item.images[Number(e.currentTarget.dataset.image)];
       if(current)wx.previewImage({current,urls:item.images});
+    },
+    async loadAgentVideo(e){
+      const messageIndex=Number(e.currentTarget.dataset.message),videoIndex=Number(e.currentTarget.dataset.video);
+      const message=this.data.agentMessages[messageIndex],video=message&&message.videos[videoIndex];
+      if(!video||video.loading||video.src)return;
+      const path='agentMessages['+messageIndex+'].videos['+videoIndex+']';
+      this.setData({[path+'.loading']:true});
+      try{
+        const src=await api.mediaSource(api.mediaURL(ip12MediaPath(video.url)));
+        if(!this.alive)return;
+        if(!src)throw new Error('视频地址无效');
+        this.setData({[path+'.src']:src,[path+'.loading']:false},()=>{const player=wx.createVideoContext&&wx.createVideoContext(video.domId,this);if(player)player.play();});
+      }catch(_){if(this.alive){this.setData({[path+'.loading']:false});this.fail(new Error('视频加载失败，请检查网络后重试'));}}
     },
     openAgentIpDrawer(){this.setData({agentIpDrawerOpen:true,agentAssetsOpen:false,agentSheet:''});},
     closeAgentIpDrawer(){this.setData({agentIpDrawerOpen:false});},
