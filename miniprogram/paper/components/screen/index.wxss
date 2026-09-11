@@ -372,7 +372,10 @@
 .agent-image { width:100%; height:auto; min-height:180rpx; border-radius:16rpx; background:#eee9de; }
 .agent-video-scroll { width:100%; margin-top:16rpx; white-space:nowrap; }
 .agent-videos { display:flex; width:max-content; gap:16rpx; padding-right:20rpx; }
-.agent-video { width:280rpx; height:360rpx; flex:none; border-radius:18rpx; background:#111; overflow:hidden; }
+.agent-video,.agent-video-placeholder { width:280rpx; height:360rpx; flex:none; border-radius:18rpx; overflow:hidden; }
+.agent-video { background:#111; }
+.agent-video-placeholder { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16rpx; border:1rpx solid #d8d0c3; color:#5f625d; background:#f4efe6; font-size:23rpx; text-align:center; }
+.agent-video-icon { width:72rpx; height:72rpx; opacity:.78; }
 .agent-task-card { margin:0 0 24rpx 84rpx; padding:24rpx; border:1rpx solid #d6d2c8; border-radius:20rpx; background:#fff; color:#3c423a; font-size:28rpx; line-height:1.7; }
 .task-title { margin-bottom:10rpx; font-size:29rpx; font-weight:700; }
 .task-cost { margin-top:12rpx; color:#75501b; font-size:25rpx; }
