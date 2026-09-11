@@ -40,7 +40,7 @@
             <view class="hq-view agent-avatar">雀</view>
             <view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble preserve">{{item.content}}</view>
               <view wx:if="{{item.images.length}}" class="hq-view agent-images"><image wx:for="{{item.images}}" wx:key="*this" class="hq-image agent-image" src="{{item}}" mode="widthFix" bindtap="previewAgentImage" data-message="{{messageIndex}}" data-image="{{index}}"/></view>
-              <view wx:if="{{item.videos.length}}" class="hq-view agent-videos"><video wx:for="{{item.videos}}" wx:key="*this" class="agent-video" src="{{item}}" controls object-fit="contain" show-fullscreen-btn binderror="mediaError"/></view>
+              <scroll-view wx:if="{{item.videos.length}}" scroll-x enhanced show-scrollbar="{{false}}" class="agent-video-scroll" aria-label="视频预览"><view class="hq-view agent-videos"><video wx:for="{{item.videos}}" wx:key="*this" class="agent-video" src="{{item}}" controls object-fit="contain" show-fullscreen-btn binderror="mediaError"/></view></scroll-view>
             </view>
           </view>
         </block>

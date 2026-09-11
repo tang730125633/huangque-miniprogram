@@ -30,8 +30,9 @@ function mediaFromContent(value) {
     if(/\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(url)){images.push(url);known.push(url);}
     else if(/\.(?:mp4|mov|webm|m3u8)(?:[?#]|$)|\/api\/v4\/render\/[0-9a-f]{32}(?:[?#]|$)/i.test(url)){videos.push(url);known.push(url);}
   });
+  const clean=known.reduce((text,url)=>text.split(url).join(''),content).replace(/\[([^\]]*)\]\(\s*\)/g,'$1').replace(/<\s*>/g,'');
   return {
-    content:content.split(/\r?\n/).filter(line=>!known.includes(line.trim().replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
+    content:clean.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!/^(?:成片|成片链接|视频|视频链接|模板小样|小样视频|预览视频|缩略图)[：:]?$/.test(line.replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
     images:[...new Set(images)], videos:[...new Set(videos)]
   };
 }
