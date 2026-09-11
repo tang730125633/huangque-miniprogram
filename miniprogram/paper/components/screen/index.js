@@ -25,10 +25,10 @@ async function agentRead(path) {
 }
 function mediaFromContent(value) {
   const content=String(value||''),images=[],videos=[],known=[];
-  (content.match(/https?:\/\/[^\s<>"']+/g)||[]).forEach(raw=>{
+  (content.match(/(?:https?:\/\/|\/api\/v4\/)[^\s<>"']+/g)||[]).forEach(raw=>{
     const url=raw.replace(/[)）\]}>*_，。；;]+$/,'');
     if(/\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(url)){images.push(url);known.push(url);}
-    else if(/\.(?:mp4|mov|webm|m3u8)(?:[?#]|$)/i.test(url)){videos.push(url);known.push(url);}
+    else if(/\.(?:mp4|mov|webm|m3u8)(?:[?#]|$)|\/api\/v4\/render\/[0-9a-f]{32}(?:[?#]|$)/i.test(url)){videos.push(url);known.push(url);}
   });
   return {
     content:content.split(/\r?\n/).filter(line=>!known.includes(line.trim().replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
