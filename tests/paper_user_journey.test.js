@@ -55,6 +55,20 @@ test('assistant Markdown becomes readable blocks and MP3 becomes a player', asyn
   api.request = originalRequest; api.mediaSource = originalMedia;
 });
 
+test('voice slots remain visible when the main turn film mode changes', async () => {
+  const originalRequest = api.request;
+  api.request = async () => ({ ok: true, history: [], film: true, delegations: {}, report: {}, selected_choices: {}, widgets: [{
+    id: 'voice_pick:audio-slots', gen: 2, type: 'voice_pick', film: false, title: '声音克隆槽位',
+    items: [{ id: 'slot-a', title: '我的克隆音色', slot_id: 'slot-a' }],
+  }] });
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  await component.methods.restoreAgent.call(ctx, 'sid-voice');
+  assert.equal(ctx.data.agentWidgets.length, 1);
+  assert.equal(ctx.data.agentWidgets[0].type, 'voice_pick');
+  assert.equal(ctx.data.agentWidgets[0].items[0].slotId, 'slot-a');
+  api.request = originalRequest;
+});
+
 test('history management calls the deployed batch-delete contract', async () => {
   const originalRequest = api.request;
   let request;
