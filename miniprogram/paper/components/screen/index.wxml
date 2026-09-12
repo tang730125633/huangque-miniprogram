@@ -34,7 +34,7 @@
     </block>
 
     <block wx:elif="{{pageId==='chat'}}">
-      <view class="hq-view agent-status"><view class="hq-view agent-status-label"><text class="hq-text">黄雀助手 · 已与主站同步</text></view><view class="hq-view agent-status-actions"><button class="hq-button agent-mode new-chat" bindtap="newAgentConversation" disabled="{{busy||agentThinking}}">＋ 新对话</button><button class="hq-button agent-mode" bindtap="switchAgentSession">以前的对话</button><button class="hq-button agent-mode export-chat" bindtap="exportAgentConversation" disabled="{{busy||!agentSessionId}}" aria-label="导出当前对话记录">导出</button></view></view>
+      <view class="hq-view agent-status"><view class="hq-view agent-status-actions"><button class="hq-button agent-mode new-chat" bindtap="newAgentConversation" disabled="{{busy||agentThinking}}">＋ 新对话</button><button class="hq-button agent-mode" bindtap="switchAgentSession">以前的对话</button><button class="hq-button agent-mode export-chat" bindtap="exportAgentConversation" disabled="{{busy||!agentSessionId}}" aria-label="导出当前对话记录">导出</button></view></view>
       <scroll-view scroll-y class="agent-thread" scroll-into-view="{{agentScrollTarget}}" enhanced show-scrollbar="{{false}}">
         <view wx:if="{{agentHiddenCount}}" class="hq-view history-note">为保持流畅，只显示最近 30 条消息；完整记录仍可导出。</view>
         <view wx:if="{{agentImageHiddenCount}}" class="hq-view history-note">图片较多，只显示最近 10 张。</view>

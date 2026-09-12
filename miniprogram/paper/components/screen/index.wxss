@@ -208,10 +208,8 @@
 .tab.selected { color:#75501b; font-weight:600; }
 
 /* Agent conversation: messages first, controls second. */
-.agent-status { display:flex; align-items:center; gap:10rpx; margin:8rpx 0 30rpx; color:#52675b; font-size:22rpx; font-weight:600; }
-.agent-status-label,.agent-status-actions { display:flex; align-items:center; gap:10rpx; }
-.agent-status-label { min-width:0; }
-.agent-status-actions { margin-left:auto; flex:none; }
+.agent-status { display:flex; margin:8rpx 0 30rpx; }
+.agent-status-actions { display:flex; width:100%; align-items:center; gap:10rpx; }
 .status-dot { width:12rpx; height:12rpx; border-radius:50%; background:#9a6a21; box-shadow:0 0 0 7rpx rgba(154,106,33,.12); }
 .agent-mode { padding:7rpx 13rpx; border:1rpx solid #d8d4ca; border-radius:999rpx; color:#747a73; background:rgba(255,255,255,.6); font-size:18rpx; font-weight:500; }
 .agent-thread { padding:4rpx 0 14rpx; }
@@ -320,11 +318,10 @@
 .quick-title { display:block; overflow:hidden; color:#303630; font-size:25rpx; font-weight:650; line-height:1.4; text-overflow:ellipsis; white-space:nowrap; }
 .quick-subtitle { display:block; margin-top:4rpx; overflow:hidden; color:#8a857c; font-size:20rpx; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
 .agent-chat-content { display:flex; flex-direction:column; height:calc(100vh - var(--chat-nav-offset)); overflow:hidden; padding:12rpx 24rpx 0; }
-.agent-chat-content .agent-status { min-height:64rpx; margin:0 0 18rpx; font-size:27rpx; }
-.agent-chat-content .agent-status { align-items:flex-start; flex-direction:column; }
-.agent-chat-content .agent-status-actions { width:100%; margin-left:0; }
-.agent-chat-content .agent-mode { flex:1; min-height:88rpx; padding:12rpx 10rpx; font-size:23rpx; }
+.agent-chat-content .agent-status { margin:0 0 12rpx; }
+.agent-chat-content .agent-mode { display:flex; min-width:0; min-height:72rpx; flex:1; align-items:center; justify-content:center; padding:8rpx 10rpx; font-size:21rpx; line-height:1.2; }
 .agent-chat-content .new-chat { color:#fffdf8; border-color:#2c352d; background:#2c352d; }
+.agent-chat-content .agent-mode.export-chat { max-width:102rpx; }
 .agent-thread { flex:1; min-height:0; height:auto; padding:8rpx 0 28rpx; }
 .history-note { margin:0 0 24rpx; padding:16rpx 20rpx; border-radius:14rpx; color:#716b60; background:#ede9e1; font-size:23rpx; line-height:1.55; text-align:center; }
 .agent-thread-end { height:20rpx; }
@@ -379,11 +376,6 @@
 .task-confirm { color:#fffdf8; background:#202620; }
 
 /* Agent v2: aligned controls, horizontal tools, and a long-prompt composer. */
-.agent-chat-content .agent-status { gap:14rpx; margin-bottom:20rpx; color:#666d66; }
-.agent-chat-content .agent-status-label { min-height:54rpx; align-items:center; font-size:25rpx; line-height:1.4; }
-.agent-chat-content .agent-status-actions { display:flex; align-items:stretch; gap:10rpx; }
-.agent-chat-content .agent-mode { display:flex; align-items:center; justify-content:center; min-width:0; line-height:1.2; }
-.agent-chat-content .agent-mode.export-chat { max-width:112rpx; }
 .attachment-scroll { width:100%; margin-bottom:18rpx; white-space:nowrap; }
 .agent-chat-content .attachment-tools { display:flex; width:956rpx; gap:10rpx; margin:0; }
 .agent-chat-content .attach-button { display:flex; align-items:center; justify-content:center; gap:10rpx; width:164rpx; min-height:84rpx; flex:none; padding:10rpx 14rpx; line-height:1.2; }
