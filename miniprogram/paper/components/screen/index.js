@@ -26,17 +26,50 @@ async function agentRead(path) {
   }
 }
 function mediaFromContent(value) {
-  const content=String(value||''),images=[],videos=[],known=[];
+  const content=String(value||''),images=[],videos=[],audios=[],known=[];
   (content.match(/(?:https?:\/\/|\/api\/v4\/)[^\s<>"']+/g)||[]).forEach(raw=>{
     const url=raw.replace(/[)）\]}>*_，。；;]+$/,'');
     if(/\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(url)){images.push(url);known.push(url);}
     else if(/\.(?:mp4|mov|webm|m3u8)(?:[?#]|$)|\/api\/v4\/render\/[0-9a-f]{32}(?:[?#]|$)/i.test(url)){videos.push(url);known.push(url);}
+    else if(/\.(?:mp3|wav|m4a|aac|ogg)(?:[?#]|$)/i.test(url)){audios.push(url);known.push(url);}
   });
   const clean=known.reduce((text,url)=>text.split(url).join(''),content).replace(/\[([^\]]*)\]\(\s*\)/g,'$1').replace(/<\s*>/g,'');
   return {
-    content:clean.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!/^(?:成片|成片链接|视频|视频链接|模板小样|小样视频|预览视频|缩略图)[：:]?$/.test(line.replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
-    images:[...new Set(images)], videos:[...new Set(videos)]
+    content:clean.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!/^(?:成片|成片链接|视频|视频链接|模板小样|小样视频|预览视频|缩略图|音频|音频链接|录音|试听)[：:]?$/.test(line.replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
+    images:[...new Set(images)], videos:[...new Set(videos)], audios:[...new Set(audios)]
   };
+}
+function agentInlineNodes(value) {
+  const text=String(value||''),nodes=[];
+  const pattern=/(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\((https:\/\/[^)\s]+)\))/g;
+  let cursor=0,match;
+  while((match=pattern.exec(text))){
+    if(match.index>cursor)nodes.push({type:'text',text:text.slice(cursor,match.index)});
+    if(match[2])nodes.push({name:'strong',children:[{type:'text',text:match[2]}]});
+    else if(match[3])nodes.push({name:'span',attrs:{style:'font-family:monospace;background:#f1ede5;padding:2px 4px;border-radius:4px;'},children:[{type:'text',text:match[3]}]});
+    else nodes.push({name:'a',attrs:{href:match[5],style:'color:#75501b;text-decoration:underline;'},children:[{type:'text',text:match[4]}]});
+    cursor=pattern.lastIndex;
+  }
+  if(cursor<text.length)nodes.push({type:'text',text:text.slice(cursor)});
+  return nodes.length?nodes:[{type:'text',text:text}];
+}
+function agentRichNodes(value) {
+  const nodes=[],code=[];let fenced=false;
+  const push=(text,style)=>nodes.push({name:'div',attrs:{style},children:agentInlineNodes(text)});
+  const pushCode=text=>nodes.push({name:'div',attrs:{style:'margin:6px 0 10px;padding:10px 12px;border-radius:8px;background:#f1ede5;font-family:monospace;white-space:pre-wrap;'},children:[{type:'text',text}]});
+  String(value||'').split(/\r?\n/).forEach(raw=>{
+    const line=raw.trim();
+    if(/^```/.test(line)){if(fenced){pushCode(code.join('\n'));code.length=0;}fenced=!fenced;return;}
+    if(fenced){code.push(raw);return;}
+    if(!line){nodes.push({name:'div',attrs:{style:'height:8px;'},children:[]});return;}
+    let match=line.match(/^(#{1,3})\s+(.+)$/);if(match)return push(match[2],'margin:8px 0 5px;font-size:'+(match[1].length===1?'18px':'16px')+';font-weight:700;line-height:1.5;');
+    match=line.match(/^>\s?(.*)$/);if(match)return push(match[1],'margin:6px 0;padding:7px 10px;border-left:3px solid #c49a55;background:#f7f0e3;color:#5f574c;line-height:1.7;');
+    match=line.match(/^[-*+]\s+(.+)$/);if(match)return push('• '+match[1],'margin:3px 0;padding-left:4px;line-height:1.7;');
+    match=line.match(/^(\d+)[.)、]\s+(.+)$/);if(match)return push(match[1]+'．'+match[2],'margin:3px 0;padding-left:4px;line-height:1.7;');
+    push(line,'margin:2px 0;line-height:1.75;');
+  });
+  if(code.length)pushCode(code.join('\n'));
+  return nodes;
 }
 function ip12MediaPath(value) {
   const raw=String(value||'');
@@ -52,9 +85,10 @@ function agentMessages(items) {
     const media=mediaFromContent(item&&item.content);
     return {
       domId:'agent-message-'+index,
-      role:item&&item.role==='user'?'user':'assistant', content:media.content,
+      role:item&&item.role==='user'?'user':'assistant', content:media.content, richNodes:agentRichNodes(media.content),
       images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
-      videos:media.videos.map((url,videoIndex)=>({url,src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex})), attachments:[]
+      videos:media.videos.map((url,videoIndex)=>({url,src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex})),
+      audios:media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex})), attachments:[]
     };
   });
 }
@@ -88,6 +122,17 @@ function videoWork(item) {
     done:['done','completed'].includes(status), failed:['error','failed'].includes(status),
     label:['done','completed'].includes(status)?'已完成':['error','failed'].includes(status)?'生成失败':'正在处理'
   };
+}
+function formatBytes(value) {
+  const bytes=Math.max(0,Number(value)||0);
+  if(bytes>=1024*1024*1024)return (bytes/1024/1024/1024).toFixed(1)+'GB';
+  if(bytes>=1024*1024)return (bytes/1024/1024).toFixed(1)+'MB';
+  if(bytes>=1024)return Math.round(bytes/1024)+'KB';
+  return bytes?bytes+'B':'未知大小';
+}
+function agentAssetView(item) {
+  const kind=['image','video','audio','avatar'].includes(String(item&&item.kind||''))?String(item.kind):'image';
+  return Object.assign({},item,{kind,kindLabel:kind==='video'?'视频':kind==='audio'?'音频':kind==='avatar'?'数字人':'图片',sizeLabel:formatBytes(item&&item.size),displayThumb:'',selected:false});
 }
 function delegationCards(value) {
   return Object.keys(value&&typeof value==='object'?value:{}).map(domain=>{
@@ -139,13 +184,13 @@ Component({
     promptInput: '', kind: 'image', formats: creation.formats, kindName: '图片', formatDetail: creation.formats[0].detail,
     username: '', password: '', consent: false, quote: null, attempt: null, job: null,
     works: [], visibleWorks: [], search: '', filter: 'all', hasMore: false,
-    filters: [{id:'all',name:'全部'}, ...creation.formats],
+    filters: [{id:'all',name:'全部'}, ...creation.formats], agentAssetKindFilters: [{key:'all',name:'全部'},{key:'image',name:'图片'},{key:'video',name:'视频'},{key:'audio',name:'音频'}],
     workFilters: [{id:'all',name:'全部'},{id:'processing',name:'进行中'},{id:'done',name:'已完成'},{id:'failed',name:'失败'}],
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
-    agentMessages: [], agentSessionId: '', agentSessions: [], agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
+    agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
     agentDelegations: [], agentWidgets: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
-    agentAttachments: [], agentAssets: [], agentAssetsOpen: false, agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
+    agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
@@ -166,9 +211,9 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.destroy(); }
+    detached() { this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.pause(); } },
+  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
@@ -178,7 +223,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -209,7 +254,7 @@ Component({
       const saved=wx.getStorageSync(IP12_SESSION_KEY),forceNew=saved===IP12_NEW_SESSION||(this.properties.pageId==='chat'&&outgoing&&outgoing.newConversation);
       const wantedSid=outgoing&&outgoing.sid||saved;
       const current=forceNew?null:(sessions.find(item=>item.sid===wantedSid)||sessions[0]);
-      this.setData({agentSessions:sessions.slice(0,8)});
+      this.setData({agentSessions:sessions.slice(0,8),agentHistorySessions:sessions.slice(0,50).map(item=>Object.assign({},item,{selected:false}))});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
       else if(current){wx.setStorageSync(IP12_SESSION_KEY,current.sid);this.setData({agentSessionId:current.sid,agentTargetLabel:agentSessionLabel(current)});}
       else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{},agentBackgroundWorking:false});
@@ -238,6 +283,7 @@ Component({
         if(item.imageUrl)item.displayImage=await api.mediaSource(api.mediaURL(ip12MediaPath(item.imageUrl))).catch(()=>'');
       })));
       if(!valid())return;
+      if(switching){if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy();this.agentAudio=null;this.agentAssetAudio=null;this.agentAudioMeta=null;}
       wx.setStorageSync(IP12_SESSION_KEY,sid);
       this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
       this.scrollAgent(widgets.length?widgets:items);
@@ -295,7 +341,7 @@ Component({
       }});
     },
     openAgentTools(){this.setData({agentSheet:'tools',agentAssetsOpen:false,agentIpDrawerOpen:false});},
-    closeAgentSheet(){this.setData({agentSheet:'',agentAssetsOpen:false});},
+    closeAgentSheet(){this.setData({agentSheet:'',agentAssetsOpen:false,agentHistoryManage:false,agentHistorySelectedCount:0,agentAssetManage:false,agentAssetSelectedCount:0});},
     keepAgentSheet(){},
     openAgentAvatar(){this.closeAgentSheet();wx.navigateTo({url:'/pages/clone/clone'});},
     cardField(e) {const key=e.currentTarget.dataset.field;if(['name','headline','company','bio','email','address'].includes(key))this.setData({['card.'+key]:e.detail.value});},
@@ -450,7 +496,8 @@ Component({
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
       clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
-      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
+      const sessions=[{sid,preview:'新对话',turns:0,selected:false}].concat((this.data.agentHistorySessions||[]).filter(item=>item.sid!==sid)).slice(0,50);
+      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:sessions.slice(0,8),agentHistorySessions:sessions});
       this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
     },
     addAgentAttachment(item){
@@ -463,41 +510,67 @@ Component({
       if(this.data.busy||this.data.agentThinking)return;
       const kind=e.currentTarget.dataset.kind;
       this.setData({agentSheet:''});
-      wx.chooseMedia({count:kind==='image'?Math.max(1,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length):1,mediaType:[kind],sizeType:['compressed'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.tempFilePath,name:kind==='image'?'图片':'视频',kind,size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='image'?'图片':'视频')+'，请检查微信权限'));}});
+      const count=Math.max(1,Math.min(9,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length));
+      wx.chooseMedia({count,mediaType:[kind],sizeType:['compressed'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map((file,index)=>({path:file.tempFilePath,name:file.name||(kind==='image'?'图片 ':'视频 ')+(index+1),kind,size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='image'?'图片':'视频')+'，请检查微信权限'));}});
     },
     chooseAgentAudio(){
       if(this.data.busy||this.data.agentThinking)return;
       this.setData({agentSheet:''});
-      wx.chooseMessageFile({count:Math.max(1,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length),type:'file',extension:['mp3','wav','m4a','aac','ogg'],success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.path,name:file.name||file.path,kind:'audio',size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择音频，请从微信文件中选择'));}});
+      wx.chooseMessageFile({count:Math.max(1,Math.min(9,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length)),type:'file',extension:['mp3','wav','m4a','aac','ogg'],success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.path,name:file.name||file.path,kind:'audio',size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择音频，请从微信文件中选择'));}});
     },
-    uploadAgentFiles(files){
+    uploadAgentFiles(files,options={}){
       return this.run(async()=>{
         const sid=await this.ensureAgentSession();
+        const libraryImport=options.attach===false,totalBytes=files.reduce((sum,file)=>sum+Math.max(0,Number(file.size)||0),0),remaining=Number(this.data.agentAssetQuotaRemaining);
+        if(libraryImport&&remaining>=0&&totalBytes>remaining)throw new Error('素材库剩余空间不足，请先删除不用的素材');
+        let done=0;const failed=[];
         for(const file of files){
-          const max=file.kind==='video'?100:10;
-          if(file.size>max*1024*1024)throw new Error((file.kind==='video'?'视频':'文件')+'不能超过 '+max+'MB');
-          if((this.data.agentAttachments||[]).length>=AGENT_ATTACHMENT_LIMIT)break;
-          const result=await api.upload(IP12_API+'/upload',file.path,{session_id:sid});
-          this.addAgentAttachment({fileId:result.file_id,name:file.name||result.name,kind:result.kind||file.kind,preview:file.kind==='image'?file.path:'',url:result.url||''});
+          if(file.size>200*1024*1024){failed.push((file.name||'文件')+'超过 200MB');continue;}
+          if(options.attach!==false&&(this.data.agentAttachments||[]).length>=AGENT_ATTACHMENT_LIMIT){failed.push('一次最多发送 10 个素材');break;}
+          try{
+            const result=await api.upload(IP12_API+(libraryImport?'/assets/import':'/upload'),file.path,{session_id:sid});
+            if(options.attach===false&&result.asset&&result.asset.quota_exceeded){failed.push((file.name||'文件')+'：素材库空间已满');continue;}
+            if(options.attach!==false)this.addAgentAttachment({fileId:result.file_id,name:file.name||result.name,kind:result.kind||file.kind,preview:file.path,url:result.url||''});
+            done+=1;this.setData({agentAssetUploadText:'已导入 '+done+' / '+files.length});
+          }catch(error){failed.push((file.name||'文件')+'：'+(error.message||'上传失败'));}
         }
+        if(options.attach===false)await this.loadAgentAssets(true);
+        this.setData({agentAssetUploadText:''});
+        if(failed.length)throw new Error('成功 '+done+' 个；'+failed.slice(0,2).join('；')+(failed.length>2?'等 '+failed.length+' 个失败':''));
+        if(options.attach===false)this.toast('已导入 '+done+' 个素材');
       });
     },
     removeAgentAttachment(e){
       const index=Number(e.currentTarget.dataset.index);
       this.setData({agentAttachments:(this.data.agentAttachments||[]).filter((_,i)=>i!==index)});
     },
-    toggleAgentAssets(){
-      if(this.data.agentSheet==='assets')return this.setData({agentSheet:'',agentAssetsOpen:false});
-      return this.run(async()=>{
-        const sid=await this.ensureAgentSession();
-        const data=await api.request(IP12_API+'/assets?session_id='+encodeURIComponent(sid)+'&limit=10&offset=0');
-        const assets=(data.assets||[]).slice(0,10).map(item=>Object.assign({},item,{kind:/\.(?:mp3|wav|m4a|aac|ogg)$/i.test(item.name||'')?'audio':'image',displayThumb:''}));
-        await Promise.all(assets.map(async item=>{if(item.thumb)item.displayThumb=await api.mediaSource(api.mediaURL(ip12MediaPath(item.thumb))).catch(()=>'');}));
-        this.setData({agentAssets:assets,agentAssetsOpen:true,agentSheet:'assets'});
-      });
+    previewAgentAttachment(e){
+      const item=this.data.agentAttachments[Number(e.currentTarget.dataset.index)];if(!item||!item.preview)return;
+      if(this.agentAssetAudio)this.agentAssetAudio.destroy();const audio=wx.createInnerAudioContext();this.agentAssetAudio=audio;audio.src=item.preview;audio.play();this.toast('正在播放音频');
+    },
+    toggleAgentAssets(){if(this.data.agentSheet==='assets')return this.closeAgentSheet();this.setData({agentSheet:'assets',agentAssetsOpen:true,agentAssetManage:false,agentAssetSelectedCount:0});return this.run(()=>this.loadAgentAssets(true));},
+    async loadAgentAssets(reset){
+      const sid=await this.ensureAgentSession(),source=this.data.agentAssetSource||'all',offset=reset?0:(this.data.agentAssets||[]).length;
+      const data=await api.request(IP12_API+'/assets?session_id='+encodeURIComponent(sid)+'&filter='+encodeURIComponent(source)+'&limit=24&offset='+offset);
+      if(sid!==this.data.agentSessionId||source!==(this.data.agentAssetSource||'all'))return;
+      if(data.degraded)throw new Error(data.error||'主站作品暂时读不到，请稍后重试');
+      const next=(data.assets||[]).map(agentAssetView);
+      await Promise.all(next.map(async item=>{if(item.thumb&&item.kind!=='audio')item.displayThumb=await api.mediaSource(api.mediaURL(ip12MediaPath(item.thumb))).catch(()=>'');}));
+      const assets=reset?next:(this.data.agentAssets||[]).concat(next),quota=data.quota||{};
+      this.setData({agentAssets:assets,agentAssetTotal:Number(data.total)||assets.length,agentAssetQuota:quota.limit?'已用 '+formatBytes(quota.used)+' / '+formatBytes(quota.limit):'主站作品单独管理',agentAssetQuotaRemaining:quota.limit?Math.max(0,Number(quota.limit)-Number(quota.used||0)):-1,agentAssetHasMore:assets.length<Number(data.total||0),agentAssetManage:false,agentAssetSelectedCount:0});
+      this.applyAgentAssetFilter();
+    },
+    applyAgentAssetFilter(){const kind=this.data.agentAssetKind||'all';this.setData({agentVisibleAssets:(this.data.agentAssets||[]).filter(item=>kind==='all'||item.kind===kind)});},
+    selectAgentAssetKind(e){if(this.data.busy)return;this.setData({agentAssetKind:e.currentTarget.dataset.kind||'all',agentAssetSelectedCount:0,agentAssets:this.data.agentAssets.map(item=>Object.assign({},item,{selected:false}))});this.applyAgentAssetFilter();},
+    selectAgentAssetSource(e){if(this.data.busy)return;this.setData({agentAssetSource:e.currentTarget.dataset.source||'all',agentAssets:[],agentVisibleAssets:[],agentAssetManage:false,agentAssetSelectedCount:0});return this.run(()=>this.loadAgentAssets(true));},
+    loadMoreAgentAssets(){if(this.data.agentAssetHasMore&&!this.data.busy)return this.run(()=>this.loadAgentAssets(false));},
+    chooseAgentAssetImport(e){
+      const kind=e.currentTarget.dataset.kind;
+      if(kind==='audio')return wx.chooseMessageFile({count:9,type:'file',extension:['mp3','wav','m4a','aac','ogg'],success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.path,name:file.name||file.path,kind:'audio',size:Number(file.size||0)})),{attach:false}),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择音频'));}});
+      wx.chooseMedia({count:9,mediaType:[kind],sizeType:['compressed'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map((file,index)=>({path:file.tempFilePath,name:file.name||(kind==='video'?'视频 ':'图片 ')+(index+1),kind,size:Number(file.size||0)})),{attach:false}),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='video'?'视频':'图片')));}});
     },
     useAgentAsset(e){
-      const item=this.data.agentAssets[Number(e.currentTarget.dataset.index)];
+      const item=(this.data.agentAssets||[]).find(asset=>asset.id===e.currentTarget.dataset.id);
       if(!item)return;
       return this.run(async()=>{
         const result=await api.request(IP12_API+'/assets/use','POST',{session_id:this.data.agentSessionId,asset_id:item.id});
@@ -506,10 +579,51 @@ Component({
         this.setData({agentAssetsOpen:false,agentSheet:''});
       });
     },
-    switchAgentSession(){
-      const sessions=this.data.agentSessions||[];
-      if(!sessions.length)return this.toast('还没有以前的对话');
-      wx.showActionSheet({itemList:sessions.map(item=>(item.preview||'以前的对话').slice(0,28)),success:result=>{const item=sessions[result.tapIndex];if(item)this.run(()=>this.restoreAgent(item.sid));}});
+    previewAgentAsset(e){
+      if(this.data.agentAssetManage)return this.toggleAgentAssetSelection(e);
+      const item=(this.data.agentAssets||[]).find(asset=>asset.id===e.currentTarget.dataset.id);if(!item)return;
+      const sid=this.data.agentSessionId,id=item.id,active=()=>this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&this.data.agentSheet==='assets'&&(this.data.agentAssets||[]).some(asset=>asset.id===id);
+      if(item.kind==='image'||item.kind==='avatar')return this.run(async()=>{const url=await api.mediaSource(api.mediaURL(ip12MediaPath(item.url)));if(active())wx.previewImage({current:url,urls:[url]});});
+      if(item.kind==='video')return this.run(async()=>{const url=await api.mediaSource(api.mediaURL(ip12MediaPath(item.url)));if(active())wx.previewMedia({sources:[{url,type:'video'}],current:0});});
+      return this.run(async()=>{const url=await api.mediaSource(api.mediaURL(ip12MediaPath(item.url)));if(!active())return;if(this.agentAssetAudio)this.agentAssetAudio.destroy();const audio=wx.createInnerAudioContext();this.agentAssetAudio=audio;audio.src=url;audio.play();this.toast('正在播放音频');});
+    },
+    toggleAgentAssetManage(){this.setData({agentAssetManage:!this.data.agentAssetManage,agentAssetSelectedCount:0,agentAssets:this.data.agentAssets.map(item=>Object.assign({},item,{selected:false}))});this.applyAgentAssetFilter();},
+    toggleAgentAssetSelection(e){const id=e.currentTarget.dataset.id,assets=this.data.agentAssets.map(item=>item.id===id?Object.assign({},item,{selected:!item.selected}):item);this.setData({agentAssets:assets,agentAssetSelectedCount:assets.filter(item=>item.selected).length});this.applyAgentAssetFilter();},
+    deleteAgentAssets(){
+      const selected=this.data.agentAssets.filter(item=>item.selected);if(!selected.length)return this.toast('请先选择素材');
+      wx.showModal({title:'删除 '+selected.length+' 个素材？',content:'会从素材库移除选中项，历史对话不会删除。删除后不可恢复。',confirmText:'确认删除',confirmColor:'#a34235',success:result=>{if(!result.confirm)return;this.run(async()=>{const data=await api.request(IP12_API+'/assets/delete','POST',{session_id:this.data.agentSessionId,items:selected.map(item=>({id:item.id,main_kind:item.main_kind,main_delete_id:item.main_delete_id}))});await this.loadAgentAssets(true);this.toast((data.failed||[]).length?'部分素材未删除':'已删除 '+(data.deleted||[]).length+' 个素材');});}});
+    },
+    openAgentHistory(){
+      if(!(this.data.agentHistorySessions||[]).length)return this.toast('还没有以前的对话');
+      this.setData({agentSheet:'history',agentHistoryManage:false,agentHistorySelectedCount:0,agentHistorySessions:this.data.agentHistorySessions.map(item=>Object.assign({},item,{selected:false}))});
+    },
+    switchAgentSession(){return this.openAgentHistory();},
+    toggleAgentHistoryManage(){this.setData({agentHistoryManage:!this.data.agentHistoryManage,agentHistorySelectedCount:0,agentHistorySessions:this.data.agentHistorySessions.map(item=>Object.assign({},item,{selected:false}))});},
+    toggleAgentHistorySelection(e){
+      const sid=e.currentTarget.dataset.sid,items=this.data.agentHistorySessions.map(item=>item.sid===sid?Object.assign({},item,{selected:!item.selected}):item);
+      this.setData({agentHistorySessions:items,agentHistorySelectedCount:items.filter(item=>item.selected).length});
+    },
+    selectAllAgentHistory(){
+      const select=!(this.data.agentHistorySessions||[]).every(item=>item.selected),items=this.data.agentHistorySessions.map(item=>Object.assign({},item,{selected:select}));
+      this.setData({agentHistorySessions:items,agentHistorySelectedCount:select?items.length:0});
+    },
+    openAgentHistoryItem(e){
+      if(this.data.agentHistoryManage)return this.toggleAgentHistorySelection(e);
+      const sid=e.currentTarget.dataset.sid;if(!sid)return;
+      this.setData({agentSheet:''});return this.run(()=>this.restoreAgent(sid));
+    },
+    deleteAgentHistory(){
+      const ids=(this.data.agentHistorySessions||[]).filter(item=>item.selected).map(item=>item.sid);
+      if(!ids.length)return this.toast('请先选择要删除的对话');
+      wx.showModal({title:'删除 '+ids.length+' 段对话？',content:'删除后不可恢复。只会删除对话及其中临时上传的附件，不会删除账号素材库和已经生成的作品。',confirmText:'确认删除',confirmColor:'#a34235',success:result=>{if(!result.confirm)return;this.run(async()=>{
+        const data=await api.request(IP12_API+'/sessions/delete','POST',{session_ids:ids});
+        const deleted=Array.isArray(data.deleted)?data.deleted:[],failed=Array.isArray(data.failed)?data.failed:[];
+        const remaining=this.data.agentHistorySessions.filter(item=>!deleted.includes(item.sid)).map(item=>Object.assign({},item,{selected:false}));
+        const deletedCurrent=deleted.includes(this.data.agentSessionId);
+        this.setData({agentHistorySessions:remaining,agentSessions:remaining.slice(0,8),agentHistorySelectedCount:0,agentHistoryManage:false,agentSheet:failed.length?'history':''});
+        if(deletedCurrent){wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
+        this.toast(failed.length?'已删除 '+deleted.length+' 段，'+failed.length+' 段未删除':'已删除 '+deleted.length+' 段对话');
+      });}});
     },
     exportAgentConversation(){
       const sid=this.data.agentSessionId;
@@ -568,14 +682,33 @@ Component({
       const messageIndex=Number(e.currentTarget.dataset.message),videoIndex=Number(e.currentTarget.dataset.video);
       const message=this.data.agentMessages[messageIndex],video=message&&message.videos[videoIndex];
       if(!video||video.loading||video.src)return;
-      const path='agentMessages['+messageIndex+'].videos['+videoIndex+']';
+      const sid=this.data.agentSessionId,url=video.url,path='agentMessages['+messageIndex+'].videos['+videoIndex+']';
       this.setData({[path+'.loading']:true});
       try{
-        const src=await api.mediaSource(api.mediaURL(ip12MediaPath(video.url)));
-        if(!this.alive)return;
+        const src=await api.mediaSource(api.mediaURL(ip12MediaPath(url))),current=this.data.agentMessages[messageIndex]&&this.data.agentMessages[messageIndex].videos[videoIndex];
+        if(!this.alive||sid!==this.data.agentSessionId||!current||current.url!==url)return;
+        if(this.visible===false){this.setData({[path+'.loading']:false});return;}
         if(!src)throw new Error('视频地址无效');
         this.setData({[path+'.src']:src,[path+'.loading']:false},()=>{const player=wx.createVideoContext&&wx.createVideoContext(video.domId,this);if(player)player.play();});
-      }catch(_){if(this.alive){this.setData({[path+'.loading']:false});this.fail(new Error('视频加载失败，请检查网络后重试'));}}
+      }catch(_){const current=this.data.agentMessages[messageIndex]&&this.data.agentMessages[messageIndex].videos[videoIndex];if(this.alive&&sid===this.data.agentSessionId&&current&&current.url===url){this.setData({[path+'.loading']:false});this.fail(new Error('视频加载失败，请检查网络后重试'));}}
+    },
+    async toggleAgentAudio(e){
+      const messageIndex=Number(e.currentTarget.dataset.message),audioIndex=Number(e.currentTarget.dataset.audio);
+      const message=this.data.agentMessages[messageIndex],audio=message&&message.audios[audioIndex];
+      if(!audio||audio.loading)return;
+      const sid=this.data.agentSessionId,url=audio.url,path='agentMessages['+messageIndex+'].audios['+audioIndex+']';
+      if(this.agentAudio&&this.agentAudioMeta&&this.agentAudioMeta.sid===sid&&this.agentAudioMeta.message===messageIndex&&this.agentAudioMeta.audio===audioIndex&&audio.playing){this.agentAudio.pause();this.setData({[path+'.playing']:false});return;}
+      if(this.agentAudio){this.agentAudio.destroy();this.agentAudio=null;}
+      if(this.agentAudioMeta){const old='agentMessages['+this.agentAudioMeta.message+'].audios['+this.agentAudioMeta.audio+'].playing';this.setData({[old]:false});}
+      this.setData({[path+'.loading']:true});
+      try{
+        const src=audio.src||await api.mediaSource(api.mediaURL(ip12MediaPath(url))),current=this.data.agentMessages[messageIndex]&&this.data.agentMessages[messageIndex].audios[audioIndex];
+        if(!this.alive||sid!==this.data.agentSessionId||!current||current.url!==url||!src)return;
+        if(this.visible===false){this.setData({[path+'.loading']:false});return;}
+        const player=wx.createInnerAudioContext();this.agentAudio=player;this.agentAudioMeta={sid,message:messageIndex,audio:audioIndex};
+        player.src=src;player.onEnded(()=>{if(this.alive&&this.data.agentSessionId===sid&&this.agentAudio===player)this.setData({[path+'.playing']:false});});player.onError(()=>{if(this.alive&&this.data.agentSessionId===sid&&this.agentAudio===player){this.setData({[path+'.loading']:false,[path+'.playing']:false});this.fail(new Error('音频播放失败，请稍后重试'));}});
+        this.setData({[path+'.src']:src,[path+'.loading']:false,[path+'.playing']:true});player.play();
+      }catch(_){const current=this.data.agentMessages[messageIndex]&&this.data.agentMessages[messageIndex].audios[audioIndex];if(this.alive&&sid===this.data.agentSessionId&&current&&current.url===url){this.setData({[path+'.loading']:false,[path+'.playing']:false});this.fail(new Error('音频加载失败，请检查网络'));}}
     },
     openAgentIpDrawer(){this.setData({agentIpDrawerOpen:true,agentAssetsOpen:false,agentSheet:''});},
     closeAgentIpDrawer(){this.setData({agentIpDrawerOpen:false});},
