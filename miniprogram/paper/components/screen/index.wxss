@@ -45,7 +45,9 @@
 .section-title { font-size: 33rpx; font-weight: 550; }
 .text-button { color: #756a55; padding: 16rpx 0; min-height: 88rpx; font-size: 26rpx; display: flex; align-items: center; flex-shrink: 0; }
 .recent { display: flex; align-items: center; gap: 22rpx; padding: 27rpx 0; border-bottom: 1rpx solid #cdbfa7; width: 100%; }
-.recent .hq-image, .text-thumb { width: 112rpx; height: 112rpx; border-radius: 10rpx; flex-shrink: 0; }
+.recent > .hq-image,.recent-video-thumb,.recent-video-placeholder,.text-thumb { width:112rpx; height:112rpx; border-radius:10rpx; flex-shrink:0; overflow:hidden; }
+.recent-video-placeholder { display:flex; align-items:center; justify-content:center; background:#eee2ca; }
+.recent-video-placeholder .hq-image { width:42rpx; height:42rpx; opacity:.72; }
 .recent-info { flex: 1; font-size: 29rpx; }
 .recent-info .small { display: block; margin-top: 6rpx; }
 .text-thumb { display: flex; align-items: center; justify-content: center; background: #e6dac4; color: #8c7754; font: 40rpx Georgia, serif; }
@@ -265,7 +267,7 @@
 .shortcut-symbol { display:flex; align-items:center; justify-content:center; width:52rpx; height:52rpx; color:#9a7335; font-size:38rpx; }
 .section-head { margin-top:6rpx; }
 .recent { gap:24rpx; padding:28rpx 0; }
-.recent .hq-image,.text-thumb { width:102rpx; height:102rpx; border-radius:16rpx; }
+.recent > .hq-image,.recent-video-thumb,.recent-video-placeholder,.text-thumb { width:102rpx; height:102rpx; border-radius:16rpx; }
 .bottom-quote { margin-top:44rpx; }
 .filter-scroll { margin:16rpx 0 18rpx; border-bottom:1rpx solid #ddd8cf; }
 .filter-scroll .filter-row { gap:34rpx; }
