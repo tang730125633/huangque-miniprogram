@@ -98,6 +98,9 @@ function delegationCards(value) {
     };
   }).filter(item=>item.needsApproval);
 }
+function agentNeedsInput(value) {
+  return Object.keys(value&&typeof value==='object'?value:{}).some(domain=>value[domain]&&value[domain].state==='needs_user_input');
+}
 function agentWidgets(value,film,selections) {
   const selected=selections&&typeof selections==='object'?selections:{};
   return (Array.isArray(value)?value:[]).filter(widget=>{
@@ -212,7 +215,7 @@ Component({
       if(!valid())return;
       const items=agentMessages(data.history);
       const imageHidden=limitAgentImages(items);
-      const widgets=agentWidgets(data.widgets,data.film,data.selected_choices);
+      const widgets=agentNeedsInput(data.delegations)?agentWidgets(data.widgets,data.film,data.selected_choices):[];
       for(const item of items){
         const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
         if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
@@ -332,6 +335,7 @@ Component({
     sendAgentMessage(message,approval) {
       return this.run(async()=>{
         const sid=await this.ensureAgentSession();
+        if(!approval&&this.data.agentWidgets&&this.data.agentWidgets.length)this.setData({agentWidgets:[]});
         const body={session_id:sid,message:String(message||'').trim()};
         const attachments=approval?[]:(this.data.agentAttachments||[]).slice();
         if(attachments.length)body.attachments=attachments.map(item=>item.fileId);
@@ -515,7 +519,7 @@ Component({
       return this.run(async()=>{
         const data=await api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice});
         if(data.invalidated&&widget.type!=='option_pick')throw new Error('这个选项已经更新，请重新选择');
-        this.setData({['agentWidgets['+widgetIndex+'].selectedId']:item.id});
+        this.setData({agentWidgets:[]});
         return true;
       }).then(ok=>{if(ok)this.sendAgentMessage(message);});
     },
