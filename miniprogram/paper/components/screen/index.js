@@ -40,6 +40,11 @@ function ip12MediaPath(value) {
   const raw=String(value||'');
   return /^\/?api\/v4\//.test(raw)?'/workbench/ip12/'+raw.replace(/^\//,''):raw;
 }
+async function shareLocalPath(value) {
+  const source=await api.mediaSource(value);
+  if(!/^https:\/\//i.test(source))return source;
+  return new Promise((resolve,reject)=>wx.downloadFile({url:source,success:result=>result.statusCode===200&&result.tempFilePath?resolve(result.tempFilePath):reject(new Error('作品下载失败')),fail:()=>reject(new Error('作品下载失败'))}));
+}
 function agentMessages(items) {
   return (Array.isArray(items)?items:[]).map((item,index)=>{
     const media=mediaFromContent(item&&item.content);
@@ -452,6 +457,18 @@ Component({
         const date=new Date().toISOString().slice(0,10).replace(/-/g,'');
         await new Promise((resolve,reject)=>wx.shareFileMessage({filePath:file,fileName:'黄雀对话-'+date+'.jsonl',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('导出失败，请稍后重试'))}));
       });
+    },
+    shareAgentImage(e){
+      if(!wx.showShareImageMenu)return this.toast('当前微信版本不支持转发图片，请升级后重试');
+      const message=this.data.agentMessages[Number(e.currentTarget.dataset.message)],image=message&&message.images[Number(e.currentTarget.dataset.image)];
+      if(!image)return this.toast('这张图片暂时无法转发');
+      return this.run(async()=>{const path=await shareLocalPath(image);await new Promise((resolve,reject)=>wx.showShareImageMenu({path,needShowEntrance:true,entrancePath:'/paper/pages/chat/index',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('图片转发失败，请稍后重试'))}));});
+    },
+    shareAgentVideo(e){
+      if(!wx.shareFileMessage)return this.toast('当前微信版本不支持转发视频，请升级后重试');
+      const message=this.data.agentMessages[Number(e.currentTarget.dataset.message)],video=message&&message.videos[Number(e.currentTarget.dataset.video)];
+      if(!video)return this.toast('这个视频暂时无法转发');
+      return this.run(async()=>{wx.showLoading({title:'正在准备视频'});try{const filePath=await shareLocalPath(video.src||api.mediaURL(ip12MediaPath(video.url)));await new Promise((resolve,reject)=>wx.shareFileMessage({filePath,fileName:'黄雀视频作品.mp4',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('视频转发失败，请稍后重试'))}));}finally{wx.hideLoading();}});
     },
     agentApproval(e){
       const card=this.data.agentDelegations.find(item=>item.key===e.currentTarget.dataset.key);
