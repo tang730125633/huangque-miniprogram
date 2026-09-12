@@ -9,6 +9,8 @@ const IP12_NEW_SESSION = '__new__';
 const AGENT_MESSAGE_LIMIT = 30;
 const AGENT_IMAGE_LIMIT = 10;
 const AGENT_ATTACHMENT_LIMIT = 10;
+const AGENT_WIDGET_DISMISSED_LIMIT = 80;
+const AGENT_WATCH_INTERVAL = 4000;
 const AGENT_QUICK_PHRASES = ['帮我做一张商品图','帮我做一条短视频','帮我写一段文案','看看我的 IP 报告','我不太会用，请一步一步教我'];
 const AGENT_QUICK_KEY_PREFIX = 'hq-agent-quick-phrases-v1:';
 function cleanAgentQuickPhrases(value) {
@@ -98,18 +100,16 @@ function delegationCards(value) {
     };
   }).filter(item=>item.needsApproval);
 }
-function agentNeedsInput(value) {
-  return Object.keys(value&&typeof value==='object'?value:{}).some(domain=>value[domain]&&value[domain].state==='needs_user_input');
-}
-function agentWidgets(value,film,selections) {
+function agentWidgets(value,film,selections,dismissed) {
   const selected=selections&&typeof selections==='object'?selections:{};
+  const hidden=new Set(Array.isArray(dismissed)?dismissed:[]);
   return (Array.isArray(value)?value:[]).filter(widget=>{
     if(!['avatar_pick','voice_pick','script_pick','option_pick'].includes(String(widget&&widget.type||'')))return false;
     return typeof film!=='boolean'||(widget.film!==false)===film;
   }).slice(-4).map((widget,widgetIndex)=>{
     const type=String(widget.type),kind=type==='avatar_pick'?'avatar':type==='voice_pick'?'voice':'script';
     return {
-      key:String(widget.id||type+'-'+widgetIndex),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
+      key:String(widget.id||type+'-'+widgetIndex)+'@'+Math.max(1,Number(widget.gen)||1),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
       title:String(widget.title||'请选择').slice(0,80),hint:String(widget.hint||'').slice(0,240),selectedId:String(selected[kind]&&selected[kind].id||''),
       items:(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>({
         key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:String(item.title||item.name||item.label||'这个选项').slice(0,120),
@@ -117,7 +117,20 @@ function agentWidgets(value,film,selections) {
         previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100)
       })).slice(0,12)
     };
-  }).filter(widget=>widget.items.length);
+  }).filter(widget=>widget.items.length&&!hidden.has(widget.key));
+}
+function dismissAgentWidgets(sid,widgets) {
+  if(!sid||!widgets||!widgets.length)return;
+  const saved=api.read(),all=Object.assign({},saved.ip12DismissedWidgets||{});
+  all[sid]=[...new Set((all[sid]||[]).concat(widgets.map(widget=>widget.key).filter(Boolean)))].slice(-AGENT_WIDGET_DISMISSED_LIMIT);
+  api.save({ip12DismissedWidgets:all});
+}
+function agentBackgroundActive(value) {
+  const delegations=value&&value.delegations&&typeof value.delegations==='object'?value.delegations:{};
+  return Boolean((value&&Array.isArray(value.jobs)&&value.jobs.length)||Object.keys(delegations).some(domain=>['running','submitting','queued'].includes(String(delegations[domain]&&delegations[domain].state||''))));
+}
+function agentDeliverySignature(value) {
+  return JSON.stringify((value&&Array.isArray(value.deliveries)?value.deliveries:[]).map(item=>[item&&item.job&&String(item.job.job_id||item.job.id||''),String(item&&item.reply||'').length,(item&&item.images||[]).length]));
 }
 Component({
   properties: { pageId: { type: String, value: 'home' } },
@@ -131,7 +144,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0,
+    agentDelegations: [], agentWidgets: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
     agentAttachments: [], agentAssets: [], agentAssetsOpen: false, agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -153,9 +166,9 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { this.alive=false; clearTimeout(this.timer);if(this.audio)this.audio.destroy(); }
+    detached() { this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);if(this.audio)this.audio.pause(); } },
+  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.pause(); } },
   methods: {
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
@@ -165,7 +178,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false});}
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -199,7 +212,7 @@ Component({
       this.setData({agentSessions:sessions.slice(0,8)});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
       else if(current){wx.setStorageSync(IP12_SESSION_KEY,current.sid);this.setData({agentSessionId:current.sid,agentTargetLabel:agentSessionLabel(current)});}
-      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{}});
+      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{},agentBackgroundWorking:false});
       if(!valid())return;
       this.setData({agentPending:pending,agentThinking:!!waiting,agentProgress:waiting?'正在恢复处理进度…':''});
       if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
@@ -215,7 +228,8 @@ Component({
       if(!valid())return;
       const items=agentMessages(data.history);
       const imageHidden=limitAgentImages(items);
-      const widgets=agentNeedsInput(data.delegations)?agentWidgets(data.widgets,data.film,data.selected_choices):[];
+      const dismissed=(api.read().ip12DismissedWidgets||{})[sid]||[];
+      const widgets=agentWidgets(data.widgets,data.film,data.selected_choices,dismissed);
       for(const item of items){
         const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
         if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
@@ -227,6 +241,8 @@ Component({
       wx.setStorageSync(IP12_SESSION_KEY,sid);
       this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
       this.scrollAgent(widgets.length?widgets:items);
+      if(this.startAgentWatch)this.startAgentWatch(data.delegations);
+      return data;
     },
     scrollAgent(items=this.data.agentMessages) {
       const last=items[items.length-1];
@@ -335,7 +351,7 @@ Component({
     sendAgentMessage(message,approval) {
       return this.run(async()=>{
         const sid=await this.ensureAgentSession();
-        if(!approval&&this.data.agentWidgets&&this.data.agentWidgets.length)this.setData({agentWidgets:[]});
+        if(!approval&&this.data.agentWidgets&&this.data.agentWidgets.length){dismissAgentWidgets(sid,this.data.agentWidgets);this.setData({agentWidgets:[]});}
         const body={session_id:sid,message:String(message||'').trim()};
         const attachments=approval?[]:(this.data.agentAttachments||[]).slice();
         if(attachments.length)body.attachments=attachments.map(item=>item.fileId);
@@ -371,6 +387,26 @@ Component({
       const labels={compose:'正在整理视频方案…',image:'正在处理图片…',collect:'正在读取素材…',copy:'正在整理文案…',audio:'正在处理声音…',video:'正在处理视频…'};
       const text=labels[domain]||'正在理解你的要求…';
       this.setData({agentProgress:text+(elapsed>=3?' 已等待 '+elapsed+' 秒':'')});
+    },
+    startAgentWatch(delegations){
+      clearTimeout(this.agentWatchTimer);
+      const active=agentBackgroundActive({delegations});
+      this.agentWatchActive=active;this.agentDeliverySignature='';
+      this.setData({agentBackgroundWorking:active});
+      if(active&&this.alive&&this.visible!==false)this.agentWatchTimer=setTimeout(()=>this.watchAgent(this.data.agentSessionId),AGENT_WATCH_INTERVAL);
+    },
+    async watchAgent(sid){
+      if(!sid||!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
+      let status;
+      try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}
+      catch(_){if(this.agentWatchActive)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);return;}
+      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
+      const active=agentBackgroundActive(status),signature=agentDeliverySignature(status);
+      const refresh=(this.agentWatchActive&&!active)||Boolean(this.agentDeliverySignature&&signature!==this.agentDeliverySignature);
+      this.agentWatchActive=active;this.agentDeliverySignature=signature;
+      if(refresh){await this.restoreAgent(sid);return;}
+      this.setData({agentBackgroundWorking:active});
+      if(active)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);
     },
     async pollAgent(sid,target,tries=0) {
       if(!this.alive)return;
@@ -413,7 +449,8 @@ Component({
       const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
-      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
+      clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
+      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
       this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
     },
     addAgentAttachment(item){
@@ -519,7 +556,7 @@ Component({
       return this.run(async()=>{
         const data=await api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice});
         if(data.invalidated&&widget.type!=='option_pick')throw new Error('这个选项已经更新，请重新选择');
-        this.setData({agentWidgets:[]});
+        dismissAgentWidgets(this.data.agentSessionId,[widget]);this.setData({agentWidgets:[]});
         return true;
       }).then(ok=>{if(ok)this.sendAgentMessage(message);});
     },
