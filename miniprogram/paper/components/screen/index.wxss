@@ -214,7 +214,7 @@
 .agent-mode { padding:7rpx 13rpx; border:1rpx solid #d8d4ca; border-radius:999rpx; color:#747a73; background:rgba(255,255,255,.6); font-size:18rpx; font-weight:500; }
 .agent-thread { padding:4rpx 0 14rpx; }
 .agent-message { display:flex; align-items:flex-start; gap:16rpx; margin-bottom:28rpx; }
-.agent-avatar { display:flex; align-items:center; justify-content:center; width:58rpx; height:58rpx; border-radius:18rpx; color:#75501b; background:#f1e5ca; font:31rpx "Songti SC",serif; flex:none; }
+.agent-avatar { width:50rpx; height:50rpx; flex:none; border-radius:50%; }
 .small-avatar { color:#fffdf8; background:#52675b; font:25rpx -apple-system,"PingFang SC",sans-serif; }
 .message-stack { flex:1; min-width:0; }
 .message-meta { margin:0 0 9rpx 4rpx; color:#777c76; font-size:19rpx; font-weight:600; }
@@ -326,8 +326,8 @@
 .history-note { margin:0 0 24rpx; padding:16rpx 20rpx; border-radius:14rpx; color:#716b60; background:#ede9e1; font-size:23rpx; line-height:1.55; text-align:center; }
 .agent-thread-end { height:20rpx; }
 .agent-empty { display:flex; gap:20rpx; align-items:flex-start; padding:36rpx 0; color:#4d534c; font-size:30rpx; line-height:1.85; }
-.agent-message { gap:18rpx; margin-bottom:34rpx; }
-.agent-avatar { width:66rpx; height:66rpx; border-radius:20rpx; font-size:34rpx; }
+.agent-message { gap:12rpx; margin-bottom:30rpx; }
+.agent-avatar { width:50rpx; height:50rpx; border-radius:50%; }
 .message-meta { margin-bottom:10rpx; font-size:23rpx; }
 .agent-bubble,.user-bubble { padding:25rpx 27rpx; font-size:30rpx; line-height:1.75; }
 .user-message { margin:0 0 36rpx 92rpx; }
@@ -401,6 +401,7 @@
 .ip-drawer-name { font-size:29rpx; font-weight:700; line-height:1.35; }
 .ip-drawer-desc { margin-top:7rpx; color:#81796d; font-size:22rpx; line-height:1.45; }
 .ip-drawer-next { flex:none; color:#a7792c; font-size:38rpx; }
+.ip-drawer-confirm { display:flex; width:100%; min-height:76rpx; align-items:center; justify-content:center; margin:-6rpx 0 18rpx; border-radius:18rpx; color:#fffdf8; background:#273029; font-size:25rpx; font-weight:650; }
 @keyframes ip-drawer-in { from { transform:translateX(100%); } to { transform:translateX(0); } }
 @media (prefers-reduced-motion:reduce) { .ip-drawer { animation:none; } }
 
