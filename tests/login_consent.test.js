@@ -3,10 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 const loginWxml = fs.readFileSync(path.join(__dirname, '../miniprogram/pages/login/login.wxml'), 'utf8');
-assert.match(loginWxml, /声音信息专项授权/);
-assert.match(loginWxml, /legal\?type=voiceprint/);
-assert.match(loginWxml, /登录不代表声纹授权/);
-assert.match(loginWxml, /再次弹窗，并要求单独勾选同意/);
+assert.doesNotMatch(loginWxml, /声音信息专项授权|legal\?type=voiceprint|声纹授权/);
+assert.match(loginWxml, /用户服务协议/);
+assert.match(loginWxml, /隐私保护指引/);
 
 const apiPath = require.resolve('../miniprogram/utils/api.js');
 const api = require(apiPath);

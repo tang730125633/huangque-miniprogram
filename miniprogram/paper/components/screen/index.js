@@ -40,6 +40,11 @@ function ip12MediaPath(value) {
   const raw=String(value||'');
   return /^\/?api\/v4\//.test(raw)?'/workbench/ip12/'+raw.replace(/^\//,''):raw;
 }
+async function shareLocalPath(value) {
+  const source=await api.mediaSource(value);
+  if(!/^https:\/\//i.test(source))return source;
+  return new Promise((resolve,reject)=>wx.downloadFile({url:source,success:result=>result.statusCode===200&&result.tempFilePath?resolve(result.tempFilePath):reject(new Error('作品下载失败')),fail:()=>reject(new Error('作品下载失败'))}));
+}
 function agentMessages(items) {
   return (Array.isArray(items)?items:[]).map((item,index)=>{
     const media=mediaFromContent(item&&item.content);
@@ -221,7 +226,13 @@ Component({
       for(let i=0;i<images.length;i+=4)await Promise.all(images.slice(i,i+4).map(async j=>{j.displayUrl=await api.mediaSource(j.url).catch(()=> '');}));
       const covers=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='video'&&j.coverFile);
       for(let i=0;i<covers.length;i+=4)await Promise.all(covers.slice(i,i+4).map(async j=>{j.displayCover=await api.mediaSource(api.mediaURL('/api/gen/file/'+j.coverFile)).catch(()=>'');}));
-      if(valid()){this.setData({works,hasMore:page==='works'&&batches.some(b=>b.length>=limit)});this.applyFilter();}
+      if(valid()){
+        this.setData({works,hasMore:page==='works'&&batches.some(b=>b.length>=limit)});this.applyFilter();
+        if(page==='home'){
+          const previews=works.slice(0,2).filter(j=>j.kind==='video'&&!j.displayCover&&j.url);
+          Promise.all(previews.map(async j=>{j.previewVideo=await api.mediaSource(j.url).catch(()=>'');})).then(()=>{if(valid())this.setData({works});});
+        }
+      }
     },
     field(e) { const key=e.currentTarget.dataset.field;if(['promptInput','username','password','feedbackInput','search'].includes(key)){this.setData({[key]:e.detail.value});if(key==='search')this.applyFilter();} },
     agentInput(e){const text=String(e.detail&&e.detail.value||'');this.agentDraft=text;const hasText=Boolean(text.trim());if(this.data&&hasText!==this.data.agentHasText)this.setData({agentHasText:hasText});},
@@ -261,10 +272,13 @@ Component({
     startChat(){
       if(!this.requireLogin())return;
       const message=this.data.promptInput.trim();
-      if(!message)return this.toast('请先写一句想说的话');
       const sid=this.data.agentSessionId||'';
-      api.save({ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
+      if(message)api.save({ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
       this.navigate('chat');
+    },
+    freezeRecentVideoPreview(e){
+      const player=wx.createVideoContext&&wx.createVideoContext(e.currentTarget.id,this);
+      if(player)setTimeout(()=>player.pause(),120);
     },
     chooseHomeAgentTarget(){
       const sessions=this.data.agentSessions||[];
@@ -443,6 +457,18 @@ Component({
         const date=new Date().toISOString().slice(0,10).replace(/-/g,'');
         await new Promise((resolve,reject)=>wx.shareFileMessage({filePath:file,fileName:'黄雀对话-'+date+'.jsonl',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('导出失败，请稍后重试'))}));
       });
+    },
+    shareAgentImage(e){
+      if(!wx.showShareImageMenu)return this.toast('当前微信版本不支持转发图片，请升级后重试');
+      const message=this.data.agentMessages[Number(e.currentTarget.dataset.message)],image=message&&message.images[Number(e.currentTarget.dataset.image)];
+      if(!image)return this.toast('这张图片暂时无法转发');
+      return this.run(async()=>{const path=await shareLocalPath(image);await new Promise((resolve,reject)=>wx.showShareImageMenu({path,needShowEntrance:true,entrancePath:'/paper/pages/chat/index',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('图片转发失败，请稍后重试'))}));});
+    },
+    shareAgentVideo(e){
+      if(!wx.shareFileMessage)return this.toast('当前微信版本不支持转发视频，请升级后重试');
+      const message=this.data.agentMessages[Number(e.currentTarget.dataset.message)],video=message&&message.videos[Number(e.currentTarget.dataset.video)];
+      if(!video)return this.toast('这个视频暂时无法转发');
+      return this.run(async()=>{wx.showLoading({title:'正在准备视频'});try{const filePath=await shareLocalPath(video.src||api.mediaURL(ip12MediaPath(video.url)));await new Promise((resolve,reject)=>wx.shareFileMessage({filePath,fileName:'黄雀视频作品.mp4',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('视频转发失败，请稍后重试'))}));}finally{wx.hideLoading();}});
     },
     agentApproval(e){
       const card=this.data.agentDelegations.find(item=>item.key===e.currentTarget.dataset.key);

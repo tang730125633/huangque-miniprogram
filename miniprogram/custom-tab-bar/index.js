@@ -1,7 +1,7 @@
 const WORKBENCH_ITEMS = [
-  { pagePath: '/pages/home/home', text: '对话', symbol: '•••' },
-  { pagePath: '/pages/assets/assets', text: '作品', symbol: '▣' },
-  { pagePath: '/pages/profile/profile', text: '我的', symbol: '○' }
+  { pagePath: '/pages/home/home', text: '对话', icon: '/assets/icons/nav-chat.svg' },
+  { pagePath: '/pages/assets/assets', text: '作品', icon: '/assets/icons/nav-works.svg' },
+  { pagePath: '/pages/profile/profile', text: '我的', icon: '/assets/icons/nav-profile.svg' }
 ];
 
 const LOGIN_REQUIRED = {

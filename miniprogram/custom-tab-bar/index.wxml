@@ -5,8 +5,9 @@
     class="tab-item {{selected === item.pagePath ? 'active' : ''}}"
     data-path="{{item.pagePath}}"
     bindtap="switchTab"
+    aria-label="{{item.text}}"
   >
-    <cover-view class="tab-icon-symbol">{{item.symbol}}</cover-view>
+    <cover-view class="tab-icon-shell"><cover-image class="tab-icon" src="{{item.icon}}" /></cover-view>
     <cover-view class="tab-label">{{item.text}}</cover-view>
   </cover-view>
 </cover-view>

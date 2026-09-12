@@ -25,11 +25,6 @@ button::after{border:0;}
 .agreement-check checkbox{transform:scale(.85);transform-origin:left center;}
 .agreement-link{color:#816338;text-decoration:underline;}
 .agreement-separator{color:var(--text-muted);}
-.voiceprint-agreement{margin-bottom:30rpx;padding:22rpx;border:1rpx solid #cdbd9c;border-radius:12rpx;background:rgba(230,215,184,.30);}
-.voiceprint-agreement-head{display:flex;flex-wrap:wrap;align-items:center;gap:10rpx;justify-content:space-between;}
-.voiceprint-agreement-badge{color:#6e5936;font-size:24rpx;font-weight:600;}
-.voiceprint-agreement-link{color:#816338;font-size:23rpx;text-decoration:underline;}
-.voiceprint-agreement-copy{margin-top:14rpx;color:#756b58;font-size:23rpx;line-height:1.8;}
 .container .btn-primary{display:block;width:100%;min-height:94rpx;padding:24rpx;background:#292b23;border-radius:12rpx;color:#fff8e8;text-align:center;font-size:29rpx;line-height:1.6;box-shadow:none;}
 .container .btn-primary.disabled{background:#d8cdb7;color:#716754;opacity:1;}
 .foot{text-align:center;font-size:23rpx;line-height:1.8;margin-top:28rpx;color:var(--text-muted);}
