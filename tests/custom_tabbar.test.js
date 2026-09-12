@@ -24,7 +24,7 @@ Object.assign(context, definition.methods);
 
 context.syncNavigation();
 assert.deepStrictEqual(context.data.items.map((item) => item.text), ['对话', '作品', '我的']);
-assert.ok(context.data.items.every((item) => item.symbol));
+assert.ok(context.data.items.every((item) => /^\/assets\/icons\/nav-[a-z]+\.svg$/.test(item.icon)));
 context.switchTab({ currentTarget: { dataset: { path: '/pages/home/home' } } });
 assert.deepStrictEqual(switches, []);
 
@@ -39,7 +39,7 @@ assert.deepStrictEqual(switches, ['/pages/profile/profile']);
 route = 'pages/my-card/my-card';
 context.syncNavigation();
 assert.deepStrictEqual(context.data.items.map((item) => item.text), ['对话', '作品', '我的']);
-assert.ok(context.data.items.every((item) => item.symbol));
+assert.ok(context.data.items.every((item) => item.icon));
 assert.deepStrictEqual(navigation.navigationForRoute('pages/my-card/my-card'), navigation.WORKBENCH_ITEMS);
 
 console.log('nested custom tab bar checks passed');
