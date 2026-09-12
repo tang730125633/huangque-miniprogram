@@ -50,6 +50,7 @@
           </view>
         </block>
         <view wx:if="{{agentThinking}}" class="hq-view agent-message"><image class="hq-image agent-avatar" src="/assets/agent-sparrow-avatar.png" mode="aspectFit"/><view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble">{{agentProgress||'正在理解你的要求…'}}</view></view></view>
+        <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">作品正在后台处理，完成后会自动回到这里；你可以继续聊天。</view>
         <view wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card">
           <view class="hq-view agent-widget-head"><view class="hq-view agent-widget-title">{{item.title}}</view><view class="hq-view agent-widget-badge">点一下选择</view></view>
           <text wx:if="{{item.hint}}" class="hq-text agent-widget-hint">{{item.hint}}</text>
