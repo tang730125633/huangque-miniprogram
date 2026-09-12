@@ -98,6 +98,24 @@ function delegationCards(value) {
     };
   }).filter(item=>item.needsApproval);
 }
+function agentWidgets(value,film,selections) {
+  const selected=selections&&typeof selections==='object'?selections:{};
+  return (Array.isArray(value)?value:[]).filter(widget=>{
+    if(!['avatar_pick','voice_pick','script_pick','option_pick'].includes(String(widget&&widget.type||'')))return false;
+    return typeof film!=='boolean'||(widget.film!==false)===film;
+  }).slice(-4).map((widget,widgetIndex)=>{
+    const type=String(widget.type),kind=type==='avatar_pick'?'avatar':type==='voice_pick'?'voice':'script';
+    return {
+      key:String(widget.id||type+'-'+widgetIndex),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
+      title:String(widget.title||'请选择').slice(0,80),hint:String(widget.hint||'').slice(0,240),selectedId:String(selected[kind]&&selected[kind].id||''),
+      items:(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>({
+        key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:String(item.title||item.name||item.label||'这个选项').slice(0,120),
+        summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
+        previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100)
+      })).slice(0,12)
+    };
+  }).filter(widget=>widget.items.length);
+}
 Component({
   properties: { pageId: { type: String, value: 'home' } },
   data: {
@@ -110,7 +128,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0,
+    agentDelegations: [], agentWidgets: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0,
     agentAttachments: [], agentAssets: [], agentAssetsOpen: false, agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -144,7 +162,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false});}
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -178,7 +196,7 @@ Component({
       this.setData({agentSessions:sessions.slice(0,8)});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
       else if(current){wx.setStorageSync(IP12_SESSION_KEY,current.sid);this.setData({agentSessionId:current.sid,agentTargetLabel:agentSessionLabel(current)});}
-      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentReport:{}});
+      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{}});
       if(!valid())return;
       this.setData({agentPending:pending,agentThinking:!!waiting,agentProgress:waiting?'正在恢复处理进度…':''});
       if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
@@ -194,14 +212,18 @@ Component({
       if(!valid())return;
       const items=agentMessages(data.history);
       const imageHidden=limitAgentImages(items);
+      const widgets=agentWidgets(data.widgets,data.film,data.selected_choices);
       for(const item of items){
         const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
         if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
       }
+      await Promise.all(widgets.flatMap(widget=>widget.items.map(async item=>{
+        if(item.imageUrl)item.displayImage=await api.mediaSource(api.mediaURL(ip12MediaPath(item.imageUrl))).catch(()=>'');
+      })));
       if(!valid())return;
       wx.setStorageSync(IP12_SESSION_KEY,sid);
-      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
-      this.scrollAgent(items);
+      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
+      this.scrollAgent(widgets.length?widgets:items);
     },
     scrollAgent(items=this.data.agentMessages) {
       const last=items[items.length-1];
@@ -387,7 +409,7 @@ Component({
       const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
-      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
+      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentSessions:[{sid,preview:'新对话'}].concat((this.data.agentSessions||[]).filter(item=>item.sid!==sid)).slice(0,8)});
       this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
     },
     addAgentAttachment(item){
@@ -482,6 +504,20 @@ Component({
       }).then(ok=>{if(ok)this.sendAgentMessage(decision==='confirm'?'确认执行':'先不执行',{domain:card.domain,quote_id:card.quoteId,decision});});
       if(decision==='cancel')return send();
       wx.showModal({title:'确认使用积分',content:'本次将使用 '+card.cost+' 积分，当前余额 '+card.points+' 积分。确认后才会执行。',confirmText:'确认执行',success:result=>{if(result.confirm)send();}});
+    },
+    chooseAgentWidget(e){
+      if(this.data.busy||this.data.agentThinking)return;
+      const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
+      const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
+      if(!widget||!item)return;
+      const choice={id:item.id,label:item.title,image_url:item.imageUrl,preview_url:item.previewUrl,widgetTitle:widget.title,film:widget.film,manual:true,slot_id:item.slotId,created_at:item.createdAt};
+      const message='【点选】'+widget.title+'：'+item.title+'（id='+item.id+'）';
+      return this.run(async()=>{
+        const data=await api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice});
+        if(data.invalidated&&widget.type!=='option_pick')throw new Error('这个选项已经更新，请重新选择');
+        this.setData({['agentWidgets['+widgetIndex+'].selectedId']:item.id});
+        return true;
+      }).then(ok=>{if(ok)this.sendAgentMessage(message);});
     },
     previewAgentImage(e){
       const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)],current=item&&item.images[Number(e.currentTarget.dataset.image)];

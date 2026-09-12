@@ -379,6 +379,21 @@
 .task-cancel,.task-confirm { display:flex; align-items:center; justify-content:center; flex:1; min-height:88rpx; padding:14rpx; border-radius:16rpx; text-align:center; font-size:26rpx; }
 .task-cancel { border:1rpx solid #d6d2c8; background:#faf9f6; }
 .task-confirm { color:#fffdf8; background:#202620; }
+.agent-widget-card { margin:0 0 24rpx 62rpx; overflow:hidden; border:1rpx solid #d8d1c5; border-radius:22rpx; background:#fffdf9; box-shadow:0 10rpx 28rpx rgba(46,39,27,.06); }
+.agent-widget-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:22rpx 22rpx 16rpx; }
+.agent-widget-title { min-width:0; flex:1; color:#2c312c; font-size:28rpx; font-weight:700; line-height:1.4; }
+.agent-widget-badge { flex:none; padding:6rpx 12rpx; border-radius:999rpx; color:#7b5a25; background:#f3e7cf; font-size:18rpx; }
+.agent-widget-hint { display:block; padding:0 22rpx 18rpx; color:#777168; font-size:23rpx; line-height:1.55; }
+.agent-widget-options { display:flex; flex-direction:column; gap:10rpx; padding:0 12rpx 14rpx; }
+.agent-widget-option { display:flex; width:100%; min-height:96rpx; align-items:center; gap:14rpx; padding:14rpx; border:1rpx solid #e1dbd2; border-radius:16rpx; color:#30352f; background:#fff; text-align:left; }
+.agent-widget-option.selected { border-color:#a97a2e; background:#fbf3e3; }
+.agent-widget-thumb { width:88rpx; height:88rpx; flex:none; border-radius:12rpx; background:#eee8dc; }
+.agent-widget-copy { min-width:0; flex:1; }
+.agent-widget-name,.agent-widget-summary,.agent-widget-body { display:block; }
+.agent-widget-name { font-size:26rpx; font-weight:650; line-height:1.4; }
+.agent-widget-summary { margin-top:4rpx; color:#777168; font-size:21rpx; line-height:1.45; }
+.agent-widget-body { display:-webkit-box; margin-top:6rpx; overflow:hidden; color:#5e625d; font-size:21rpx; line-height:1.5; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+.agent-widget-action { flex:none; min-width:72rpx; color:#8a6223; font-size:22rpx; font-weight:650; text-align:center; }
 
 /* Agent v2: aligned controls, horizontal tools, and a long-prompt composer. */
 .attachment-scroll { width:100%; margin-bottom:18rpx; white-space:nowrap; }

@@ -50,6 +50,17 @@
           </view>
         </block>
         <view wx:if="{{agentThinking}}" class="hq-view agent-message"><image class="hq-image agent-avatar" src="/assets/agent-sparrow-avatar.png" mode="aspectFit"/><view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble">{{agentProgress||'正在理解你的要求…'}}</view></view></view>
+        <view wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card">
+          <view class="hq-view agent-widget-head"><view class="hq-view agent-widget-title">{{item.title}}</view><view class="hq-view agent-widget-badge">点一下选择</view></view>
+          <text wx:if="{{item.hint}}" class="hq-text agent-widget-hint">{{item.hint}}</text>
+          <view class="hq-view agent-widget-options">
+            <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-widget-option {{option.id===item.selectedId?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="chooseAgentWidget" disabled="{{busy||agentThinking}}">
+              <image wx:if="{{option.displayImage}}" class="hq-image agent-widget-thumb" src="{{option.displayImage}}" mode="aspectFill"/>
+              <view class="hq-view agent-widget-copy"><text class="hq-text agent-widget-name">{{option.title}}</text><text wx:if="{{option.summary}}" class="hq-text agent-widget-summary">{{option.summary}}</text><text wx:if="{{option.body}}" class="hq-text agent-widget-body">{{option.body}}</text></view>
+              <text class="hq-text agent-widget-action">{{option.id===item.selectedId?'已选':'选择'}}</text>
+            </button>
+          </view>
+        </view>
         <view wx:for="{{agentDelegations}}" wx:key="key" class="hq-view agent-task-card">
           <view wx:if="{{item.needsApproval}}" class="hq-view"><view class="hq-view task-title">执行前请确认</view><view class="hq-view preserve">{{item.summary}}</view><view class="hq-view task-cost">本次 {{item.cost}} 积分 · 余额 {{item.points}} 积分</view><view class="hq-view task-actions"><button class="hq-button task-cancel" data-key="{{item.key}}" data-decision="cancel" bindtap="agentApproval">先不执行</button><button class="hq-button task-confirm" data-key="{{item.key}}" data-decision="confirm" bindtap="agentApproval">确认执行</button></view></view>
         </view>
