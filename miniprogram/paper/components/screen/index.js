@@ -150,6 +150,7 @@ function agentWidgets(value,film,selections,dismissed) {
   const hidden=new Set(Array.isArray(dismissed)?dismissed:[]);
   return (Array.isArray(value)?value:[]).filter(widget=>{
     if(!['avatar_pick','voice_pick','script_pick','option_pick'].includes(String(widget&&widget.type||'')))return false;
+    if(['avatar_pick','voice_pick'].includes(String(widget.type)))return true;
     return typeof film!=='boolean'||(widget.film!==false)===film;
   }).slice(-4).map((widget,widgetIndex)=>{
     const type=String(widget.type),kind=type==='avatar_pick'?'avatar':type==='voice_pick'?'voice':'script';
