@@ -70,6 +70,33 @@ test('voice slots remain visible when the main turn film mode changes', async ()
   api.request = originalRequest;
 });
 
+test('record sample keeps the previously selected voice slot after its picker card is gone', async () => {
+  const originalRequest = api.request;
+  api.request = async () => ({
+    ok: true, history: [], film: false, delegations: {}, report: {},
+    selected_choices: { voice: { id: 'slot-a', label: '我的克隆音色', slot_id: 'slot-a', created_at: '2026-09-13' } },
+    widgets: [{
+      id: 'sample_source', gen: 3, type: 'option_pick', film: false, title: '样音来源',
+      items: [{ id: 'record_sample', title: '现场录一段', summary: '请朗读：大家好，这是我的一段真实声音样本，我会用自然的语速认真说完这段话，以后用它来创作更多真实有温度的内容。' }],
+    }],
+  });
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  await component.methods.restoreAgent.call(ctx, 'sid-voice-followup');
+  assert.equal(ctx.data.agentWidgets[0].items[0].slotId, 'slot-a');
+  api.request = originalRequest;
+});
+
+test('opening voice consent does not create an empty audio player', () => {
+  let players = 0;
+  global.wx.getRecorderManager = () => ({ onStart() {}, onStop() {}, onError() {} });
+  global.wx.createInnerAudioContext = () => { players += 1; return { onEnded() {}, onError() {} }; };
+  const ctx = { alive: true, data: { agentVoiceFlow: { stage: 'consent' } }, setData, setAgentVoiceFlow: component.methods.setAgentVoiceFlow };
+  assert.equal(component.methods.initAgentVoiceMedia.call(ctx), true);
+  assert.equal(players, 0);
+  assert.equal(component.methods.initAgentVoiceMedia.call(ctx, true), true);
+  assert.equal(players, 1);
+});
+
 test('template catalog keeps the complete list in one horizontal card with inline expansion', async () => {
   const originalRequest = api.request, originalMedia = api.mediaSource;
   const templates = Array.from({ length: 22 }, (_, index) => ({

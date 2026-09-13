@@ -151,6 +151,7 @@ function delegationCards(value) {
 }
 function agentWidgets(value,film,selections,dismissed) {
   const selected=selections&&typeof selections==='object'?selections:{};
+  const selectedVoice=selected.voice&&typeof selected.voice==='object'?selected.voice:{};
   const hidden=new Set(Array.isArray(dismissed)?dismissed:[]);
   return (Array.isArray(value)?value:[]).filter(widget=>{
     if(!['avatar_pick','voice_pick','script_pick','option_pick'].includes(String(widget&&widget.type||'')))return false;
@@ -162,7 +163,7 @@ function agentWidgets(value,film,selections,dismissed) {
     const items=(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>({
       key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:String(item.title||item.name||item.label||'这个选项').slice(0,120),
       summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
-      previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100),recommended:Boolean(item.recommended)
+      previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||(String(item.id)==='record_sample'&&(selectedVoice.slot_id||selectedVoice.id))||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100),recommended:Boolean(item.recommended)
     })).slice(0,layout==='template_catalog'?40:12);
     return {
       key:String(widget.id||type+'-'+widgetIndex)+'@'+Math.max(1,Number(widget.gen)||1),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
@@ -672,7 +673,7 @@ Component({
       if(!this.data.agentVoiceFlow)return;
       this.setData({agentVoiceFlow:Object.assign({},this.data.agentVoiceFlow,patch)});
     },
-    initAgentVoiceMedia(){
+    initAgentVoiceMedia(withPlayer=false){
       if(!this.agentVoiceRecorder){
         if(!wx.getRecorderManager){this.setAgentVoiceFlow({error:'当前微信版本不支持录音，请升级后重试'});return false;}
         const recorder=wx.getRecorderManager();this.agentVoiceRecorder=recorder;
@@ -680,7 +681,7 @@ Component({
         recorder.onStop(result=>{this.stopAgentVoiceTimer();if(!this.alive||!this.data.agentVoiceFlow)return;const filePath=result&&result.tempFilePath;if(!filePath)return this.setAgentVoiceFlow({stage:'record',error:'没有取得录音文件，请重试'});this.readAgentVoiceSample(filePath);});
         recorder.onError(()=>{this.stopAgentVoiceTimer();if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({stage:'record',error:'录音失败，请检查麦克风权限'});});
       }
-      if(!this.agentVoicePlayer){
+      if(withPlayer&&!this.agentVoicePlayer){
         const player=wx.createInnerAudioContext();this.agentVoicePlayer=player;
         player.onEnded(()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({playing:false});});
         player.onError(()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({playing:false,error:'样音暂时无法播放，请重试'});});
@@ -731,7 +732,7 @@ Component({
       wx.getFileSystemManager().readFile({filePath,encoding:'base64',success:result=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({stage:'review',samplePath:filePath,audioB64:result.data,recSec:seconds,progress:Math.min(100,Math.round(seconds/60*100)),error:''});},fail:()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({stage:'record',error:'样音读取失败，请重新录制'});}});
     },
     playAgentVoiceSample(){
-      const flow=this.data.agentVoiceFlow;if(!flow||!flow.samplePath||!this.initAgentVoiceMedia())return;
+      const flow=this.data.agentVoiceFlow;if(!flow||!flow.samplePath||!this.initAgentVoiceMedia(true))return;
       if(flow.playing){this.agentVoicePlayer.pause();this.setAgentVoiceFlow({playing:false});return;}
       this.agentVoicePlayer.src=flow.samplePath;this.agentVoicePlayer.play();this.setAgentVoiceFlow({playing:true});
     },
