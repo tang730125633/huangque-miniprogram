@@ -158,14 +158,16 @@ function agentWidgets(value,film,selections,dismissed) {
     return typeof film!=='boolean'||(widget.film!==false)===film;
   }).slice(-4).map((widget,widgetIndex)=>{
     const type=String(widget.type),kind=type==='avatar_pick'?'avatar':type==='voice_pick'?'voice':'script';
+    const layout=widget.layout==='template_catalog'?'template_catalog':'list';
+    const items=(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>({
+      key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:String(item.title||item.name||item.label||'这个选项').slice(0,120),
+      summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
+      previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100),recommended:Boolean(item.recommended)
+    })).slice(0,layout==='template_catalog'?40:12);
     return {
       key:String(widget.id||type+'-'+widgetIndex)+'@'+Math.max(1,Number(widget.gen)||1),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
       title:String(widget.title||'请选择').slice(0,80),hint:String(widget.hint||'').slice(0,240),selectedId:String(selected[kind]&&selected[kind].id||''),
-      items:(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>({
-        key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:String(item.title||item.name||item.label||'这个选项').slice(0,120),
-        summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
-        previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100)
-      })).slice(0,12)
+      layout,catalogExpanded:false,itemCount:items.length,items
     };
   }).filter(widget=>widget.items.length&&!hidden.has(widget.key));
 }
@@ -759,6 +761,11 @@ Component({
       const recording=this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording';this.setData({agentVoiceFlow:null});this.stopAgentVoiceTimer();clearTimeout(this.agentVoicePollTimer);if(recording&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.stop();
     },
     disposeAgentVoice(){this.stopAgentVoiceTimer();clearTimeout(this.agentVoicePollTimer);if(this.agentVoiceRecorder&&this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording')this.agentVoiceRecorder.stop();if(this.agentVoicePlayer){this.agentVoicePlayer.destroy();this.agentVoicePlayer=null;}},
+    toggleAgentTemplateCatalog(e){
+      const index=Number(e.currentTarget.dataset.widget),widget=this.data.agentWidgets[index];
+      if(!widget||widget.layout!=='template_catalog')return;
+      this.setData({['agentWidgets['+index+'].catalogExpanded']:!widget.catalogExpanded});
+    },
     chooseAgentWidget(e){
       if(this.data.busy||this.data.agentThinking)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);

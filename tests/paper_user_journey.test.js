@@ -70,6 +70,28 @@ test('voice slots remain visible when the main turn film mode changes', async ()
   api.request = originalRequest;
 });
 
+test('template catalog keeps the complete list in one horizontal card with inline expansion', async () => {
+  const originalRequest = api.request, originalMedia = api.mediaSource;
+  const templates = Array.from({ length: 22 }, (_, index) => ({
+    id: 'template-' + index, title: '模板 ' + (index + 1), summary: '9:16 · 12 秒',
+    body: '适合批量内容展示', image_url: '/api/v4/template-previews/template-' + index + '.jpg',
+    recommended: index < 6,
+  }));
+  api.request = async () => ({ ok: true, history: [], film: false, delegations: {}, report: {}, selected_choices: {}, widgets: [{
+    id: 'template_catalog', gen: 1, type: 'option_pick', film: false, layout: 'template_catalog',
+    title: '模板成片 · 全部模板', hint: '共 22 个', items: templates,
+  }] });
+  api.mediaSource = async url => url;
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  await component.methods.restoreAgent.call(ctx, 'sid-template-catalog');
+  assert.equal(ctx.data.agentWidgets[0].layout, 'template_catalog');
+  assert.equal(ctx.data.agentWidgets[0].items.length, 22);
+  assert.equal(ctx.data.agentWidgets[0].items[5].recommended, true);
+  assert.match(screenWxml, /scroll-x="{{!item\.catalogExpanded}}"/);
+  assert.match(screenWxml, /查看全部/);
+  api.request = originalRequest; api.mediaSource = originalMedia;
+});
+
 test('record sample widget opens an inline recorder without leaving the chat', () => {
   let navigated = false;
   global.wx.navigateTo = () => { navigated = true; };
