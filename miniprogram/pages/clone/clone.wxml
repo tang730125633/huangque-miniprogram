@@ -120,7 +120,7 @@
       <view class="section-head">
         <view>
           <view class="section-title">录制样音</view>
-          <view class="section-sub">建议 10–60 秒，保持正常语速</view>
+          <view class="section-sub">请录制 30–60 秒，保持正常语速</view>
         </view>
         <view class="duration {{recording?'live':''}}">{{recSec}} / 60 秒</view>
       </view>
@@ -141,7 +141,7 @@
 
       <view class="script-box">
         <view class="script-label">建议朗读</view>
-        <view class="script-text">大家好，这是我的专属声音。我会用自然清晰的表达，为每一段内容带来真实而有温度的讲述。</view>
+        <view class="script-text">{{sampleScript}}</view>
       </view>
 
       <view class="quality-row">

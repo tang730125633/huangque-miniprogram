@@ -59,7 +59,7 @@
             <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-widget-option {{option.id===item.selectedId?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="chooseAgentWidget" disabled="{{busy||agentThinking}}">
               <image wx:if="{{option.displayImage}}" class="hq-image agent-widget-thumb" src="{{option.displayImage}}" mode="aspectFill"/>
               <view class="hq-view agent-widget-copy"><text class="hq-text agent-widget-name">{{option.title}}</text><text wx:if="{{option.summary}}" class="hq-text agent-widget-summary">{{option.summary}}</text><text wx:if="{{option.body}}" class="hq-text agent-widget-body">{{option.body}}</text></view>
-              <text class="hq-text agent-widget-action">{{option.id===item.selectedId?'已选':'选择'}}</text>
+              <text class="hq-text agent-widget-action">{{option.id==='record_sample'?'开始录音':option.id==='upload_sample'?'上传录音':option.id===item.selectedId?'已选':'选择'}}</text>
             </button>
           </view>
         </view>

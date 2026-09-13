@@ -666,6 +666,17 @@ Component({
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
       if(!widget||!item)return;
+      if(item.id==='record_sample'){
+        const voiceWidget=(this.data.agentWidgets||[]).find(candidate=>candidate.kind==='voice');
+        const voiceItem=voiceWidget&&voiceWidget.items.find(option=>option.id===voiceWidget.selectedId);
+        const slotId=item.slotId||(voiceItem&&voiceItem.slotId)||'';
+        const script=String(item.summary||item.body||'').replace(/^请朗读[：:]\s*/,'').trim();
+        const query=['record=1'];
+        if(slotId)query.push('slot_id='+encodeURIComponent(slotId));
+        if(script)query.push('script='+encodeURIComponent(script));
+        wx.navigateTo({url:'/pages/clone/clone?'+query.join('&')});
+        return;
+      }
       const choice={id:item.id,label:item.title,image_url:item.imageUrl,preview_url:item.previewUrl,widgetTitle:widget.title,film:widget.film,manual:true,slot_id:item.slotId,created_at:item.createdAt};
       const message='【点选】'+widget.title+'：'+item.title+'（id='+item.id+'）';
       return this.run(async()=>{
