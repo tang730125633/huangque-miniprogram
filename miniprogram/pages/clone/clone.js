@@ -29,12 +29,23 @@ Page({
     trainSec: 0,
     previewUrl: '',
     playing: false,
+    sampleScript: '大家好，我是黄雀的用户。平时我喜欢用自然、清晰的方式分享自己的想法，也希望把真正有价值的内容讲给更多人听。今天我正在录制一段声音样本，请用平常说话的语速和音量完成这段朗读。感谢你的聆听，希望以后能用这个专属声音，创作更多真实、有温度的作品。',
     consentGateVisible: true,
     voiceConsent: false,
     voiceConsentAt: ''
   },
 
-  onLoad() { this._active = true; },
+  onLoad(options = {}) {
+    this._active = true;
+    this._recordMode = options.record === '1';
+    let script = String(options.script || '');
+    try { script = decodeURIComponent(script); } catch (_) {}
+    script = script.replace(/^请朗读[：:]\s*/, '').trim();
+    this.setData({
+      slotId: String(options.slot_id || ''),
+      sampleScript: script.slice(0, 300) || this.data.sampleScript
+    });
+  },
 
   _initMedia() {
     if (this._mediaReady) return;
@@ -140,7 +151,9 @@ Page({
       err: slot.clone_error || ''
     });
     this._active = true;
-    if (slot.status === 'ready' || slot.preview_url) {
+    if (this._recordMode && slot.status !== 'training') {
+      this.setData({ stage: 'clone' });
+    } else if (slot.status === 'ready' || slot.preview_url) {
       this.setData({ stage: 'ready' });
     } else if (slot.status === 'training') {
       this.setData({ stage: 'training', trainSec: 0 });
@@ -273,8 +286,8 @@ Page({
   _stopTimer() { if (this._timer) { clearInterval(this._timer); this._timer = null; } },
 
   _readSample(filePath) {
-    if (this.data.recSec < 10) {
-      this.setData({ err: '录音太短，请录制至少 10 秒', hasSample: false, audioB64: '' });
+    if (this.data.recSec < 30) {
+      this.setData({ err: '录音太短，请录制至少 30 秒', hasSample: false, audioB64: '' });
       return;
     }
     this._sampleFile = filePath;

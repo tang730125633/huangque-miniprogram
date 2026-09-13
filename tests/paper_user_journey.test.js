@@ -16,6 +16,7 @@ global.getCurrentPages = () => [];
 global.Component = value => { component = value; };
 
 const api = require('../miniprogram/paper/services/api');
+const screenWxml = fs.readFileSync(path.join(__dirname, '..', 'miniprogram', 'paper', 'components', 'screen', 'index.wxml'), 'utf8');
 api.setSession({ token: 'journey-token', user: { username: 'journey-user' } });
 require('../miniprogram/paper/components/screen/index');
 
@@ -67,6 +68,21 @@ test('voice slots remain visible when the main turn film mode changes', async ()
   assert.equal(ctx.data.agentWidgets[0].type, 'voice_pick');
   assert.equal(ctx.data.agentWidgets[0].items[0].slotId, 'slot-a');
   api.request = originalRequest;
+});
+
+test('record sample widget opens the real clone recorder with its reading script', () => {
+  let navigated = '';
+  global.wx.navigateTo = options => { navigated = options.url; };
+  const ctx = {
+    data: { busy: false, agentThinking: false, agentWidgets: [{
+      title: '样音来源', kind: 'script', film: false,
+      items: [{ id: 'record_sample', title: '现场录一段', summary: '请朗读：大家好，这是我的专属声音。' }],
+    }] },
+  };
+  component.methods.chooseAgentWidget.call(ctx, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  assert.match(navigated, /^\/pages\/clone\/clone\?record=1&script=/);
+  assert.match(decodeURIComponent(navigated), /大家好，这是我的专属声音/);
+  assert.match(screenWxml, /record_sample[^\n]+开始录音/);
 });
 
 test('history management calls the deployed batch-delete contract', async () => {
