@@ -52,7 +52,7 @@
         </block>
         <view wx:if="{{agentThinking}}" class="hq-view agent-message"><image class="hq-image agent-avatar" src="/assets/agent-sparrow-avatar.png" mode="aspectFit"/><view class="hq-view message-stack"><view class="hq-view message-meta">黄雀助手</view><view class="hq-view agent-bubble">{{agentProgress||'正在理解你的要求…'}}</view></view></view>
         <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">作品正在后台处理，完成后会自动回到这里；你可以继续聊天。</view>
-        <view wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card">
+        <view wx:if="{{!agentVoiceFlow}}" wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card">
           <view class="hq-view agent-widget-head"><view class="hq-view agent-widget-title">{{item.title}}</view><view class="hq-view agent-widget-badge">点一下选择</view></view>
           <text wx:if="{{item.hint}}" class="hq-text agent-widget-hint">{{item.hint}}</text>
           <view class="hq-view agent-widget-options">
@@ -62,6 +62,45 @@
               <text class="hq-text agent-widget-action">{{option.id==='record_sample'?'开始录音':option.id==='upload_sample'?'上传录音':option.id===item.selectedId?'已选':'选择'}}</text>
             </button>
           </view>
+        </view>
+        <view wx:if="{{agentVoiceFlow}}" id="agent-voice-clone-card" class="hq-view agent-voice-card">
+          <view class="hq-view agent-voice-head">
+            <view class="hq-view agent-voice-mark">声</view>
+            <view class="hq-view agent-voice-head-copy"><text class="hq-text agent-voice-title">克隆我的声音</text><text class="hq-text agent-voice-subtitle">不用离开对话，跟着卡片完成</text></view>
+            <button class="hq-button agent-voice-close" bindtap="closeAgentVoiceFlow" aria-label="关闭录音卡">×</button>
+          </view>
+          <view class="hq-view agent-voice-steps"><view class="hq-view agent-voice-step done"></view><view class="hq-view agent-voice-step {{agentVoiceFlow.stage!=='consent'?'done':''}}"></view><view class="hq-view agent-voice-step {{agentVoiceFlow.stage==='training'||agentVoiceFlow.stage==='ready'?'done':''}}"></view></view>
+
+          <view wx:if="{{agentVoiceFlow.stage==='consent'}}" class="hq-view agent-voice-body">
+            <view wx:if="{{agentVoiceFlow.slots.length>1||!agentVoiceFlow.slotId}}" class="hq-view agent-voice-slot-list">
+              <text class="hq-text agent-voice-label">先选择保存位置</text>
+              <button wx:for="{{agentVoiceFlow.slots}}" wx:key="id" class="hq-button agent-voice-slot {{item.selected?'selected':''}}" data-slot="{{item.id}}" bindtap="chooseAgentVoiceSlot"><view class="hq-view"><text class="hq-text agent-voice-slot-name">{{item.title}}</text><text class="hq-text agent-voice-slot-meta">{{item.meta||'可保存到这个槽位'}}</text></view><text class="hq-text">{{item.selected?'✓':'选择'}}</text></button>
+            </view>
+            <view class="hq-view agent-voice-script"><view class="hq-view agent-voice-script-head"><text class="hq-text">稍后请照着读</text><text class="hq-text">约 30–60 秒</text></view><text class="hq-text agent-voice-script-text">{{agentVoiceFlow.script}}</text></view>
+            <checkbox-group bindchange="toggleAgentVoiceConsent"><label class="hq-view agent-voice-consent"><checkbox class="agent-voice-consent-check" value="voice" checked="{{agentVoiceFlow.consent}}" color="#273029"/><text class="hq-text">我确认这是本人声音，并同意用于创建个人克隆音色</text></label></checkbox-group>
+            <navigator class="agent-voice-legal" url="/pages/legal/legal?type=voiceprint">查看《声纹授权协议》</navigator>
+            <button class="hq-button agent-voice-primary {{!agentVoiceFlow.consent||!agentVoiceFlow.slotId?'agent-voice-primary-disabled':''}}" bindtap="acceptAgentVoiceConsent" disabled="{{!agentVoiceFlow.consent||!agentVoiceFlow.slotId}}">同意并进入录音</button>
+          </view>
+
+          <view wx:elif="{{agentVoiceFlow.stage==='record'||agentVoiceFlow.stage==='recording'}}" class="hq-view agent-voice-body">
+            <view class="hq-view agent-voice-script"><view class="hq-view agent-voice-script-head"><text class="hq-text">请自然朗读下面文字</text><text class="hq-text">约 35 秒</text></view><text class="hq-text agent-voice-script-text">{{agentVoiceFlow.script}}</text></view>
+            <view class="hq-view agent-voice-recorder {{agentVoiceFlow.stage==='recording'?'recording':''}}">
+              <view class="hq-view agent-voice-timer">{{agentVoiceFlow.recSec}}<text class="hq-text agent-voice-timer-unit">秒</text></view>
+              <view class="hq-view agent-voice-recorder-copy"><text class="hq-text agent-voice-recorder-title">{{agentVoiceFlow.stage==='recording'?'正在录音，请继续朗读':'准备好了就开始'}}</text><text class="hq-text agent-voice-recorder-note">{{agentVoiceFlow.stage==='recording'?'至少 30 秒，60 秒自动停止':'环境安静，与手机保持约一拳距离'}}</text><view wx:if="{{agentVoiceFlow.stage==='recording'}}" class="hq-view agent-voice-wave"><view class="agent-voice-wave-bar"></view><view class="agent-voice-wave-bar"></view><view class="agent-voice-wave-bar"></view><view class="agent-voice-wave-bar"></view><view class="agent-voice-wave-bar"></view></view></view>
+            </view>
+            <view class="hq-view agent-voice-progress"><view class="agent-voice-progress-fill" style="width:{{agentVoiceFlow.progress}}%"></view></view>
+            <view class="hq-view agent-voice-actions"><button class="hq-button agent-voice-secondary" bindtap="closeAgentVoiceFlow">稍后再录</button><button wx:if="{{agentVoiceFlow.stage==='record'}}" class="hq-button agent-voice-primary" bindtap="startAgentVoiceRecording">开始录音</button><button wx:else class="hq-button agent-voice-stop" bindtap="stopAgentVoiceRecording">结束录音</button></view>
+          </view>
+
+          <view wx:elif="{{agentVoiceFlow.stage==='review'}}" class="hq-view agent-voice-body">
+            <button class="hq-button agent-voice-sample" bindtap="playAgentVoiceSample"><view class="hq-view agent-voice-play">{{agentVoiceFlow.playing?'Ⅱ':'▶'}}</view><view class="hq-view agent-voice-sample-copy"><text class="hq-text agent-voice-recorder-title">刚刚录好的样音</text><text class="hq-text agent-voice-recorder-note">{{agentVoiceFlow.recSec}} 秒 · 点击{{agentVoiceFlow.playing?'暂停':'试听'}}</text><view class="hq-view agent-voice-sample-wave"></view></view><text class="hq-text agent-voice-ready">可使用</text></button>
+            <view class="hq-view agent-voice-actions"><button class="hq-button agent-voice-secondary" bindtap="retryAgentVoiceRecording">重新录制</button><button class="hq-button agent-voice-primary {{agentVoiceFlow.busy?'agent-voice-primary-disabled':''}}" bindtap="submitAgentVoiceClone" disabled="{{agentVoiceFlow.busy}}">{{agentVoiceFlow.busy?'正在提交…':'提交克隆'}}</button></view>
+          </view>
+
+          <view wx:elif="{{agentVoiceFlow.stage==='training'}}" class="hq-view agent-voice-body"><text class="hq-text agent-voice-training-title">正在学习你的声音</text><view class="hq-view agent-voice-training-track"><view class="agent-voice-training-fill"></view></view><text class="hq-text agent-voice-training-note">已处理 {{agentVoiceFlow.trainSec}} 秒 · 可以继续在当前页面聊天</text></view>
+
+          <view wx:else class="hq-view agent-voice-body"><view class="hq-view agent-voice-success"><text class="hq-text agent-voice-success-title">✓ 克隆音色已准备好</text><text class="hq-text agent-voice-success-note">已经保存到“我的克隆音色”，以后可以直接选用</text></view><view class="hq-view agent-voice-actions"><button class="hq-button agent-voice-secondary" bindtap="playAgentVoiceSample">试听</button><button class="hq-button agent-voice-primary" bindtap="useAgentVoiceClone">使用这个音色</button></view></view>
+          <text wx:if="{{agentVoiceFlow.error}}" class="hq-text agent-voice-error">{{agentVoiceFlow.error}}</text>
         </view>
         <view wx:for="{{agentDelegations}}" wx:key="key" class="hq-view agent-task-card">
           <view wx:if="{{item.needsApproval}}" class="hq-view"><view class="hq-view task-title">执行前请确认</view><view class="hq-view preserve">{{item.summary}}</view><view class="hq-view task-cost">本次 {{item.cost}} 积分 · 余额 {{item.points}} 积分</view><view class="hq-view task-actions"><button class="hq-button task-cancel" data-key="{{item.key}}" data-decision="cancel" bindtap="agentApproval">先不执行</button><button class="hq-button task-confirm" data-key="{{item.key}}" data-decision="confirm" bindtap="agentApproval">确认执行</button></view></view>

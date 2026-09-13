@@ -70,19 +70,59 @@ test('voice slots remain visible when the main turn film mode changes', async ()
   api.request = originalRequest;
 });
 
-test('record sample widget opens the real clone recorder with its reading script', () => {
-  let navigated = '';
-  global.wx.navigateTo = options => { navigated = options.url; };
+test('record sample widget opens an inline recorder without leaving the chat', () => {
+  let navigated = false;
+  global.wx.navigateTo = () => { navigated = true; };
   const ctx = {
-    data: { busy: false, agentThinking: false, agentWidgets: [{
+    data: { busy: false, agentThinking: false, agentSessionId: 'sid-voice-inline', agentVoiceFlow: null, agentWidgets: [{
+      title: '声音克隆槽位', kind: 'voice', selectedId: 'slot-a', film: false,
+      items: [{ id: 'slot-a', title: '我的克隆音色', slotId: 'slot-a', createdAt: '2026-09-13' }],
+    }, {
       title: '样音来源', kind: 'script', film: false,
-      items: [{ id: 'record_sample', title: '现场录一段', summary: '请朗读：大家好，这是我的专属声音。' }],
-    }] },
+      items: [{ id: 'record_sample', title: '现场录一段', summary: '请朗读：大家好，这是我的专属声音。我会用平常说话的语速介绍自己的工作、生活和最近正在做的事情，也会认真把每一句话说清楚。今天这段录音只用于创建我的个人音色，希望以后可以用它讲出更多真实、有温度的内容。谢谢你听我说完，祝你今天开心。' }],
+    }] }, setData, initAgentVoiceMedia() {}, openAgentVoiceFlow: component.methods.openAgentVoiceFlow,
   };
-  component.methods.chooseAgentWidget.call(ctx, { currentTarget: { dataset: { widget: 0, option: 0 } } });
-  assert.match(navigated, /^\/pages\/clone\/clone\?record=1&script=/);
-  assert.match(decodeURIComponent(navigated), /大家好，这是我的专属声音/);
-  assert.match(screenWxml, /record_sample[^\n]+开始录音/);
+  component.methods.chooseAgentWidget.call(ctx, { currentTarget: { dataset: { widget: 1, option: 0 } } });
+  assert.equal(navigated, false);
+  assert.equal(ctx.data.agentVoiceFlow.stage, 'consent');
+  assert.equal(ctx.data.agentVoiceFlow.slotId, 'slot-a');
+  assert.match(ctx.data.agentVoiceFlow.script, /大家好，这是我的专属声音/);
+  assert.match(screenWxml, /agent-voice-card/);
+  assert.match(screenWxml, /30–60 秒/);
+  assert.match(screenWxml, /bindtap="submitAgentVoiceClone"/);
+});
+
+test('inline voice clone submits the recorded sample to the existing backend contract', async () => {
+  const originalRequest = api.request;
+  let request, polled = false;
+  api.request = async (requestPath, method, data) => { request = { requestPath, method, data }; return { ok: true }; };
+  const ctx = {
+    alive: true,
+    data: { agentVoiceFlow: { sid: 'sid-clone', stage: 'review', slotId: 'slot-a', audioB64: 'ZmFrZS1tcDM=', audioFormat: 'mp3', consent: true, consentAt: '2026-09-13T00:00:00.000Z', busy: false } },
+    setData,
+    setAgentVoiceFlow: component.methods.setAgentVoiceFlow,
+    pollAgentVoiceClone() { polled = true; },
+  };
+  await component.methods.submitAgentVoiceClone.call(ctx);
+  assert.equal(request.requestPath, '/api/gen/audio/clone-vip');
+  assert.equal(request.method, 'POST');
+  assert.equal(request.data.slot_id, 'slot-a');
+  assert.equal(request.data.voice_consent, true);
+  assert.equal(ctx.data.agentVoiceFlow.stage, 'training');
+  assert.equal(polled, true);
+  api.request = originalRequest;
+});
+
+test('inline recorder rejects samples shorter than 30 seconds', () => {
+  global.wx.getFileSystemManager = () => ({ readFile: options => options.success({ data: 'encoded-mp3' }) });
+  const ctx = { alive: true, agentVoiceSeconds: 29, data: { agentVoiceFlow: { stage: 'recording' } }, setData, setAgentVoiceFlow: component.methods.setAgentVoiceFlow };
+  component.methods.readAgentVoiceSample.call(ctx, 'short.mp3');
+  assert.equal(ctx.data.agentVoiceFlow.stage, 'record');
+  assert.match(ctx.data.agentVoiceFlow.error, /至少 30 秒/);
+  ctx.agentVoiceSeconds = 30;
+  component.methods.readAgentVoiceSample.call(ctx, 'valid.mp3');
+  assert.equal(ctx.data.agentVoiceFlow.stage, 'review');
+  assert.equal(ctx.data.agentVoiceFlow.audioB64, 'encoded-mp3');
 });
 
 test('history management calls the deployed batch-delete contract', async () => {

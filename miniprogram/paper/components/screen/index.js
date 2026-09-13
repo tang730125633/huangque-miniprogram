@@ -11,6 +11,10 @@ const AGENT_IMAGE_LIMIT = 10;
 const AGENT_ATTACHMENT_LIMIT = 10;
 const AGENT_WIDGET_DISMISSED_LIMIT = 80;
 const AGENT_WATCH_INTERVAL = 4000;
+const AGENT_VOICE_POLL_INTERVAL = 5000;
+const AGENT_VOICE_POLL_MAX = 60;
+const VOICE_CONSENT_VERSION = '2026-07-23-v2';
+const AGENT_VOICE_DEFAULT_SCRIPT = '大家好，我是黄雀的用户。平时我喜欢用自然、清晰的方式分享自己的想法，也希望把真正有价值的内容讲给更多人听。今天我正在录制一段声音样本，请用平常说话的语速和音量完成这段朗读。感谢你的聆听，希望以后能用这个专属声音，创作更多真实、有温度的作品。';
 const AGENT_QUICK_PHRASES = ['帮我做一张商品图','帮我做一条短视频','帮我写一段文案','看看我的 IP 报告','我不太会用，请一步一步教我'];
 const AGENT_QUICK_KEY_PREFIX = 'hq-agent-quick-phrases-v1:';
 function cleanAgentQuickPhrases(value) {
@@ -190,7 +194,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
+    agentDelegations: [], agentWidgets: [], agentVoiceFlow: null, agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -212,9 +216,9 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
+    detached() { this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
+  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
@@ -284,7 +288,7 @@ Component({
         if(item.imageUrl)item.displayImage=await api.mediaSource(api.mediaURL(ip12MediaPath(item.imageUrl))).catch(()=>'');
       })));
       if(!valid())return;
-      if(switching){if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy();this.agentAudio=null;this.agentAssetAudio=null;this.agentAudioMeta=null;}
+      if(switching){if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy();this.agentAudio=null;this.agentAssetAudio=null;this.agentAudioMeta=null;}
       wx.setStorageSync(IP12_SESSION_KEY,sid);
       this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
       this.scrollAgent(widgets.length?widgets:items);
@@ -495,6 +499,7 @@ Component({
     async startNewAgent(){
       const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
+      if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
       clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
       const sessions=[{sid,preview:'新对话',turns:0,selected:false}].concat((this.data.agentHistorySessions||[]).filter(item=>item.sid!==sid)).slice(0,50);
@@ -661,22 +666,105 @@ Component({
       if(decision==='cancel')return send();
       wx.showModal({title:'确认使用积分',content:'本次将使用 '+card.cost+' 积分，当前余额 '+card.points+' 积分。确认后才会执行。',confirmText:'确认执行',success:result=>{if(result.confirm)send();}});
     },
+    setAgentVoiceFlow(patch){
+      if(!this.data.agentVoiceFlow)return;
+      this.setData({agentVoiceFlow:Object.assign({},this.data.agentVoiceFlow,patch)});
+    },
+    initAgentVoiceMedia(){
+      if(!this.agentVoiceRecorder){
+        if(!wx.getRecorderManager){this.setAgentVoiceFlow({error:'当前微信版本不支持录音，请升级后重试'});return false;}
+        const recorder=wx.getRecorderManager();this.agentVoiceRecorder=recorder;
+        recorder.onStart(()=>{if(!this.alive||!this.data.agentVoiceFlow)return;this.agentVoiceSeconds=0;this.setAgentVoiceFlow({stage:'recording',recSec:0,progress:0,error:''});this.startAgentVoiceTimer();});
+        recorder.onStop(result=>{this.stopAgentVoiceTimer();if(!this.alive||!this.data.agentVoiceFlow)return;const filePath=result&&result.tempFilePath;if(!filePath)return this.setAgentVoiceFlow({stage:'record',error:'没有取得录音文件，请重试'});this.readAgentVoiceSample(filePath);});
+        recorder.onError(()=>{this.stopAgentVoiceTimer();if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({stage:'record',error:'录音失败，请检查麦克风权限'});});
+      }
+      if(!this.agentVoicePlayer){
+        const player=wx.createInnerAudioContext();this.agentVoicePlayer=player;
+        player.onEnded(()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({playing:false});});
+        player.onError(()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({playing:false,error:'样音暂时无法播放，请重试'});});
+      }
+      return true;
+    },
+    openAgentVoiceFlow(item){
+      const voiceWidget=(this.data.agentWidgets||[]).find(candidate=>candidate.kind==='voice');
+      const voiceItems=voiceWidget&&Array.isArray(voiceWidget.items)?voiceWidget.items:[];
+      const selected=voiceItems.find(option=>option.id===voiceWidget.selectedId);
+      const slots=voiceItems.map(option=>({id:option.slotId||option.id,title:option.title||'我的克隆音色',meta:option.createdAt||'',selected:Boolean(selected&&option.id===selected.id)}));
+      const slotId=item.slotId||(selected&&(selected.slotId||selected.id))||(slots.length===1?slots[0].id:'');
+      const raw=String(item.summary||item.body||'').replace(/^请朗读[：:]\s*/,'').trim();
+      const script=raw.length>=60?raw:AGENT_VOICE_DEFAULT_SCRIPT;
+      this.setData({agentVoiceFlow:{sid:this.data.agentSessionId,stage:'consent',slotId,slots,script,name:'我的克隆音色',consent:false,consentAt:'',recSec:0,progress:0,audioB64:'',audioFormat:'mp3',samplePath:'',previewUrl:'',trainSec:0,playing:false,busy:false,error:''}});
+      this.initAgentVoiceMedia();
+      setTimeout(()=>{if(this.alive&&this.data.agentVoiceFlow)this.setData({agentScrollTarget:'agent-voice-clone-card'});},30);
+    },
+    chooseAgentVoiceSlot(e){
+      const flow=this.data.agentVoiceFlow;if(!flow)return;
+      const slotId=String(e.currentTarget.dataset.slot||'');
+      this.setAgentVoiceFlow({slotId,slots:(flow.slots||[]).map(slot=>Object.assign({},slot,{selected:slot.id===slotId})),error:''});
+    },
+    toggleAgentVoiceConsent(e){
+      const values=e.detail&&Array.isArray(e.detail.value)?e.detail.value:[];
+      this.setAgentVoiceFlow({consent:values.includes('voice'),error:''});
+    },
+    acceptAgentVoiceConsent(){
+      const flow=this.data.agentVoiceFlow;if(!flow)return;
+      if(!flow.slotId)return this.setAgentVoiceFlow({error:'请先选择要保存或覆盖的音色槽位'});
+      if(!flow.consent)return this.setAgentVoiceFlow({error:'请先阅读并单独同意《声纹授权协议》'});
+      this.setAgentVoiceFlow({stage:'record',consentAt:new Date().toISOString(),error:''});
+    },
+    startAgentVoiceRecording(){
+      const flow=this.data.agentVoiceFlow;if(!flow||flow.stage!=='record'||!this.initAgentVoiceMedia())return;
+      this.setAgentVoiceFlow({error:''});
+      this.agentVoiceRecorder.start({duration:60000,format:'mp3',sampleRate:16000,numberOfChannels:1,encodeBitRate:48000});
+    },
+    stopAgentVoiceRecording(){if(this.agentVoiceRecorder&&this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording')this.agentVoiceRecorder.stop();},
+    startAgentVoiceTimer(){
+      this.stopAgentVoiceTimer();
+      this.agentVoiceTimer=setInterval(()=>{if(!this.alive||!this.data.agentVoiceFlow)return this.stopAgentVoiceTimer();this.agentVoiceSeconds+=1;this.setAgentVoiceFlow({recSec:this.agentVoiceSeconds,progress:Math.min(100,Math.round(this.agentVoiceSeconds/60*100))});if(this.agentVoiceSeconds>=60)this.agentVoiceRecorder.stop();},1000);
+    },
+    stopAgentVoiceTimer(){if(this.agentVoiceTimer){clearInterval(this.agentVoiceTimer);this.agentVoiceTimer=null;}},
+    readAgentVoiceSample(filePath){
+      const seconds=this.agentVoiceSeconds||0;
+      if(seconds<30)return this.setAgentVoiceFlow({stage:'record',recSec:seconds,progress:Math.round(seconds/60*100),audioB64:'',samplePath:'',error:'录音太短，请连续朗读至少 30 秒'});
+      wx.getFileSystemManager().readFile({filePath,encoding:'base64',success:result=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({stage:'review',samplePath:filePath,audioB64:result.data,recSec:seconds,progress:Math.min(100,Math.round(seconds/60*100)),error:''});},fail:()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({stage:'record',error:'样音读取失败，请重新录制'});}});
+    },
+    playAgentVoiceSample(){
+      const flow=this.data.agentVoiceFlow;if(!flow||!flow.samplePath||!this.initAgentVoiceMedia())return;
+      if(flow.playing){this.agentVoicePlayer.pause();this.setAgentVoiceFlow({playing:false});return;}
+      this.agentVoicePlayer.src=flow.samplePath;this.agentVoicePlayer.play();this.setAgentVoiceFlow({playing:true});
+    },
+    retryAgentVoiceRecording(){if(this.agentVoicePlayer)this.agentVoicePlayer.stop();this.agentVoiceSeconds=0;this.setAgentVoiceFlow({stage:'record',recSec:0,progress:0,audioB64:'',samplePath:'',playing:false,error:''});},
+    async submitAgentVoiceClone(){
+      const flow=this.data.agentVoiceFlow;
+      if(!flow||flow.busy||flow.stage!=='review'||!flow.audioB64)return;
+      if(!flow.slotId||!flow.consent||!flow.consentAt)return this.setAgentVoiceFlow({error:'录音信息不完整，请重新确认'});
+      this.setAgentVoiceFlow({busy:true,error:''});
+      try{
+        const result=await api.request('/api/gen/audio/clone-vip','POST',{slot_id:flow.slotId,audio:flow.audioB64,audio_format:flow.audioFormat||'mp3',name:flow.name||'我的克隆音色',voice_consent:true,voice_consent_version:VOICE_CONSENT_VERSION,voice_consent_at:flow.consentAt},{timeout:60000});
+        if(!result||result.ok===false)throw new Error(result&&result.detail||'提交失败，请重试');
+        if(!this.alive||!this.data.agentVoiceFlow||this.data.agentVoiceFlow.sid!==flow.sid)return;
+        this.setAgentVoiceFlow({stage:'training',busy:false,trainSec:0,error:''});this.pollAgentVoiceClone(0);
+      }catch(error){if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({busy:false,error:error.message||'提交失败，请重试'});}
+    },
+    pollAgentVoiceClone(attempt){
+      clearTimeout(this.agentVoicePollTimer);const flow=this.data.agentVoiceFlow;if(!flow||flow.stage!=='training')return;
+      this.agentVoicePollTimer=setTimeout(async()=>{if(!this.alive||!this.data.agentVoiceFlow||this.data.agentVoiceFlow.sid!==flow.sid)return;try{const result=await api.request('/api/gen/audio/clone-status?slot_id='+encodeURIComponent(flow.slotId));const data=result&&result.result||result||{},preview=data.preview_url||data.voice&&data.voice.preview_url||'';if(data.status==='ready'||preview)return this.setAgentVoiceFlow({stage:'ready',previewUrl:preview,busy:false,error:''});if(data.status==='failed')return this.setAgentVoiceFlow({stage:'review',busy:false,error:data.clone_error||'克隆失败，请重试'});if(attempt>=AGENT_VOICE_POLL_MAX)return this.setAgentVoiceFlow({stage:'review',busy:false,error:'克隆超时，请稍后重试'});this.setAgentVoiceFlow({trainSec:(attempt+1)*5});this.pollAgentVoiceClone(attempt+1);}catch(_){if(attempt>=AGENT_VOICE_POLL_MAX)return this.setAgentVoiceFlow({stage:'review',busy:false,error:'暂时查不到克隆结果，请稍后重试'});this.pollAgentVoiceClone(attempt+1);}},AGENT_VOICE_POLL_INTERVAL);
+    },
+    useAgentVoiceClone(){
+      const flow=this.data.agentVoiceFlow;if(!flow)return;
+      clearTimeout(this.agentVoicePollTimer);dismissAgentWidgets(flow.sid,this.data.agentWidgets||[]);this.setData({agentVoiceFlow:null,agentWidgets:[]});
+      this.sendAgentMessage('我的克隆音色已经准备好了，请继续使用这个音色。');
+    },
+    closeAgentVoiceFlow(){
+      const recording=this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording';this.setData({agentVoiceFlow:null});this.stopAgentVoiceTimer();clearTimeout(this.agentVoicePollTimer);if(recording&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.stop();
+    },
+    disposeAgentVoice(){this.stopAgentVoiceTimer();clearTimeout(this.agentVoicePollTimer);if(this.agentVoiceRecorder&&this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording')this.agentVoiceRecorder.stop();if(this.agentVoicePlayer){this.agentVoicePlayer.destroy();this.agentVoicePlayer=null;}},
     chooseAgentWidget(e){
       if(this.data.busy||this.data.agentThinking)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
       if(!widget||!item)return;
-      if(item.id==='record_sample'){
-        const voiceWidget=(this.data.agentWidgets||[]).find(candidate=>candidate.kind==='voice');
-        const voiceItem=voiceWidget&&voiceWidget.items.find(option=>option.id===voiceWidget.selectedId);
-        const slotId=item.slotId||(voiceItem&&voiceItem.slotId)||'';
-        const script=String(item.summary||item.body||'').replace(/^请朗读[：:]\s*/,'').trim();
-        const query=['record=1'];
-        if(slotId)query.push('slot_id='+encodeURIComponent(slotId));
-        if(script)query.push('script='+encodeURIComponent(script));
-        wx.navigateTo({url:'/pages/clone/clone?'+query.join('&')});
-        return;
-      }
+      if(item.id==='record_sample')return this.openAgentVoiceFlow(item);
       const choice={id:item.id,label:item.title,image_url:item.imageUrl,preview_url:item.previewUrl,widgetTitle:widget.title,film:widget.film,manual:true,slot_id:item.slotId,created_at:item.createdAt};
       const message='【点选】'+widget.title+'：'+item.title+'（id='+item.id+'）';
       return this.run(async()=>{
