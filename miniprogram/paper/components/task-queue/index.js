@@ -1,0 +1,5 @@
+Component({
+ properties:{tasks:{type:Array,value:[]},embedded:{type:Boolean,value:false},reconnecting:{type:Boolean,value:false},top:{type:Number,value:48}},data:{open:false,selected:null},
+ observers:{tasks(tasks){const selected=this.data.selected;if(selected)this.setData({selected:tasks.find(t=>t.id===selected.id&&t.sid===selected.sid)||null});}},
+ methods:{toggle(){const open=!this.data.open;this.setData({open});if(open)this.triggerEvent('refresh');},select(e){const selected=this.properties.tasks.find(t=>t.id===e.currentTarget.dataset.id);if(selected){this.setData({selected});this.triggerEvent('refresh',{id:selected.id});}},closeDetail(){this.setData({selected:null});},goWorks(){this.setData({open:false,selected:null});this.triggerEvent('works');},openResult(){if(this.data.selected)this.triggerEvent('result',{id:this.data.selected.id});}}
+});

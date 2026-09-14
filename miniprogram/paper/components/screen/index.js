@@ -1,6 +1,8 @@
 const pages = require('./pages');
 const api = require('../../services/api');
 const creation = require('../../services/creation');
+const taskQueue = require('../../services/task-queue');
+const QueueController = require('../../services/task-queue-controller');
 const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
 const IP12_API = '/workbench/ip12/api/v4';
@@ -188,6 +190,7 @@ function agentDeliverySignature(value) {
 Component({
   properties: { pageId: { type: String, value: 'home' } },
   data: {
+    agentQueueTasks:[], agentQueueReconnecting:false,
     title: '', statusTop: 24, navHeight: 48, safeRight: 104, chatNavOffset: 72, user: null, busy: false, loading: false, error: '',
     promptInput: '', kind: 'image', formats: creation.formats, kindName: '图片', formatDetail: creation.formats[0].detail,
     username: '', password: '', consent: false, quote: null, attempt: null, job: null,
@@ -219,14 +222,19 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
+    detached() { if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
+  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
+    refreshTaskQueue(e){if(!this.queueController)this.queueController=new QueueController({scope:()=>({alive:this.alive,visible:this.visible!==false,sid:this.data.agentSessionId,token:api.session()&&api.session().token}),tasks:()=>this.data.agentQueueTasks,request:path=>api.request(path,'GET',null,{timeout:5000}),update:(tasks,reconnecting)=>this.setData({agentQueueTasks:tasks,agentQueueReconnecting:reconnecting})});return this.queueController.refresh(e&&e.detail&&e.detail.id);},
+    stopTaskQueue(){if(this.queueController)this.queueController.stop();},
+    async queueOpenResult(e){const id=String(e.detail&&e.detail.id||''),sid=this.data.agentSessionId,token=api.session()&&api.session().token;if(!this.data.agentQueueTasks.some(t=>t.id===id&&t.sid===sid))return;return this.run(async()=>{const job=await api.request('/api/gen/job/'+encodeURIComponent(id));if(!this.alive||sid!==this.data.agentSessionId||token!==(api.session()&&api.session().token))return;const task=taskQueue.view(job,sid);if(!task||task.status!=='done')return this.toast('结果尚未完成，请稍后查看');const kind=({copy:'text',xiaole_video:'video'})[job.kind]||job.kind;if(!['text','image','video','audio'].includes(kind))return this.toast('此类型请在作品栏查看');api.save({selected:{id:Number(id),kind}});this.navigate(kind+'-detail');});},
+    queueGoWorks(){this.navigate('works');},
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
     async run(fn) { if(this.data.busy)return;this.setData({busy:true,error:''});try { return await fn(); }catch(e){this.fail(e);}finally{if(this.alive)this.setData({busy:false});} },
     async load() {
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
       if(this.loading)return;this.loading=true;
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
@@ -259,24 +267,37 @@ Component({
       if(!valid())return;
       const sessions=Array.isArray(data.sessions)?data.sessions:[];
       const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
-      const saved=wx.getStorageSync(IP12_SESSION_KEY),forceNew=saved===IP12_NEW_SESSION||(this.properties.pageId==='chat'&&outgoing&&outgoing.newConversation);
-      const wantedSid=outgoing&&outgoing.sid||saved;
+      const saved=wx.getStorageSync(IP12_SESSION_KEY),forceNew=saved===IP12_NEW_SESSION;
+      const wantedSid=saved;
       const current=forceNew?null:(sessions.find(item=>item.sid===wantedSid)||sessions[0]);
       this.setData({agentSessions:sessions.slice(0,8),agentHistorySessions:sessions.slice(0,50).map(item=>Object.assign({},item,{selected:false}))});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
       else if(current){wx.setStorageSync(IP12_SESSION_KEY,current.sid);this.setData({agentSessionId:current.sid,agentTargetLabel:agentSessionLabel(current)});}
       else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{},agentBackgroundWorking:false});
       if(!valid())return;
-      this.setData({agentPending:pending,agentThinking:!!waiting,agentProgress:waiting?'正在恢复处理进度…':''});
-      if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
+      const activeWaiting=waiting&&waiting.sid===this.data.agentSessionId;
+      const homeDraft=local.ip12HomeDraft;
+      if(this.properties.pageId==='chat'&&homeDraft&&homeDraft.sid===this.data.agentSessionId){this.agentDraft=homeDraft.message||'';this.setData({promptInput:this.agentDraft,agentHasText:!!this.agentDraft});api.save({ip12HomeDraft:null});}
+      this.setData({agentPending:pending,agentThinking:!!activeWaiting,agentHomeAction:activeWaiting?'查看进度':'开始',agentProgress:activeWaiting?'正在恢复处理进度…':''});
+      if(this.properties.pageId==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
+      if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.pollAgent(waiting.sid,waiting.seq).catch(error=>this.fail(error)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
         this.agentDraft=outgoing.message||'';this.setData({promptInput:this.agentDraft});
-        if(Date.now()-Number(outgoing.createdAt||0)<=5*60*1000)setTimeout(()=>this.sendAgent(false),0);
-        else{api.save({ip12Outgoing:null});this.setData({error:'上次没有发送的文字已保留，请确认后再点发送'});}
+        const target=outgoing.newConversation?saved===IP12_NEW_SESSION&&!this.data.agentSessionId:saved===outgoing.sid&&this.data.agentSessionId===outgoing.sid;
+        const age=Date.now()-Number(outgoing.createdAt||0),latest=api.read().ip12Outgoing;
+        const same=latest&&latest.status==='queued'&&latest.createdAt===outgoing.createdAt&&latest.sid===outgoing.sid&&latest.message===outgoing.message;
+        if(same){
+          api.save({ip12Outgoing:null,ip12HomeDraft:{message:outgoing.message,sid:this.data.agentSessionId}});
+          if(target&&age>=0&&age<=5*60*1000){
+            const sid=this.data.agentSessionId,token=api.session()&&api.session().token;
+            setTimeout(()=>{const w=api.read().ip12Waiting;if(!valid()||this.visible===false||sid!==this.data.agentSessionId||token!==(api.session()&&api.session().token)||wx.getStorageSync(IP12_SESSION_KEY)!==saved||(w&&w.sid===sid))return;api.save({ip12HomeDraft:null});this.sendAgent(false);},0);
+          }else this.setData({error:'上次没有发送的文字已保留，请确认目标后再点发送'});
+        }
       }
     },
     async restoreAgent(sid,valid=()=>this.alive) {
       const switching=sid!==this.data.agentSessionId;
+      if(switching){if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});}
       const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
@@ -296,6 +317,7 @@ Component({
       this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
       this.scrollAgent(widgets.length?widgets:items);
       if(this.startAgentWatch)this.startAgentWatch(data.delegations);
+      if(this.refreshTaskQueue)this.refreshTaskQueue();
       return data;
     },
     scrollAgent(items=this.data.agentMessages) {
@@ -356,7 +378,24 @@ Component({
     openLegacy(e){const routes={recharge:'/pages/recharge/recharge',invite:'/pages/invite/invite',card:'/pages/my-card/my-card',inspiration:'/pages/inspiration/inspiration',ip12:'/pages/ip12/ip12'};const url=routes[e.currentTarget.dataset.legacy];if(url)wx.navigateTo({url});},
     homeShortcut(e){this.setData({promptInput:e.currentTarget.dataset.prompt||''});},
     go(e){this.navigate(e.currentTarget.dataset.route);},
-    navigate(id){if(!pages.some(p=>p.id===id))return;if(id==='login'){wx.navigateTo({url:'/pages/login/login?redirect=paper'});return;}const url='/paper/pages/'+id+'/index';if(['home','works','profile'].includes(id))wx.reLaunch({url});else wx.navigateTo({url,fail:()=>wx.redirectTo({url})});},
+    navigate(id){
+      if(!pages.some(p=>p.id===id))return;
+      if(this.stopHomeAgent)this.stopHomeAgent();
+      const navigationToken=api.session()&&api.session().token,outgoing=api.read().ip12Outgoing;
+      const failed=()=>{
+        this.homeEntering=false;
+        if(navigationToken!==(api.session()&&api.session().token))return;
+        const latest=api.read().ip12Outgoing;
+        if(this.properties.pageId==='home'&&outgoing&&latest&&latest.createdAt===outgoing.createdAt&&latest.sid===outgoing.sid&&latest.message===outgoing.message)api.save({ip12Outgoing:null});
+        if(!this.alive||this.visible===false)return;
+        this.setData({error:'打开页面失败，请重试；你的草稿已保留'});
+        if(this.properties.pageId==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
+      };
+      if(id==='login'){wx.navigateTo({url:'/pages/login/login?redirect=paper',fail:failed});return;}
+      const url='/paper/pages/'+id+'/index';
+      if(['home','works','profile'].includes(id))wx.reLaunch({url,fail:failed});
+      else wx.navigateTo({url,fail:()=>wx.redirectTo({url,fail:failed})});
+    },
     back(){if(getCurrentPages().length>1)wx.navigateBack();else this.navigate('home');},
     requireLogin(){if(api.session())return true;this.navigate('login');return false;},
     consentChange(e){this.setData({consent:e.detail.value.includes('agree')});},
@@ -365,11 +404,38 @@ Component({
     chooseKind(e){const kind=e.currentTarget.dataset.kind;const f=creation.format(kind);this.setData({kind,kindName:f.name,formatDetail:f.detail,quote:null});if(kind==='audio'&&api.session())this.run(()=>this.loadVoices());},
     draft(){return {kind:this.data.kind,prompt:this.data.promptInput,voice:this.data.voice,reference:this.reference||''};},
     startChat(){
+      if(this.data.busy||this.homeEntering)return;
       if(!this.requireLogin())return;
       const message=this.data.promptInput.trim();
       const sid=this.data.agentSessionId||'';
-      if(message)api.save({ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
+      const waiting=api.read().ip12Waiting;
+      wx.setStorageSync(IP12_SESSION_KEY,sid||IP12_NEW_SESSION);
+      if((waiting&&waiting.sid===sid)||this.data.agentHomeAction&&this.data.agentHomeAction!=='开始'){
+        api.save({ip12Outgoing:null,ip12HomeDraft:{message,sid}});
+      }else if(message)api.save({ip12HomeDraft:null,ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
+      else api.save({ip12Outgoing:null,ip12HomeDraft:null});
+      this.stopHomeAgent();this.homeEntering=true;
       this.navigate('chat');
+    },
+    stopHomeAgent(){clearTimeout(this.homeAgentTimer);this.homeAgentTimer=null;this.homeAgentEpoch=(this.homeAgentEpoch||0)+1;},
+    clearAgentWaiting(sid,seq){const current=api.read().ip12Waiting;if(current&&current.sid===sid&&Number(current.seq)===Number(seq)){api.save({ip12Waiting:null});return true;}return false;},
+    async refreshHomeAgent(){
+      this.stopHomeAgent();const epoch=this.homeAgentEpoch,sid=this.data.agentSessionId,waiting=api.read().ip12Waiting,token=api.session()&&api.session().token;
+      if(this.properties.pageId!=='home'||!this.alive||this.visible===false||!waiting||waiting.sid!==sid)return;
+      const valid=()=>this.alive&&this.visible!==false&&this.properties.pageId==='home'&&epoch===this.homeAgentEpoch&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);
+      let delay=5000;
+      try{
+        const state=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid),'GET',null,{timeout:5000});if(!valid())return;
+        let complete=(state.state==='done'||state.state==='error')&&Number(state.seq)>=Number(waiting.seq);
+        if(state.state==='idle'){
+          const restored=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);if(!valid())return;
+          // Only an explicit sequence watermark proves this particular reply was saved.
+          complete=Number(restored.seq)>=Number(waiting.seq)&&Array.isArray(restored.history)&&restored.history.some(item=>item.role==='assistant');
+        }
+        if(complete&&this.clearAgentWaiting(sid,waiting.seq)){this.setData({agentThinking:false,agentHomeAction:'查看回复',agentProgress:''});return;}
+        this.setData({agentThinking:state.state==='working',agentHomeAction:state.state==='working'?'查看进度':'查看对话',agentProgress:state.state==='working'?'黄雀正在回复…':'暂时无法确认回复进度，可进入对话查看'});
+      }catch(_){if(!valid())return;delay=15000;this.setData({agentThinking:false,agentHomeAction:'查看对话',agentProgress:'暂时无法获取进度，可进入对话查看'});}
+      if(valid())this.homeAgentTimer=setTimeout(()=>this.refreshHomeAgent(),delay);
     },
     freezeRecentVideoPreview(e){
       const player=wx.createVideoContext&&wx.createVideoContext(e.currentTarget.id,this);
@@ -378,11 +444,11 @@ Component({
     chooseHomeAgentTarget(){
       const sessions=this.data.agentSessions||[];
       const labels=['＋ 开始新对话'].concat(sessions.map(item=>((item.sid===this.data.agentSessionId?'当前 · ':'')+(item.preview||'以前的对话').replace(/\s+/g,' ')+(item.turns?' · '+item.turns+'轮':'')).slice(0,28)));
-      wx.showActionSheet({itemList:labels,success:result=>{if(result.tapIndex===0)return this.useNewHomeAgentSession();const item=sessions[result.tapIndex-1];if(item){wx.setStorageSync(IP12_SESSION_KEY,item.sid);this.setData({agentSessionId:item.sid,agentTargetLabel:agentSessionLabel(item)});}}});
+      wx.showActionSheet({itemList:labels,success:result=>{if(result.tapIndex===0)return this.useNewHomeAgentSession();const item=sessions[result.tapIndex-1];if(item){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,item.sid);this.stopHomeAgent();this.setData({agentSessionId:item.sid,agentTargetLabel:agentSessionLabel(item),agentThinking:false,agentHomeAction:'开始',agentProgress:''});this.refreshHomeAgent();}}});
     },
     useNewHomeAgentSession(){
-      wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);
-      this.setData({agentSessionId:'',agentTargetLabel:'新对话'});
+      api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);
+      this.stopHomeAgent();this.setData({agentSessionId:'',agentTargetLabel:'新对话',agentThinking:false,agentHomeAction:'开始',agentProgress:''});
     },
     sendPrompt(){return this.sendAgent(false);},
     sendAgent() {
@@ -431,10 +497,10 @@ Component({
       this.setData({agentPending:null,agentThinking:true,agentProgress:'正在理解你的要求…'});
       this.agentPoll=this.pollAgent(pending.sid,data.seq).catch(error=>this.fail(error));
     },
-    async updateAgentProgress(sid){
+    async updateAgentProgress(sid,valid=()=>true){
       let status;
       try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}catch(_){return;}
-      if(!this.alive||!this.data.agentThinking)return;
+      if(!valid()||!this.alive||!this.data.agentThinking)return;
       const active=(status.turns||[]).filter(item=>item.state==='working').sort((a,b)=>Number(b.elapsed||0)-Number(a.elapsed||0))[0]||{};
       const elapsed=Math.max(0,Math.floor(Number(active.elapsed||0)));
       const domain=String(status.tool&&status.tool.domain||'');
@@ -453,8 +519,9 @@ Component({
       if(!sid||!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
       let status;
       try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}
-      catch(_){if(this.agentWatchActive)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);return;}
+      catch(_){if(this.alive&&sid===this.data.agentSessionId)this.setData({agentQueueReconnecting:true});if(this.agentWatchActive)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);return;}
       if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
+      this.setData({agentQueueTasks:taskQueue.merge(this.data.agentQueueTasks,taskQueue.collect(status),sid),agentQueueReconnecting:false});
       const active=agentBackgroundActive(status),signature=agentDeliverySignature(status);
       const refresh=(this.agentWatchActive&&!active)||Boolean(this.agentDeliverySignature&&signature!==this.agentDeliverySignature);
       this.agentWatchActive=active;this.agentDeliverySignature=signature;
@@ -462,29 +529,47 @@ Component({
       this.setData({agentBackgroundWorking:active});
       if(active)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);
     },
-    async pollAgent(sid,target,tries=0) {
-      if(!this.alive)return;
-      if(tries>=240){api.save({ip12Waiting:null});this.setData({agentThinking:false,agentProgress:''});throw new Error('处理时间较长，稍后重新打开会自动恢复结果');}
+    stopAgentPoll(){const owner=this.agentPollOwner;this.agentPollOwner=null;if(owner){clearTimeout(owner.timer);if(owner.wake)owner.wake();}},
+    pollAgent(sid,target){
+      const token=api.session()&&api.session().token,old=this.agentPollOwner;
+      const waiting=api.read().ip12Waiting;
+      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId||!token||!waiting||waiting.sid!==sid||Number(waiting.seq)!==Number(target))return Promise.resolve();
+      if(old&&old.sid===sid&&Number(old.target)===Number(target)&&old.token===token)return old.promise;
+      this.stopAgentPoll();
+      const owner={sid,target,token,timer:null,wake:null};this.agentPollOwner=owner;
+      owner.promise=Promise.resolve().then(()=>this.pollAgentStep(sid,target,0,owner)).finally(()=>{if(this.agentPollOwner===owner)this.stopAgentPoll();});
+      return owner.promise;
+    },
+    async pollAgentStep(sid,target,tries,owner) {
+      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
+      const matches=()=>{const w=api.read().ip12Waiting;return w&&w.sid===sid&&Number(w.seq)===Number(target);};
+      const token=owner.token;
+      const uiValid=()=>{const w=api.read().ip12Waiting;return this.agentPollOwner===owner&&this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(!w||(w.sid===sid&&Number(w.seq)===Number(target)));};
+      if(!uiValid())return;
+      if(!matches())return;
+      if(tries>=240){this.setData({agentThinking:false,agentProgress:'处理时间较长，重新打开可查看进度'});return;}
       let data;
       try{data=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid));}
-      catch(error){if(error.status&&error.status<500)throw error;data={state:'working'};}
+      catch(error){if(!uiValid())return;if(error.status&&error.status<500)throw error;data={state:'working'};}
+      if(!uiValid()||!matches())return;
       if(data.state==='done'||data.state==='error'){
         if(Number(data.seq)>=Number(target)){
-          api.save({ip12Waiting:null});
-          await this.restoreAgent(sid);
-          if(this.alive)this.setData({agentThinking:false,agentProgress:''});
+          if(!this.clearAgentWaiting(sid,target))return;
+          await this.restoreAgent(sid,uiValid);
+          if(uiValid())this.setData({agentThinking:false,agentProgress:''});
           return;
         }
       }
       if(data.state==='idle'&&tries>=3){
-        api.save({ip12Waiting:null});
-        await this.restoreAgent(sid);
-        if(this.alive)this.setData({agentThinking:false,agentProgress:''});
-        throw new Error('后台没有找到刚才的处理结果，请重新发送');
+        await this.restoreAgent(sid,uiValid);
+        if(uiValid())this.setData({agentThinking:false,agentProgress:'暂时无法确认回复进度，等待记录已保留'});
+        return;
       }
-      if(tries%2===0)await this.updateAgentProgress(sid);
-      await new Promise(resolve=>{this.agentTimer=setTimeout(resolve,2500);});
-      return this.pollAgent(sid,target,tries+1);
+      if(tries%2===0)await this.updateAgentProgress(sid,uiValid);
+      if(!uiValid()||!matches())return;
+      await new Promise(resolve=>{owner.wake=resolve;owner.timer=setTimeout(resolve,2500);});owner.wake=null;owner.timer=null;
+      if(!uiValid()||!matches())return;
+      return this.pollAgentStep(sid,target,tries+1,owner);
     },
     retryAgent(){
       const pending=this.data.agentPending||api.read().ip12Pending;
@@ -502,6 +587,7 @@ Component({
     async startNewAgent(){
       const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
+      if(this.stopAgentPoll)this.stopAgentPoll();this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
       if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
       clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
@@ -630,7 +716,7 @@ Component({
         const remaining=this.data.agentHistorySessions.filter(item=>!deleted.includes(item.sid)).map(item=>Object.assign({},item,{selected:false}));
         const deletedCurrent=deleted.includes(this.data.agentSessionId);
         this.setData({agentHistorySessions:remaining,agentSessions:remaining.slice(0,8),agentHistorySelectedCount:0,agentHistoryManage:false,agentSheet:failed.length?'history':''});
-        if(deletedCurrent){wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
+        if(deletedCurrent){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
         this.toast(failed.length?'已删除 '+deleted.length+' 段，'+failed.length+' 段未删除':'已删除 '+deleted.length+' 段对话');
       });}});
     },
