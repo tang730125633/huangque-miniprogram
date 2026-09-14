@@ -2,6 +2,7 @@ const pages = require('./pages');
 const api = require('../../services/api');
 const creation = require('../../services/creation');
 const taskQueue = require('../../services/task-queue');
+const QueueController = require('../../services/task-queue-controller');
 const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
 const IP12_API = '/workbench/ip12/api/v4';
@@ -221,11 +222,13 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
+    detached() { if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
+  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
-    async refreshTaskQueue(){const sid=this.data.agentSessionId,token=api.session()&&api.session().token;if(!sid||!token)return;const valid=()=>this.alive&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);try{const status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});if(!valid())return;const initial=taskQueue.merge(this.data.agentQueueTasks,taskQueue.collect(status),sid);const jobs=await Promise.all(initial.map(t=>api.request('/api/gen/job/'+encodeURIComponent(t.id))));if(valid())this.setData({agentQueueTasks:taskQueue.merge(initial,jobs,sid),agentQueueReconnecting:false});}catch(error){if(valid())this.setData(error.status===401?{agentQueueTasks:[],agentQueueReconnecting:false}:{agentQueueReconnecting:true});}},
+    refreshTaskQueue(e){if(!this.queueController)this.queueController=new QueueController({scope:()=>({alive:this.alive,visible:this.visible!==false,sid:this.data.agentSessionId,token:api.session()&&api.session().token}),tasks:()=>this.data.agentQueueTasks,request:path=>api.request(path,'GET',null,{timeout:5000}),update:(tasks,reconnecting)=>this.setData({agentQueueTasks:tasks,agentQueueReconnecting:reconnecting})});return this.queueController.refresh(e&&e.detail&&e.detail.id);},
+    stopTaskQueue(){if(this.queueController)this.queueController.stop();},
+    async queueOpenResult(e){const id=String(e.detail&&e.detail.id||''),sid=this.data.agentSessionId,token=api.session()&&api.session().token;if(!this.data.agentQueueTasks.some(t=>t.id===id&&t.sid===sid))return;return this.run(async()=>{const job=await api.request('/api/gen/job/'+encodeURIComponent(id));if(!this.alive||sid!==this.data.agentSessionId||token!==(api.session()&&api.session().token))return;const task=taskQueue.view(job,sid);if(!task||task.status!=='done')return this.toast('结果尚未完成，请稍后查看');const kind=({copy:'text',xiaole_video:'video'})[job.kind]||job.kind;if(!['text','image','video','audio'].includes(kind))return this.toast('此类型请在作品栏查看');api.save({selected:{id:Number(id),kind}});this.navigate(kind+'-detail');});},
     queueGoWorks(){this.navigate('works');},
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
@@ -282,7 +285,7 @@ Component({
     },
     async restoreAgent(sid,valid=()=>this.alive) {
       const switching=sid!==this.data.agentSessionId;
-      if(switching)this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
+      if(switching){if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});}
       const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
@@ -302,6 +305,7 @@ Component({
       this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
       this.scrollAgent(widgets.length?widgets:items);
       if(this.startAgentWatch)this.startAgentWatch(data.delegations);
+      if(this.refreshTaskQueue)this.refreshTaskQueue();
       return data;
     },
     scrollAgent(items=this.data.agentMessages) {
