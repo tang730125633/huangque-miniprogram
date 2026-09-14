@@ -532,6 +532,8 @@ Component({
     stopAgentPoll(){const owner=this.agentPollOwner;this.agentPollOwner=null;if(owner){clearTimeout(owner.timer);if(owner.wake)owner.wake();}},
     pollAgent(sid,target){
       const token=api.session()&&api.session().token,old=this.agentPollOwner;
+      const waiting=api.read().ip12Waiting;
+      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId||!token||!waiting||waiting.sid!==sid||Number(waiting.seq)!==Number(target))return Promise.resolve();
       if(old&&old.sid===sid&&Number(old.target)===Number(target)&&old.token===token)return old.promise;
       this.stopAgentPoll();
       const owner={sid,target,token,timer:null,wake:null};this.agentPollOwner=owner;
@@ -585,7 +587,7 @@ Component({
     async startNewAgent(){
       const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
-      this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
+      if(this.stopAgentPoll)this.stopAgentPoll();this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
       if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
       clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
