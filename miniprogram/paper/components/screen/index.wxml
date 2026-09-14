@@ -5,6 +5,7 @@
     <block wx:else><button class="hq-button back" bindtap="back" aria-label="返回上一页">‹</button><text class="hq-text nav-title">{{title}}</text></block>
   </view></view>
   <view class="hq-view content {{pageId==='home'||pageId==='works'||pageId==='profile'?'has-tabs':''}} {{pageId==='chat'?'agent-chat-content':''}}" style="--chat-nav-offset:{{chatNavOffset}}px;">
+    <task-queue wx:if="{{pageId==='chat'}}" tasks="{{agentQueueTasks}}" reconnecting="{{agentQueueReconnecting}}" top="{{statusTop+navHeight/2}}" bind:refresh="refreshTaskQueue" bind:works="queueGoWorks" />
     <view wx:if="{{error}}" class="hq-view error-banner" role="alert"><text class="hq-text">{{error}}</text><button wx:if="{{agentPending}}" class="hq-button text-button" bindtap="retryAgent">检查是否已经发送</button><button wx:else class="hq-button text-button" bindtap="load">重新加载</button></view>
     <view wx:if="{{loading}}" class="hq-view loading-note">正在读取你的创作空间…</view>
     <view wx:if="{{!user&&pageId!=='login'}}" class="hq-view guest-strip"><text class="hq-text">登录后查看你的作品与积分</text><button class="hq-button text-button" data-route="login" bindtap="go">登录 ›</button></view>

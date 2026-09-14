@@ -1,6 +1,7 @@
 const pages = require('./pages');
 const api = require('../../services/api');
 const creation = require('../../services/creation');
+const taskQueue = require('../../services/task-queue');
 const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
 const emptyCard = { name: '', headline: '', company: '', bio: '', email: '', address: '', email_public: false, address_public: false, works: [] };
 const IP12_API = '/workbench/ip12/api/v4';
@@ -188,6 +189,7 @@ function agentDeliverySignature(value) {
 Component({
   properties: { pageId: { type: String, value: 'home' } },
   data: {
+    agentQueueTasks:[], agentQueueReconnecting:false,
     title: '', statusTop: 24, navHeight: 48, safeRight: 104, chatNavOffset: 72, user: null, busy: false, loading: false, error: '',
     promptInput: '', kind: 'image', formats: creation.formats, kindName: '图片', formatDetail: creation.formats[0].detail,
     username: '', password: '', consent: false, quote: null, attempt: null, job: null,
@@ -223,10 +225,13 @@ Component({
   },
   pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
+    async refreshTaskQueue(){const sid=this.data.agentSessionId,token=api.session()&&api.session().token;if(!sid||!token)return;const valid=()=>this.alive&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);try{const status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});if(!valid())return;const initial=taskQueue.merge(this.data.agentQueueTasks,taskQueue.collect(status),sid);const jobs=await Promise.all(initial.map(t=>api.request('/api/gen/job/'+encodeURIComponent(t.id))));if(valid())this.setData({agentQueueTasks:taskQueue.merge(initial,jobs,sid),agentQueueReconnecting:false});}catch(error){if(valid())this.setData(error.status===401?{agentQueueTasks:[],agentQueueReconnecting:false}:{agentQueueReconnecting:true});}},
+    queueGoWorks(){this.navigate('works');},
     toast(title) { wx.showToast({title,icon:'none'}); },
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
     async run(fn) { if(this.data.busy)return;this.setData({busy:true,error:''});try { return await fn(); }catch(e){this.fail(e);}finally{if(this.alive)this.setData({busy:false});} },
     async load() {
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
       if(this.loading)return;this.loading=true;
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
@@ -277,6 +282,7 @@ Component({
     },
     async restoreAgent(sid,valid=()=>this.alive) {
       const switching=sid!==this.data.agentSessionId;
+      if(switching)this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
       const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
@@ -453,8 +459,9 @@ Component({
       if(!sid||!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
       let status;
       try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}
-      catch(_){if(this.agentWatchActive)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);return;}
+      catch(_){if(this.alive&&sid===this.data.agentSessionId)this.setData({agentQueueReconnecting:true});if(this.agentWatchActive)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);return;}
       if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
+      this.setData({agentQueueTasks:taskQueue.merge(this.data.agentQueueTasks,taskQueue.collect(status),sid),agentQueueReconnecting:false});
       const active=agentBackgroundActive(status),signature=agentDeliverySignature(status);
       const refresh=(this.agentWatchActive&&!active)||Boolean(this.agentDeliverySignature&&signature!==this.agentDeliverySignature);
       this.agentWatchActive=active;this.agentDeliverySignature=signature;
