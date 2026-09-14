@@ -267,8 +267,8 @@ Component({
       if(!valid())return;
       const sessions=Array.isArray(data.sessions)?data.sessions:[];
       const local=api.read(),pending=local.ip12Pending||null,waiting=local.ip12Waiting||null,outgoing=local.ip12Outgoing||null;
-      const saved=wx.getStorageSync(IP12_SESSION_KEY),forceNew=saved===IP12_NEW_SESSION||(this.properties.pageId==='chat'&&outgoing&&outgoing.newConversation);
-      const wantedSid=outgoing&&outgoing.sid||saved;
+      const saved=wx.getStorageSync(IP12_SESSION_KEY),forceNew=saved===IP12_NEW_SESSION;
+      const wantedSid=saved;
       const current=forceNew?null:(sessions.find(item=>item.sid===wantedSid)||sessions[0]);
       this.setData({agentSessions:sessions.slice(0,8),agentHistorySessions:sessions.slice(0,50).map(item=>Object.assign({},item,{selected:false}))});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
@@ -283,8 +283,16 @@ Component({
       if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.run(()=>this.pollAgent(waiting.sid,waiting.seq)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
         this.agentDraft=outgoing.message||'';this.setData({promptInput:this.agentDraft});
-        if(Date.now()-Number(outgoing.createdAt||0)<=5*60*1000)setTimeout(()=>this.sendAgent(false),0);
-        else{api.save({ip12Outgoing:null});this.setData({error:'上次没有发送的文字已保留，请确认后再点发送'});}
+        const target=outgoing.newConversation?saved===IP12_NEW_SESSION&&!this.data.agentSessionId:saved===outgoing.sid&&this.data.agentSessionId===outgoing.sid;
+        const age=Date.now()-Number(outgoing.createdAt||0),latest=api.read().ip12Outgoing;
+        const same=latest&&latest.status==='queued'&&latest.createdAt===outgoing.createdAt&&latest.sid===outgoing.sid&&latest.message===outgoing.message;
+        if(same){
+          api.save({ip12Outgoing:null,ip12HomeDraft:{message:outgoing.message,sid:this.data.agentSessionId}});
+          if(target&&age>=0&&age<=5*60*1000){
+            const sid=this.data.agentSessionId,token=api.session()&&api.session().token;
+            setTimeout(()=>{const w=api.read().ip12Waiting;if(!valid()||this.visible===false||sid!==this.data.agentSessionId||token!==(api.session()&&api.session().token)||wx.getStorageSync(IP12_SESSION_KEY)!==saved||(w&&w.sid===sid))return;api.save({ip12HomeDraft:null});this.sendAgent(false);},0);
+          }else this.setData({error:'上次没有发送的文字已保留，请确认目标后再点发送'});
+        }
       }
     },
     async restoreAgent(sid,valid=()=>this.alive) {
@@ -373,8 +381,12 @@ Component({
     navigate(id){
       if(!pages.some(p=>p.id===id))return;
       if(this.stopHomeAgent)this.stopHomeAgent();
+      const navigationToken=api.session()&&api.session().token,outgoing=api.read().ip12Outgoing;
       const failed=()=>{
         this.homeEntering=false;
+        if(navigationToken!==(api.session()&&api.session().token))return;
+        const latest=api.read().ip12Outgoing;
+        if(this.properties.pageId==='home'&&outgoing&&latest&&latest.createdAt===outgoing.createdAt&&latest.sid===outgoing.sid&&latest.message===outgoing.message)api.save({ip12Outgoing:null});
         if(!this.alive||this.visible===false)return;
         this.setData({error:'打开页面失败，请重试；你的草稿已保留'});
         if(this.properties.pageId==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
@@ -399,7 +411,8 @@ Component({
       const waiting=api.read().ip12Waiting;
       if((waiting&&waiting.sid===sid)||this.data.agentHomeAction&&this.data.agentHomeAction!=='开始'){
         api.save({ip12Outgoing:null,ip12HomeDraft:{message,sid}});
-      }else if(message)api.save({ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
+      }else if(message)api.save({ip12HomeDraft:null,ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
+      else api.save({ip12Outgoing:null,ip12HomeDraft:null});
       this.stopHomeAgent();this.homeEntering=true;
       this.navigate('chat');
     },
@@ -430,10 +443,10 @@ Component({
     chooseHomeAgentTarget(){
       const sessions=this.data.agentSessions||[];
       const labels=['＋ 开始新对话'].concat(sessions.map(item=>((item.sid===this.data.agentSessionId?'当前 · ':'')+(item.preview||'以前的对话').replace(/\s+/g,' ')+(item.turns?' · '+item.turns+'轮':'')).slice(0,28)));
-      wx.showActionSheet({itemList:labels,success:result=>{if(result.tapIndex===0)return this.useNewHomeAgentSession();const item=sessions[result.tapIndex-1];if(item){wx.setStorageSync(IP12_SESSION_KEY,item.sid);this.stopHomeAgent();this.setData({agentSessionId:item.sid,agentTargetLabel:agentSessionLabel(item),agentThinking:false,agentHomeAction:'开始',agentProgress:''});this.refreshHomeAgent();}}});
+      wx.showActionSheet({itemList:labels,success:result=>{if(result.tapIndex===0)return this.useNewHomeAgentSession();const item=sessions[result.tapIndex-1];if(item){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,item.sid);this.stopHomeAgent();this.setData({agentSessionId:item.sid,agentTargetLabel:agentSessionLabel(item),agentThinking:false,agentHomeAction:'开始',agentProgress:''});this.refreshHomeAgent();}}});
     },
     useNewHomeAgentSession(){
-      wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);
+      api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);
       this.stopHomeAgent();this.setData({agentSessionId:'',agentTargetLabel:'新对话',agentThinking:false,agentHomeAction:'开始',agentProgress:''});
     },
     sendPrompt(){return this.sendAgent(false);},
@@ -688,7 +701,7 @@ Component({
         const remaining=this.data.agentHistorySessions.filter(item=>!deleted.includes(item.sid)).map(item=>Object.assign({},item,{selected:false}));
         const deletedCurrent=deleted.includes(this.data.agentSessionId);
         this.setData({agentHistorySessions:remaining,agentSessions:remaining.slice(0,8),agentHistorySelectedCount:0,agentHistoryManage:false,agentSheet:failed.length?'history':''});
-        if(deletedCurrent){wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
+        if(deletedCurrent){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
         this.toast(failed.length?'已删除 '+deleted.length+' 段，'+failed.length+' 段未删除':'已删除 '+deleted.length+' 段对话');
       });}});
     },
