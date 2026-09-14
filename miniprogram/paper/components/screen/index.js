@@ -222,9 +222,9 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
+    detached() { if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
+  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
     refreshTaskQueue(e){if(!this.queueController)this.queueController=new QueueController({scope:()=>({alive:this.alive,visible:this.visible!==false,sid:this.data.agentSessionId,token:api.session()&&api.session().token}),tasks:()=>this.data.agentQueueTasks,request:path=>api.request(path,'GET',null,{timeout:5000}),update:(tasks,reconnecting)=>this.setData({agentQueueTasks:tasks,agentQueueReconnecting:reconnecting})});return this.queueController.refresh(e&&e.detail&&e.detail.id);},
     stopTaskQueue(){if(this.queueController)this.queueController.stop();},
@@ -297,7 +297,7 @@ Component({
     },
     async restoreAgent(sid,valid=()=>this.alive) {
       const switching=sid!==this.data.agentSessionId;
-      if(switching){if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});}
+      if(switching){if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});}
       const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
@@ -497,10 +497,10 @@ Component({
       this.setData({agentPending:null,agentThinking:true,agentProgress:'正在理解你的要求…'});
       this.agentPoll=this.pollAgent(pending.sid,data.seq).catch(error=>this.fail(error));
     },
-    async updateAgentProgress(sid){
+    async updateAgentProgress(sid,valid=()=>true){
       let status;
       try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}catch(_){return;}
-      if(!this.alive||!this.data.agentThinking)return;
+      if(!valid()||!this.alive||!this.data.agentThinking)return;
       const active=(status.turns||[]).filter(item=>item.state==='working').sort((a,b)=>Number(b.elapsed||0)-Number(a.elapsed||0))[0]||{};
       const elapsed=Math.max(0,Math.floor(Number(active.elapsed||0)));
       const domain=String(status.tool&&status.tool.domain||'');
@@ -529,17 +529,27 @@ Component({
       this.setData({agentBackgroundWorking:active});
       if(active)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);
     },
-    async pollAgent(sid,target,tries=0) {
+    stopAgentPoll(){const owner=this.agentPollOwner;this.agentPollOwner=null;if(owner){clearTimeout(owner.timer);if(owner.wake)owner.wake();}},
+    pollAgent(sid,target){
+      const token=api.session()&&api.session().token,old=this.agentPollOwner;
+      if(old&&old.sid===sid&&Number(old.target)===Number(target)&&old.token===token)return old.promise;
+      this.stopAgentPoll();
+      const owner={sid,target,token,timer:null,wake:null};this.agentPollOwner=owner;
+      owner.promise=Promise.resolve().then(()=>this.pollAgentStep(sid,target,0,owner)).finally(()=>{if(this.agentPollOwner===owner)this.stopAgentPoll();});
+      return owner.promise;
+    },
+    async pollAgentStep(sid,target,tries,owner) {
       if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
       const matches=()=>{const w=api.read().ip12Waiting;return w&&w.sid===sid&&Number(w.seq)===Number(target);};
-      const token=api.session()&&api.session().token;
-      const uiValid=()=>{const w=api.read().ip12Waiting;return this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(!w||(w.sid===sid&&Number(w.seq)===Number(target)));};
+      const token=owner.token;
+      const uiValid=()=>{const w=api.read().ip12Waiting;return this.agentPollOwner===owner&&this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(!w||(w.sid===sid&&Number(w.seq)===Number(target)));};
+      if(!uiValid())return;
       if(!matches())return;
       if(tries>=240){this.setData({agentThinking:false,agentProgress:'处理时间较长，重新打开可查看进度'});return;}
       let data;
       try{data=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid));}
-      catch(error){if(error.status&&error.status<500)throw error;data={state:'working'};}
-      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId||!matches())return;
+      catch(error){if(!uiValid())return;if(error.status&&error.status<500)throw error;data={state:'working'};}
+      if(!uiValid()||!matches())return;
       if(data.state==='done'||data.state==='error'){
         if(Number(data.seq)>=Number(target)){
           if(!this.clearAgentWaiting(sid,target))return;
@@ -553,9 +563,11 @@ Component({
         if(uiValid())this.setData({agentThinking:false,agentProgress:'暂时无法确认回复进度，等待记录已保留'});
         return;
       }
-      if(tries%2===0)await this.updateAgentProgress(sid);
-      await new Promise(resolve=>{this.agentTimer=setTimeout(resolve,2500);});
-      return this.pollAgent(sid,target,tries+1);
+      if(tries%2===0)await this.updateAgentProgress(sid,uiValid);
+      if(!uiValid()||!matches())return;
+      await new Promise(resolve=>{owner.wake=resolve;owner.timer=setTimeout(resolve,2500);});owner.wake=null;owner.timer=null;
+      if(!uiValid()||!matches())return;
+      return this.pollAgentStep(sid,target,tries+1,owner);
     },
     retryAgent(){
       const pending=this.data.agentPending||api.read().ip12Pending;
