@@ -13,8 +13,11 @@ class Controller{
    let tasks=queue.merge(o.tasks(),queue.collect(status),scope.sid);
    if(id&&!tasks.some(t=>t.id===id))return;
    const ids=id?[id]:tasks.filter(t=>!t.terminal).map(t=>t.id);
-   for(const taskId of ids){const job=await o.request('/api/gen/job/'+encodeURIComponent(taskId));if(!valid())return;tasks=queue.merge(tasks,[job],scope.sid);}
-   if(valid()){o.update(tasks,false);retry=tasks.some(t=>!t.terminal);}
+   for(const taskId of ids){
+    try{const job=await o.request('/api/gen/job/'+encodeURIComponent(taskId));if(!valid())return;tasks=queue.merge(tasks,[job],scope.sid);}
+    catch(error){if(error.status===401)throw error;if(!valid())return;if(error.status===404||error.status===403)tasks=tasks.filter(t=>t.id!==taskId);else retry=true;}
+   }
+   if(valid()){o.update(tasks,retry);retry=retry||tasks.some(t=>!t.terminal);}
   }catch(error){
    const current=o.scope();
    if(epoch===this.epoch&&current.alive&&current.sid===scope.sid&&!current.token)o.update([],false);
