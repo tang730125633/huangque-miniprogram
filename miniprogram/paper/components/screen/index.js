@@ -409,6 +409,7 @@ Component({
       const message=this.data.promptInput.trim();
       const sid=this.data.agentSessionId||'';
       const waiting=api.read().ip12Waiting;
+      wx.setStorageSync(IP12_SESSION_KEY,sid||IP12_NEW_SESSION);
       if((waiting&&waiting.sid===sid)||this.data.agentHomeAction&&this.data.agentHomeAction!=='开始'){
         api.save({ip12Outgoing:null,ip12HomeDraft:{message,sid}});
       }else if(message)api.save({ip12HomeDraft:null,ip12Outgoing:{message,sid,newConversation:!sid,status:'queued',createdAt:Date.now()}});
