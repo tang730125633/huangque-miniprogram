@@ -224,7 +224,7 @@ Component({
     },
     detached() { if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
+  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
     refreshTaskQueue(e){if(!this.queueController)this.queueController=new QueueController({scope:()=>({alive:this.alive,visible:this.visible!==false,sid:this.data.agentSessionId,token:api.session()&&api.session().token}),tasks:()=>this.data.agentQueueTasks,request:path=>api.request(path,'GET',null,{timeout:5000}),update:(tasks,reconnecting)=>this.setData({agentQueueTasks:tasks,agentQueueReconnecting:reconnecting})});return this.queueController.refresh(e&&e.detail&&e.detail.id);},
     stopTaskQueue(){if(this.queueController)this.queueController.stop();},
@@ -390,7 +390,7 @@ Component({
       this.stopHomeAgent();this.homeEntering=true;
       this.navigate('chat');
     },
-    stopHomeAgent(){clearTimeout(this.homeAgentTimer);this.homeAgentTimer=null;this.homeAgentEpoch=(this.homeAgentEpoch||0)+1;this.homeEntering=false;},
+    stopHomeAgent(){clearTimeout(this.homeAgentTimer);this.homeAgentTimer=null;this.homeAgentEpoch=(this.homeAgentEpoch||0)+1;},
     clearAgentWaiting(sid,seq){const current=api.read().ip12Waiting;if(current&&current.sid===sid&&Number(current.seq)===Number(seq)){api.save({ip12Waiting:null});return true;}return false;},
     async refreshHomeAgent(){
       this.stopHomeAgent();const epoch=this.homeAgentEpoch,sid=this.data.agentSessionId,waiting=api.read().ip12Waiting,token=api.session()&&api.session().token;
@@ -505,6 +505,8 @@ Component({
     async pollAgent(sid,target,tries=0) {
       if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
       const matches=()=>{const w=api.read().ip12Waiting;return w&&w.sid===sid&&Number(w.seq)===Number(target);};
+      const token=api.session()&&api.session().token;
+      const uiValid=()=>{const w=api.read().ip12Waiting;return this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(!w||(w.sid===sid&&Number(w.seq)===Number(target)));};
       if(!matches())return;
       if(tries>=240){this.setData({agentThinking:false,agentProgress:'处理时间较长，重新打开可查看进度'});return;}
       let data;
@@ -514,14 +516,14 @@ Component({
       if(data.state==='done'||data.state==='error'){
         if(Number(data.seq)>=Number(target)){
           if(!this.clearAgentWaiting(sid,target))return;
-          await this.restoreAgent(sid,()=>this.alive&&this.visible!==false&&sid===this.data.agentSessionId);
-          if(this.alive)this.setData({agentThinking:false,agentProgress:''});
+          await this.restoreAgent(sid,uiValid);
+          if(uiValid())this.setData({agentThinking:false,agentProgress:''});
           return;
         }
       }
       if(data.state==='idle'&&tries>=3){
-        await this.restoreAgent(sid,()=>this.alive&&this.visible!==false&&sid===this.data.agentSessionId);
-        if(this.alive)this.setData({agentThinking:false,agentProgress:'暂时无法确认回复进度，等待记录已保留'});
+        await this.restoreAgent(sid,uiValid);
+        if(uiValid())this.setData({agentThinking:false,agentProgress:'暂时无法确认回复进度，等待记录已保留'});
         return;
       }
       if(tries%2===0)await this.updateAgentProgress(sid);
