@@ -370,7 +370,20 @@ Component({
     openLegacy(e){const routes={recharge:'/pages/recharge/recharge',invite:'/pages/invite/invite',card:'/pages/my-card/my-card',inspiration:'/pages/inspiration/inspiration',ip12:'/pages/ip12/ip12'};const url=routes[e.currentTarget.dataset.legacy];if(url)wx.navigateTo({url});},
     homeShortcut(e){this.setData({promptInput:e.currentTarget.dataset.prompt||''});},
     go(e){this.navigate(e.currentTarget.dataset.route);},
-    navigate(id){if(!pages.some(p=>p.id===id))return;if(this.stopHomeAgent)this.stopHomeAgent();if(id==='login'){wx.navigateTo({url:'/pages/login/login?redirect=paper'});return;}const url='/paper/pages/'+id+'/index';if(['home','works','profile'].includes(id))wx.reLaunch({url});else wx.navigateTo({url,fail:()=>wx.redirectTo({url})});},
+    navigate(id){
+      if(!pages.some(p=>p.id===id))return;
+      if(this.stopHomeAgent)this.stopHomeAgent();
+      const failed=()=>{
+        this.homeEntering=false;
+        if(!this.alive||this.visible===false)return;
+        this.setData({error:'打开页面失败，请重试；你的草稿已保留'});
+        if(this.properties.pageId==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
+      };
+      if(id==='login'){wx.navigateTo({url:'/pages/login/login?redirect=paper',fail:failed});return;}
+      const url='/paper/pages/'+id+'/index';
+      if(['home','works','profile'].includes(id))wx.reLaunch({url,fail:failed});
+      else wx.navigateTo({url,fail:()=>wx.redirectTo({url,fail:failed})});
+    },
     back(){if(getCurrentPages().length>1)wx.navigateBack();else this.navigate('home');},
     requireLogin(){if(api.session())return true;this.navigate('login');return false;},
     consentChange(e){this.setData({consent:e.detail.value.includes('agree')});},
