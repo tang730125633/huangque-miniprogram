@@ -204,7 +204,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentVoiceFlow: null, agentReport: {}, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
+    agentDelegations: [], agentWidgets: [], agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -318,8 +318,9 @@ Component({
       if(!valid())return;
       if(switching){if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy();this.agentAudio=null;this.agentAssetAudio=null;this.agentAudioMeta=null;}
       wx.setStorageSync(IP12_SESSION_KEY,sid);
-      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
+      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
       this.scrollAgent(widgets.length?widgets:items);
+      if(this.syncReportNotice)this.syncReportNotice(sid,data.report||null);
       if(this.startReportPoll)this.startReportPoll(sid);
       if(this.startAgentWatch)this.startAgentWatch(data.delegations);
       if(this.refreshTaskQueue)this.refreshTaskQueue();
@@ -532,6 +533,7 @@ Component({
             const next=data&&typeof data==='object'?data:{};
             const prev=this.data.agentReport||{};
             if(JSON.stringify(next)!==JSON.stringify(prev))this.setData({agentReport:next});
+            if(this.syncReportNotice)this.syncReportNotice(sid,next);
             const status=String(next.status||'');
             const terminal=status==='final'||status==='confirmed'||status==='failed';
             if(terminal)return;
@@ -955,6 +957,35 @@ Component({
       const text=kind==='topics'?'请把我已经确认的选题列出来。':'请把我已经确认的口播稿列出来。';
       this.agentDraft=text;this.setData({promptInput:text,agentHasText:true,agentIpDrawerOpen:false});this.toast('已放到输入框，确认后发送');
     },
+    // —— 报告完成提示：抽屉关着也要看得见 ——
+    // 报告在服务端后台生成、不往会话追加消息，只靠轮询拉。拉到可看的报告后，
+    // 在聊天窗口（输入框上方）给一条常驻提示卡；按「会话 + 报告版本」去重，
+    // 避免重复轮询或页面恢复时反复插入。
+    reportNoticeState(){const all=api.read().ip12ReportNotices;return all&&typeof all==='object'?all:{};},
+    reportNoticeKey(report){const files=(report&&report.files)||{};return [String(report&&report.status||''),String(files.pdf||files.md||files.json||'')].join('|');},
+    reportNoticePayload(report){
+      const status=String(report&&report.status||'');
+      const pdf=(report&&report.files||{}).pdf;
+      if(!pdf||!['draft_ready','final','confirmed'].includes(status))return null;
+      const done=status==='final'||status==='confirmed';
+      return {status,title:done?'IP 定位报告 · 定稿已生成':'IP 定位报告 · 初稿已生成',desc:done?'点开查看 PDF，可直接存档或转发。':'点开查看 PDF；挑一套人设方案回我，我就出定稿。'};
+    },
+    syncReportNotice(sid,report){
+      if(!sid||sid!==this.data.agentSessionId)return;
+      const payload=this.reportNoticePayload(report);
+      if(!payload){if(this.data.agentReportNotice)this.setData({agentReportNotice:null});return;}
+      const key=sid+'@'+this.reportNoticeKey(report);
+      if(this.reportNoticeState()[sid]===key){if(this.data.agentReportNotice)this.setData({agentReportNotice:null});return;}
+      if(this.data.agentReportNotice&&this.data.agentReportNotice.key===key)return;
+      this.setData({agentReportNotice:Object.assign({key},payload)});
+    },
+    markReportNoticeAnnounced(){
+      const notice=this.data.agentReportNotice,sid=this.data.agentSessionId;
+      if(!notice||!notice.key||!sid)return;
+      const all=Object.assign({},this.reportNoticeState());all[sid]=notice.key;api.save({ip12ReportNotices:all});
+    },
+    viewAgentReportNotice(){this.markReportNoticeAnnounced();this.setData({agentReportNotice:null});return this.openAgentReport();},
+    dismissAgentReportNotice(){this.markReportNoticeAnnounced();this.setData({agentReportNotice:null});},
     openAgentReport(){
       const raw=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
       if(!raw)return this.toast('报告还在整理中');
