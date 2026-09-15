@@ -999,28 +999,32 @@ Component({
       };
       if(!snapshot.sid||!snapshot.key||!snapshot.pdf)return Promise.resolve(false);
       this.setData({agentReportOpening:true});
-      // 异步回来后页面可能已隐藏或组件已销毁：不再回写页面状态
-      const safeSet=patch=>{if(this.alive&&this.visible!==false)this.setData(patch);};
+      // 两类回写要分开：
+      //  - uiSet：本地 UI 状态（按钮的「正在打开」）。隐藏时也必须复位，
+      //    否则按钮会永久卡在“正在打开…”且被禁用，用户无法重试。
+      //  - settle：结算（清提示 / 写已读）。页面隐藏或组件销毁一律不结算。
+      const uiSet=patch=>{if(this.alive)this.setData(patch);};
+      const settle=patch=>{if(this.alive&&this.visible!==false)this.setData(patch);};
+      const canSettle=()=>this.alive&&this.visible!==false;
       return Promise.resolve(this.openAgentReport(snapshot.pdf)).then(result=>{
         if(!result||!result.opened){
           // 失败：不动已读、不清提示，告诉用户可以再点一次
-          safeSet({agentReportOpening:false});
-          if(this.alive&&this.visible!==false)this.toast(result&&result.reason==='download_failed'?'报告下载失败，请重试':'报告打开失败，请重试');
+          uiSet({agentReportOpening:false});
+          if(canSettle())this.toast(result&&result.reason==='download_failed'?'报告下载失败，请重试':'报告打开失败，请重试');
           return false;
         }
         // 四重核对：账号没换、会话没换、提示还在、版本还是点下去那一个
-        const sessionOk=Boolean(this.alive&&this.visible!==false&&api.session()&&api.session().token===snapshot.token&&snapshot.sid===this.data.agentSessionId);
+        const sessionOk=Boolean(canSettle()&&api.session()&&api.session().token===snapshot.token&&snapshot.sid===this.data.agentSessionId);
         const current=this.data.agentReportNotice||null;
         const noticeOk=Boolean(current&&current.key&&current.key===snapshot.key);
         if(sessionOk&&noticeOk){
           this.markReportNoticeAnnounced(snapshot.sid,snapshot.key);
-          safeSet({agentReportNotice:null,agentReportOpening:false});
-        }else{
-          // 期间换了账号/会话，或页面已隐藏/销毁，或提示被关、或已被定稿顶替 —— 一律不结算
-          safeSet({agentReportOpening:false});
+          settle({agentReportNotice:null});
         }
+        // 期间换了账号/会话、页面隐藏或销毁、提示被关、或已被定稿顶替 —— 一律不结算
+        uiSet({agentReportOpening:false});
         return true;
-      }).catch(()=>{safeSet({agentReportOpening:false});if(this.alive&&this.visible!==false)this.toast('报告打开失败，请重试');return false;});
+      }).catch(()=>{uiSet({agentReportOpening:false});if(canSettle())this.toast('报告打开失败，请重试');return false;});
     },
     dismissAgentReportNotice(){
       const notice=this.data.agentReportNotice||null,sid=this.data.agentSessionId;

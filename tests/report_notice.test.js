@@ -276,7 +276,7 @@ test('打开期间切换账号：不向新账号写入旧账号已读', async ()
   assert.equal((api.read().ip12ReportNotices || {})[SID], undefined, '不得写到新账号的存储里');
 });
 
-test('页面隐藏或组件销毁后，迟到的打开结果不再更新页面', async () => {
+test('页面隐藏时：不结算（不清提示、不记已读），但按钮必须复位不能卡住', async () => {
   const c = setup();
   c.data.agentReport = DRAFT;
   c.syncReportNotice(SID, DRAFT);
@@ -285,11 +285,27 @@ test('页面隐藏或组件销毁后，迟到的打开结果不再更新页面',
   global.wx.openDocument = (o) => o.success && o.success();
   const pending = c.viewAgentReportNotice();
   c.visible = false;                            // 页面隐藏
+  release();
+  await pending;
+  assert.equal((api.read().ip12ReportNotices || {})[SID], undefined, '隐藏时不得结算已读');
+  assert.ok(c.data.agentReportNotice, '隐藏时不得清掉提示');
+  assert.equal(c.data.agentReportOpening, false, '按钮的「正在打开」必须复位，否则会永久禁用无法重试');
+});
+
+test('组件销毁后（alive=false）：迟到的打开结果完全不回写页面', async () => {
+  const c = setup();
+  c.data.agentReport = DRAFT;
+  c.syncReportNotice(SID, DRAFT);
+  let release;
+  api.mediaSource = () => new Promise((r) => { release = () => r('local://tmp.pdf'); });
+  global.wx.openDocument = (o) => o.success && o.success();
+  const pending = c.viewAgentReportNotice();
+  c.alive = false;                              // 组件销毁
   const before = JSON.stringify(c.data);
   release();
   await pending;
-  assert.equal(JSON.stringify(c.data), before, '隐藏后不得再回写页面状态');
-  assert.equal((api.read().ip12ReportNotices || {})[SID], undefined, '隐藏后也不结算已读');
+  assert.equal(JSON.stringify(c.data), before, '销毁后不得再 setData');
+  assert.equal((api.read().ip12ReportNotices || {})[SID], undefined);
 });
 
 test('关闭提示与打开完成同时发生：不会误清新版本', async () => {
