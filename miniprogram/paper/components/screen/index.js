@@ -243,7 +243,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -277,7 +277,7 @@ Component({
       this.setData({agentSessions:sessions.slice(0,8),agentHistorySessions:sessions.slice(0,50).map(item=>Object.assign({},item,{selected:false}))});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
       else if(current){wx.setStorageSync(IP12_SESSION_KEY,current.sid);this.setData({agentSessionId:current.sid,agentTargetLabel:agentSessionLabel(current)});}
-      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{},agentBackgroundWorking:false});
+      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentBackgroundWorking:false});
       if(!valid())return;
       const activeWaiting=waiting&&waiting.sid===this.data.agentSessionId;
       const homeDraft=local.ip12HomeDraft;

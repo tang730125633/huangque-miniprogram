@@ -100,6 +100,90 @@ test('“查看报告”没打开成功时，不清提示、不记为已读', as
   assert.equal(api.read().ip12ReportNotices.sid, key, '成功打开后才按版本记为已提示');
 });
 
+test('切换到没有历史对话的新账号时，旧账号的报告提示必须清掉（走真实 load()）', async () => {
+  store.clear();
+  api.setSession({ token: 'old-token', user: { username: 'old-user' } });
+  const c = Object.assign({}, definition.methods, {
+    alive: true, visible: true, properties: { pageId: 'chat' },
+    owner: 'old-user',
+    data: {
+      agentSessionId: 'old-sid',
+      agentReport: { status: 'final', files: { pdf: 'api/download/old-sid/old-sid_x.pdf' } },
+      agentReportNotice: { key: 'old-sid@final|x', status: 'final', title: 'IP 定位报告 · 定稿已生成', desc: '点开查看 PDF。' },
+      agentIpDrawerOpen: false,
+    },
+    setData(p) { Object.assign(this.data, p); },
+    toast() {},
+  });
+  // 切到新账号，且新账号没有任何历史会话
+  api.setSession({ token: 'new-token', user: { username: 'new-user' } });
+  api.request = async (path) => {
+    const url = String(path);
+    if (url.includes('/api/auth/me')) return { user: { username: 'new-user' } };
+    if (url.includes('/sessions')) return { sessions: [] };
+    if (url.includes('/restore/')) return { seq: 1, history: [], history_total: 0, delegations: {}, widgets: [], report: {} };
+    return {};
+  };
+  await c.load();
+  assert.equal(c.data.agentSessionId, '', '新账号没有历史会话');
+  assert.equal(c.data.agentReport && Object.keys(c.data.agentReport).length, 0, '报告状态应清空');
+  assert.equal(c.data.agentReportNotice, null, '不得把旧账号的报告提示留给新账号');
+});
+
+test('同一账号但没有历史会话时，报告提示也要清掉（走真实 load()）', async () => {
+  store.clear();
+  api.setSession({ token: 'same-token', user: { username: 'same-user' } });
+  const c = Object.assign({}, definition.methods, {
+    alive: true, visible: true, properties: { pageId: 'chat' },
+    owner: 'same-user', // owner 一致，不走账号重置分支，只看“无当前会话”分支
+    data: {
+      agentSessionId: 'old-sid',
+      agentReport: { status: 'final', files: { pdf: 'api/download/old-sid/old-sid_x.pdf' } },
+      agentReportNotice: { key: 'old-sid@final|x', status: 'final', title: 'IP 定位报告 · 定稿已生成', desc: '点开查看 PDF。' },
+      agentIpDrawerOpen: false,
+    },
+    setData(p) { Object.assign(this.data, p); },
+    toast() {},
+  });
+  api.request = async (path) => {
+    const url = String(path);
+    if (url.includes('/api/auth/me')) return { user: { username: 'same-user' } };
+    if (url.includes('/sessions')) return { sessions: [] };
+    if (url.includes('/restore/')) return { seq: 1, history: [], history_total: 0, delegations: {}, widgets: [], report: {} };
+    return {};
+  };
+  await c.load();
+  assert.equal(c.data.agentSessionId, '', '没有历史会话');
+  assert.equal(c.data.agentReportNotice, null, '无会话时不得留着上一条对话的报告提示');
+});
+
+test('切换账号后即使拉不到会话（请求异常），也要先清掉旧账号提示', async () => {
+  store.clear();
+  api.setSession({ token: 'old-token', user: { username: 'old-user' } });
+  const c = Object.assign({}, definition.methods, {
+    alive: true, visible: true, properties: { pageId: 'chat' },
+    owner: 'old-user',
+    data: {
+      agentSessionId: 'old-sid',
+      agentReport: { status: 'final', files: { pdf: 'api/download/old-sid/old-sid_x.pdf' } },
+      agentReportNotice: { key: 'old-sid@final|x', status: 'final', title: 'IP 定位报告 · 定稿已生成', desc: '点开查看 PDF。' },
+      agentIpDrawerOpen: false,
+    },
+    setData(p) { Object.assign(this.data, p); },
+    toast() {},
+  });
+  api.setSession({ token: 'new-token', user: { username: 'new-user' } });
+  api.request = async (path) => {
+    const url = String(path);
+    if (url.includes('/api/auth/me')) return { user: { username: 'new-user' } };
+    if (url.includes('/sessions')) { const e = new Error('网络连接中断'); e.uncertain = true; throw e; }
+    return {};
+  };
+  await c.load();
+  // 拉不到会话时 loadAgent 会抛错，但账号已经换了，提示不能留着
+  assert.equal(c.data.agentReportNotice, null, '账号更替后不得残留任何旧账号提示');
+});
+
 test('跨会话的迟到响应不误提示', () => {
   const c = setup('new-sid');
   c.syncReportNotice('old-sid', DRAFT);
