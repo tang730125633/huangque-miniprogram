@@ -372,6 +372,11 @@
 .agent-video,.agent-video-placeholder { width:280rpx; height:360rpx; flex:none; border-radius:18rpx; overflow:hidden; }
 .agent-video { background:#111; }
 .agent-video-placeholder { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16rpx; border:1rpx solid #d8d0c3; color:#5f625d; background:#f4efe6; font-size:23rpx; text-align:center; }
+.agent-video-cover { position:relative; width:280rpx; height:360rpx; flex:none; border-radius:18rpx; overflow:hidden; padding:0; margin:0; background:#111; }
+.agent-video-cover-img { position:absolute; inset:0; width:100%; height:100%; }
+.agent-video-cover-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:96rpx; height:96rpx; border-radius:50%; background:rgba(15,18,16,.62); display:flex; align-items:center; justify-content:center; }
+.agent-video-cover-badge .hq-text { color:#fff; font-size:40rpx; padding-left:8rpx; }
+.agent-video-cover-loading { position:absolute; left:50%; bottom:24rpx; transform:translateX(-50%); color:#fff; font-size:22rpx; background:rgba(15,18,16,.55); padding:8rpx 20rpx; border-radius:999rpx; }
 .agent-video-icon { width:72rpx; height:72rpx; opacity:.78; }
 .agent-audios { display:flex; flex-direction:column; gap:10rpx; margin-top:16rpx; }
 .agent-audio-card { display:flex; width:100%; min-height:92rpx; align-items:center; gap:16rpx; padding:14rpx 18rpx; border:1rpx solid #ddd5c9; border-radius:16rpx; color:#343a34; background:#faf6ee; text-align:left; }

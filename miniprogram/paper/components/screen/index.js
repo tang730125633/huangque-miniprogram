@@ -94,11 +94,20 @@ async function shareLocalPath(value) {
 function agentMessages(items) {
   return (Array.isArray(items)?items:[]).map((item,index)=>{
     const media=mediaFromContent(item&&item.content);
+    // 后端结构化 videos（{url,cover}）优先；文本里提取出的 URL 合并去重，拿不到封面的保持空
+    const byUrl=new Map();
+    (Array.isArray(item&&item.videos)?item.videos:[]).forEach(v=>{
+      if(v&&(v.url||v.src))byUrl.set(v.url||v.src,v);
+    });
+    media.videos.forEach(url=>{if(!byUrl.has(url))byUrl.set(url,{url});});
+    const videos=[...byUrl.values()].map((v,videoIndex)=>({
+      url:v.url||v.src||'',cover:(v&&v.cover)||'',src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex
+    }));
     return {
       domId:'agent-message-'+index,
       role:item&&item.role==='user'?'user':'assistant', content:media.content, richNodes:agentRichNodes(media.content),
       images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
-      videos:media.videos.map((url,videoIndex)=>({url,src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex})),
+      videos,
       audios:media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex})),
       pdfs:media.pdfs.map((url,pdfIndex)=>({url,domId:'agent-pdf-'+index+'-'+pdfIndex})), attachments:[]
     };
@@ -130,7 +139,7 @@ function videoWork(item) {
   return {
     key:'video-'+(jobId||'asset-'+item.id), id:jobId||item.id, jobId, assetOnly:!jobId,
     kind:'video', status, title:item.text||'视频作品', url:api.mediaURL(item.video_url),
-    coverFile:item.image_file||'', ratio:item.ratio||'', videoHeight:videoHeight(item.ratio),
+    coverFile:item.cover_url||item.image_file||'', coverUrl:item.cover_url||'', ratio:item.ratio||'', videoHeight:videoHeight(item.ratio),
     done:['done','completed'].includes(status), failed:['error','failed'].includes(status),
     label:['done','completed'].includes(status)?'已完成':['error','failed'].includes(status)?'生成失败':'正在处理'
   };
@@ -368,8 +377,11 @@ Component({
       const works=[...map.values()].sort((a,b)=>Number(b.jobId||b.id||0)-Number(a.jobId||a.id||0));
       const images=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='image'&&j.url);
       for(let i=0;i<images.length;i+=4)await Promise.all(images.slice(i,i+4).map(async j=>{j.displayUrl=await api.mediaSource(j.url).catch(()=> '');}));
-      const covers=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='video'&&j.coverFile);
-      for(let i=0;i<covers.length;i+=4)await Promise.all(covers.slice(i,i+4).map(async j=>{j.displayCover=await api.mediaSource(api.mediaURL('/api/gen/file/'+j.coverFile)).catch(()=>'');}));
+      const covers=(page==='home'?works.slice(0,3):page==='messages'?[]:works).filter(j=>j.kind==='video'&&(j.coverUrl||j.coverFile));
+      for(let i=0;i<covers.length;i+=4)await Promise.all(covers.slice(i,i+4).map(async j=>{
+        if(j.coverUrl){j.displayCover=api.mediaURL(j.coverUrl);return;}   // 视频帧封面：https 直链直接显示，不走 downloadFile 域名白名单
+        j.displayCover=await api.mediaSource(api.mediaURL('/api/gen/file/'+j.coverFile)).catch(()=>'');
+      }));
       if(valid()){
         this.setData({works,hasMore:page==='works'&&batches.some(b=>b.length>=limit)});this.applyFilter();
         if(page==='home'){
