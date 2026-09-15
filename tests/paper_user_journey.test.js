@@ -70,27 +70,38 @@ test('voice slots remain visible when the main turn film mode changes', async ()
   api.request = originalRequest;
 });
 
-test('record sample keeps the previously selected voice slot after its picker card is gone', async () => {
+test('voice sample card restores with its structured script and actions', async () => {
   const originalRequest = api.request;
+  // film=true（出片轮）也要渲染：后端契约是 film=false 的样音卡任何轮都在
   api.request = async () => ({
-    ok: true, history: [], film: false, delegations: {}, report: {},
-    selected_choices: { voice: { id: 'slot-a', label: '我的克隆音色', slot_id: 'slot-a', created_at: '2026-09-13' } },
+    ok: true, history: [], film: true, delegations: {}, report: {},
+    selected_choices: {},
     widgets: [{
-      id: 'sample_source', gen: 3, type: 'option_pick', film: false, title: '样音来源',
-      items: [{ id: 'record_sample', title: '现场录一段', summary: '请朗读：大家好，这是我的一段真实声音样本，我会用自然的语速认真说完这段话，以后用它来创作更多真实有温度的内容。' }],
+      id: 'voice_sample_clone', gen: 4, type: 'voice_sample', film: false,
+      title: '录一段你的声音（30~60 秒）', hint: '克隆需要 30~60 秒连续说话的人声',
+      script: '大家好，我是开服装店的小芳，做这行七八年了。我店里主要卖日常穿的衣服。谢谢大家。',
+      actions: [{ mode: 'record', label: '开始录音' }, { mode: 'upload', label: '上传录音文件' }],
     }],
   });
   const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
-  await component.methods.restoreAgent.call(ctx, 'sid-voice-followup');
-  assert.equal(ctx.data.agentWidgets[0].items[0].slotId, 'slot-a');
+  await component.methods.restoreAgent.call(ctx, 'sid-voice-sample');
+  assert.equal(ctx.data.agentWidgets.length, 1);
+  const widget = ctx.data.agentWidgets[0];
+  assert.equal(widget.type, 'voice_sample');
+  assert.equal(widget.script, '大家好，我是开服装店的小芳，做这行七八年了。我店里主要卖日常穿的衣服。谢谢大家。');
+  assert.deepEqual(widget.actions.map(action => action.mode), ['record', 'upload']);
+  assert.equal(widget.actions[0].label, '开始录音');
+  assert.equal(widget.actions[1].label, '上传录音文件');
+  assert.equal(widget.items.length, 0);
+  assert.match(screenWxml, /bindtap="chooseAgentVoiceSampleAction"/);
   api.request = originalRequest;
 });
 
-test('opening voice consent does not create an empty audio player', () => {
+test('opening the recorder does not create an empty audio player', () => {
   let players = 0;
   global.wx.getRecorderManager = () => ({ onStart() {}, onStop() {}, onError() {} });
   global.wx.createInnerAudioContext = () => { players += 1; return { onEnded() {}, onError() {} }; };
-  const ctx = { alive: true, data: { agentVoiceFlow: { stage: 'consent' } }, setData, setAgentVoiceFlow: component.methods.setAgentVoiceFlow };
+  const ctx = { alive: true, data: { agentVoiceFlow: { stage: 'record' } }, setData, setAgentVoiceFlow: component.methods.setAgentVoiceFlow };
   assert.equal(component.methods.initAgentVoiceMedia.call(ctx), true);
   assert.equal(players, 0);
   assert.equal(component.methods.initAgentVoiceMedia.call(ctx, true), true);
@@ -104,8 +115,8 @@ test('template catalog keeps the complete list in one horizontal card with inlin
     body: '适合批量内容展示', image_url: '/api/v4/template-previews/template-' + index + '.jpg',
     recommended: index < 6,
   }));
-  api.request = async () => ({ ok: true, history: [], film: false, delegations: {}, report: {}, selected_choices: {}, widgets: [{
-    id: 'template_catalog', gen: 1, type: 'option_pick', film: false, layout: 'template_catalog',
+  api.request = async () => ({ ok: true, history: [], film: true, delegations: {}, report: {}, selected_choices: {}, widgets: [{
+    id: 'template_catalog', gen: 1, type: 'option_pick', film: false,
     title: '模板成片 · 全部模板', hint: '共 22 个', items: templates,
   }] });
   api.mediaSource = async url => url;
@@ -119,51 +130,226 @@ test('template catalog keeps the complete list in one horizontal card with inlin
   api.request = originalRequest; api.mediaSource = originalMedia;
 });
 
-test('record sample widget opens an inline recorder without leaving the chat', () => {
+test('voice sample record action opens the inline recorder with the structured script', () => {
   let navigated = false;
   global.wx.navigateTo = () => { navigated = true; };
-  const ctx = {
-    data: { busy: false, agentThinking: false, agentSessionId: 'sid-voice-inline', agentVoiceFlow: null, agentWidgets: [{
-      title: '声音克隆槽位', kind: 'voice', selectedId: 'slot-a', film: false,
-      items: [{ id: 'slot-a', title: '我的克隆音色', slotId: 'slot-a', createdAt: '2026-09-13' }],
-    }, {
-      title: '样音来源', kind: 'script', film: false,
-      items: [{ id: 'record_sample', title: '现场录一段', summary: '请朗读：大家好，这是我的专属声音。我会用平常说话的语速介绍自己的工作、生活和最近正在做的事情，也会认真把每一句话说清楚。今天这段录音只用于创建我的个人音色，希望以后可以用它讲出更多真实、有温度的内容。谢谢你听我说完，祝你今天开心。' }],
-    }] }, setData, initAgentVoiceMedia() {}, openAgentVoiceFlow: component.methods.openAgentVoiceFlow,
+  const widget = {
+    type: 'voice_sample', id: 'voice_sample_clone', title: '录一段你的声音（30~60 秒）',
+    script: '大家好，这是我的专属声音。我会用平常说话的语速介绍自己的工作。',
+    actions: [{ mode: 'record', label: '开始录音' }, { mode: 'upload', label: '上传录音文件' }],
   };
-  component.methods.chooseAgentWidget.call(ctx, { currentTarget: { dataset: { widget: 1, option: 0 } } });
+  const ctx = {
+    data: { busy: false, agentThinking: false, agentSessionId: 'sid-voice-inline', agentVoiceFlow: null, agentWidgets: [widget] },
+    setData, toast() {}, initAgentVoiceMedia() {}, openAgentVoiceFlow: component.methods.openAgentVoiceFlow,
+  };
+  component.methods.chooseAgentVoiceSampleAction.call(ctx, { currentTarget: { dataset: { widget: 0, mode: 'record' } } });
   assert.equal(navigated, false);
-  assert.equal(ctx.data.agentVoiceFlow.stage, 'consent');
-  assert.equal(ctx.data.agentVoiceFlow.slotId, 'slot-a');
-  assert.match(ctx.data.agentVoiceFlow.script, /大家好，这是我的专属声音/);
+  assert.equal(ctx.data.agentVoiceFlow.stage, 'record');
+  assert.equal(ctx.data.agentVoiceFlow.widgetId, 'voice_sample_clone');
+  assert.equal(ctx.data.agentVoiceFlow.actionMode, 'record');
+  assert.equal(ctx.data.agentVoiceFlow.script, widget.script);
   assert.match(screenWxml, /agent-voice-card/);
-  assert.match(screenWxml, /30–60 秒/);
-  assert.match(screenWxml, /bindtap="submitAgentVoiceClone"/);
+  assert.match(screenWxml, /bindtap="submitAgentVoiceSample"/);
+  assert.doesNotMatch(screenWxml, /submitAgentVoiceClone|acceptAgentVoiceConsent/);
 });
 
-test('inline voice clone submits the recorded sample to the existing backend contract', async () => {
-  const originalRequest = api.request;
-  let request, polled = false;
-  api.request = async (requestPath, method, data) => { request = { requestPath, method, data }; return { ok: true }; };
-  const ctx = {
-    alive: true,
-    data: { agentVoiceFlow: { sid: 'sid-clone', stage: 'review', slotId: 'slot-a', audioB64: 'ZmFrZS1tcDM=', audioFormat: 'mp3', consent: true, consentAt: '2026-09-13T00:00:00.000Z', busy: false } },
-    setData,
-    setAgentVoiceFlow: component.methods.setAgentVoiceFlow,
-    pollAgentVoiceClone() { polled = true; },
+test('recorded sample uploads and sends the structured widget action to the chat endpoint', async () => {
+  const originalUpload = api.upload, originalRequest = api.request;
+  let chatBody = null;
+  api.upload = async (requestPath, filePath, data) => {
+    assert.equal(requestPath, '/workbench/ip12/api/v4/upload');
+    assert.equal(filePath, 'wxfile://sample.mp3');
+    assert.equal(data.session_id, 'sid-clone');
+    return { file_id: 'f-audio-1', kind: 'audio', url: '/api/v4/file/sid-clone/f-audio-1.mp3' };
   };
-  await component.methods.submitAgentVoiceClone.call(ctx);
-  assert.equal(request.requestPath, '/api/gen/audio/clone-vip');
-  assert.equal(request.method, 'POST');
-  assert.equal(request.data.slot_id, 'slot-a');
-  assert.equal(request.data.voice_consent, true);
-  assert.equal(ctx.data.agentVoiceFlow.stage, 'training');
-  assert.equal(polled, true);
+  api.request = async (requestPath, method, data) => {
+    if (requestPath === '/workbench/ip12/api/v4/chat') { chatBody = { method, data }; return { async: true, seq: 9 }; }
+    if (requestPath.includes('/poll/')) return { state: 'done', seq: 9 };
+    if (requestPath.includes('/restore/')) return { ok: true, history: [], delegations: {}, widgets: [], film: false, report: {}, selected_choices: {} };
+    throw new Error('unexpected ' + requestPath);
+  };
+  const ctx = {
+    alive: true, visible: true,
+    data: {
+      agentVoiceFlow: { sid: 'sid-clone', stage: 'review', samplePath: 'wxfile://sample.mp3', recSec: 35, widgetId: 'voice_sample_clone', widgetTitle: '录一段你的声音（30~60 秒）', actionMode: 'record', actionLabel: '开始录音', busy: false },
+      agentSessionId: 'sid-clone', agentWidgets: [], agentAttachments: [], agentMessages: [], agentPending: null, agentThinking: false, agentProgress: '', busy: false,
+    },
+    setData,
+    run: component.methods.run, fail(error) { throw error; },
+    setAgentVoiceFlow: component.methods.setAgentVoiceFlow,
+    stopAgentVoiceTimer: component.methods.stopAgentVoiceTimer,
+    ensureAgentSession: component.methods.ensureAgentSession,
+    addAgentAttachment: component.methods.addAgentAttachment,
+    closeAgentVoiceFlow: component.methods.closeAgentVoiceFlow,
+    sendAgentVoiceSampleAction: component.methods.sendAgentVoiceSampleAction,
+    sendAgentMessage: component.methods.sendAgentMessage,
+    executeAgent: component.methods.executeAgent,
+    pollAgent: component.methods.pollAgent,
+    pollAgentStep: component.methods.pollAgentStep,
+    stopAgentPoll: component.methods.stopAgentPoll,
+    clearAgentWaiting: component.methods.clearAgentWaiting,
+    restoreAgent: component.methods.restoreAgent,
+    scrollAgent() {}, requireLogin: () => true, toast() {},
+  };
+  await component.methods.submitAgentVoiceSample.call(ctx);
+  await ctx.agentPoll;
+  assert.equal(chatBody.method, 'POST');
+  assert.equal(chatBody.data.message, '【点选】录一段你的声音（30~60 秒）：开始录音');
+  assert.deepEqual(chatBody.data.attachments, ['f-audio-1']);
+  assert.deepEqual(chatBody.data.widget_action, { widget_type: 'voice_sample', widget_id: 'voice_sample_clone', mode: 'record' });
+  assert.equal(ctx.data.agentVoiceFlow, null);
+  api.upload = originalUpload; api.request = originalRequest;
+});
+
+test('uploaded sample action goes through the file picker and the same structured submission', async () => {
+  const originalUpload = api.upload, originalRequest = api.request;
+  let picked = null, uploaded = null, chatBody = null;
+  global.wx.chooseMessageFile = options => { picked = options; options.success({ tempFiles: [{ path: 'wxfile://my-voice.m4a', name: '我的样音.m4a', size: 1024 }] }); };
+  api.upload = async () => { uploaded = true; return { file_id: 'f-audio-2', kind: 'audio', url: '/api/v4/file/sid-upload/f-audio-2.m4a' }; };
+  api.request = async (requestPath, method, data) => {
+    if (requestPath === '/workbench/ip12/api/v4/chat') { chatBody = { method, data }; return { async: true, seq: 9 }; }
+    if (requestPath.includes('/poll/')) return { state: 'done', seq: 9 };
+    if (requestPath.includes('/restore/')) return { ok: true, history: [], delegations: {}, widgets: [], film: false, report: {}, selected_choices: {} };
+    throw new Error('unexpected ' + requestPath);
+  };
+  const widget = {
+    type: 'voice_sample', id: 'voice_sample_clone', title: '录一段你的声音（30~60 秒）',
+    script: '大家好，这是我的专属声音。', actions: [{ mode: 'upload', label: '上传录音文件' }],
+  };
+  const ctx = {
+    alive: true, visible: true,
+    data: { busy: false, agentThinking: false, agentSessionId: 'sid-upload', agentWidgets: [widget], agentAttachments: [], agentMessages: [], agentPending: null, agentThinking: false, agentProgress: '', agentSheet: '' },
+    setData, toast() {},
+    run: component.methods.run, fail(error) { throw error; },
+    pickAgentVoiceSampleFile: component.methods.pickAgentVoiceSampleFile,
+    ensureAgentSession: component.methods.ensureAgentSession,
+    addAgentAttachment: component.methods.addAgentAttachment,
+    closeAgentVoiceFlow: component.methods.closeAgentVoiceFlow,
+    sendAgentVoiceSampleAction: component.methods.sendAgentVoiceSampleAction,
+    sendAgentMessage: component.methods.sendAgentMessage,
+    executeAgent: component.methods.executeAgent,
+    pollAgent: component.methods.pollAgent,
+    pollAgentStep: component.methods.pollAgentStep,
+    stopAgentPoll: component.methods.stopAgentPoll,
+    clearAgentWaiting: component.methods.clearAgentWaiting,
+    restoreAgent: component.methods.restoreAgent,
+    scrollAgent() {}, requireLogin: () => true,
+  };
+  await component.methods.chooseAgentVoiceSampleAction.call(ctx, { currentTarget: { dataset: { widget: 0, mode: 'upload' } } });
+  await ctx.agentPoll;
+  assert.deepEqual(picked.extension, ['mp3', 'wav', 'm4a', 'aac', 'ogg']);
+  assert.equal(uploaded, true);
+  assert.equal(chatBody.data.message, '【点选】录一段你的声音（30~60 秒）：上传录音文件');
+  assert.deepEqual(chatBody.data.attachments, ['f-audio-2']);
+  assert.deepEqual(chatBody.data.widget_action, { widget_type: 'voice_sample', widget_id: 'voice_sample_clone', mode: 'upload' });
+  api.upload = originalUpload; api.request = originalRequest;
+});
+
+test('sample file larger than 10 MB is rejected before upload', () => {
+  let picked = null, toasts = [];
+  global.wx.chooseMessageFile = options => { picked = options; options.success({ tempFiles: [{ path: 'wxfile://big.mp3', name: '大文件.mp3', size: 11 * 1024 * 1024 }] }); };
+  const widget = { type: 'voice_sample', id: 'voice_sample_clone', title: '录一段你的声音（30~60 秒）', script: '大家好。', actions: [{ mode: 'upload', label: '上传录音文件' }] };
+  const ctx = {
+    data: { busy: false, agentThinking: false, agentWidgets: [widget], agentSheet: '' },
+    setData, toast(title) { toasts.push(title); }, fail(error) { throw error; },
+  };
+  component.methods.pickAgentVoiceSampleFile.call(ctx, widget, { mode: 'upload', label: '上传录音文件' });
+  assert.deepEqual(picked.extension, ['mp3', 'wav', 'm4a', 'aac', 'ogg']);
+  assert.equal(toasts.length, 1);
+  assert.match(toasts[0], /10 MB/);
+});
+
+function deepSetData(patch) {
+  for (const [key, value] of Object.entries(patch)) {
+    const path = key.replace(/\[(\d+)\]/g, '.$1').split('.');
+    let target = this.data;
+    for (let i = 0; i < path.length - 1; i++) target = target[path[i]];
+    target[path[path.length - 1]] = value;
+  }
+}
+
+test('multi-select option card toggles checked items and submits them in one message', async () => {
+  const originalRequest = api.request;
+  let chatBody = null;
+  api.request = async (requestPath, method, data) => {
+    if (requestPath === '/workbench/ip12/api/v4/chat') { chatBody = { method, data }; return { async: true, seq: 9 }; }
+    if (requestPath.includes('/poll/')) return { state: 'done', seq: 9 };
+    if (requestPath.includes('/restore/')) return { ok: true, history: [], delegations: {}, report: {}, selected_choices: {}, film: false, widgets: [{
+      id: 'follow_plan', gen: 2, type: 'option_pick', film: false, selection_mode: 'multiple', min_selected: 2, max_selected: 3,
+      title: '复刻方案', items: [
+        { id: 'a', title: '剪辑节奏', summary: 'ChatCut 复刻' },
+        { id: 'b', title: '模板同款', summary: '选近似模板' },
+        { id: 'c', title: '封面样式', summary: '参考帧生成' },
+      ],
+    }] };
+    throw new Error('unexpected ' + requestPath);
+  };
+  const ctx = {
+    alive: true, visible: true,
+    data: { agentSessionId: '', agentWidgets: [], agentAttachments: [], agentMessages: [], agentPending: null, agentThinking: false, agentProgress: '', busy: false },
+    setData: deepSetData, scrollAgent() {}, toast() {},
+    run: component.methods.run, fail(error) { throw error; },
+    ensureAgentSession: component.methods.ensureAgentSession,
+    sendAgentMessage: component.methods.sendAgentMessage,
+    executeAgent: component.methods.executeAgent,
+    pollAgent: component.methods.pollAgent,
+    pollAgentStep: component.methods.pollAgentStep,
+    stopAgentPoll: component.methods.stopAgentPoll,
+    clearAgentWaiting: component.methods.clearAgentWaiting,
+    restoreAgent: component.methods.restoreAgent,
+    requireLogin: () => true,
+  };
+  await component.methods.restoreAgent.call(ctx, 'sid-multi');
+  const widget = ctx.data.agentWidgets[0];
+  assert.equal(widget.type, 'option_pick');
+  assert.equal(widget.selectionMode, 'multiple');
+  assert.equal(widget.minSelected, 2);
+  assert.equal(widget.maxSelected, 3);
+  assert(widget.items.every(item => item.selected === false));
+
+  const toasts = [];
+  ctx.toast = title => toasts.push(title);
+  await component.methods.confirmAgentMultiSelection.call(ctx, { currentTarget: { dataset: { widget: 0 } } });
+  assert.equal(chatBody, null, '未选够下限不能提交');
+  assert.match(toasts[0], /至少选择 2 项/);
+
+  component.methods.toggleAgentMultiOption.call(ctx, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  component.methods.toggleAgentMultiOption.call(ctx, { currentTarget: { dataset: { widget: 0, option: 1 } } });
+  component.methods.toggleAgentMultiOption.call(ctx, { currentTarget: { dataset: { widget: 0, option: 1 } } });
+  assert.equal(ctx.data.agentWidgets[0].selectedCount, 1, '再点一次取消勾选');
+  component.methods.toggleAgentMultiOption.call(ctx, { currentTarget: { dataset: { widget: 0, option: 1 } } });
+  component.methods.toggleAgentMultiOption.call(ctx, { currentTarget: { dataset: { widget: 0, option: 2 } } });
+  assert.equal(ctx.data.agentWidgets[0].selectedCount, 3);
+  assert(ctx.data.agentWidgets[0].items.every(item => item.selected));
+
+  await component.methods.confirmAgentMultiSelection.call(ctx, { currentTarget: { dataset: { widget: 0 } } });
+  await ctx.agentPoll;
+  assert.equal(chatBody.method, 'POST');
+  assert.equal(chatBody.data.message, '【点选】复刻方案：剪辑节奏、模板同款、封面样式');
+  assert.equal(chatBody.data.widget_action, undefined, '多选走点选消息，不带结构化组件动作');
+  api.request = originalRequest;
+});
+
+test('film-flagged and non-film cards both render in any round', async () => {
+  const originalRequest = api.request;
+  api.request = async () => ({
+    ok: true, history: [], film: false, delegations: {}, report: {},
+    selected_choices: {},
+    widgets: [
+      { id: 'script_10s', gen: 1, type: 'script_pick', film: true, title: '口播文案', items: [{ id: 's1', title: '10 秒版' }] },
+      { id: 'template_catalog', gen: 1, type: 'option_pick', film: false, title: '模板成片 · 全部模板', items: [{ id: 't1', title: '模板 1' }] },
+    ],
+  });
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  await component.methods.restoreAgent.call(ctx, 'sid-both-sets');
+  assert.equal(ctx.data.agentWidgets.length, 2, '网页端同口径：两套卡都渲染，film 不决定显隐');
+  assert.equal(ctx.data.agentWidgets[0].film, true);
+  assert.equal(ctx.data.agentWidgets[1].film, false);
+  assert.equal(ctx.data.agentWidgets[1].layout, 'template_catalog');
   api.request = originalRequest;
 });
 
 test('inline recorder rejects samples shorter than 30 seconds', () => {
-  global.wx.getFileSystemManager = () => ({ readFile: options => options.success({ data: 'encoded-mp3' }) });
   const ctx = { alive: true, agentVoiceSeconds: 29, data: { agentVoiceFlow: { stage: 'recording' } }, setData, setAgentVoiceFlow: component.methods.setAgentVoiceFlow };
   component.methods.readAgentVoiceSample.call(ctx, 'short.mp3');
   assert.equal(ctx.data.agentVoiceFlow.stage, 'record');
@@ -171,7 +357,7 @@ test('inline recorder rejects samples shorter than 30 seconds', () => {
   ctx.agentVoiceSeconds = 30;
   component.methods.readAgentVoiceSample.call(ctx, 'valid.mp3');
   assert.equal(ctx.data.agentVoiceFlow.stage, 'review');
-  assert.equal(ctx.data.agentVoiceFlow.audioB64, 'encoded-mp3');
+  assert.equal(ctx.data.agentVoiceFlow.samplePath, 'valid.mp3');
 });
 
 test('history management calls the deployed batch-delete contract', async () => {
