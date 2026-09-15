@@ -11,6 +11,10 @@
         "value": "miniprogram_npm"
       },
       {
+        "type": "folder",
+        "value": "scripts"
+      },
+      {
         "type": "suffix",
         "value": ".DS_Store"
       },
