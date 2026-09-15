@@ -636,7 +636,7 @@ Component({
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
       clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
       const sessions=[{sid,preview:'新对话',turns:0,selected:false}].concat((this.data.agentHistorySessions||[]).filter(item=>item.sid!==sid)).slice(0,50);
-      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:sessions.slice(0,8),agentHistorySessions:sessions});
+      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:sessions.slice(0,8),agentHistorySessions:sessions});
       this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
     },
     addAgentAttachment(item){
@@ -760,7 +760,7 @@ Component({
         const remaining=this.data.agentHistorySessions.filter(item=>!deleted.includes(item.sid)).map(item=>Object.assign({},item,{selected:false}));
         const deletedCurrent=deleted.includes(this.data.agentSessionId);
         this.setData({agentHistorySessions:remaining,agentSessions:remaining.slice(0,8),agentHistorySelectedCount:0,agentHistoryManage:false,agentSheet:failed.length?'history':''});
-        if(deletedCurrent){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
+        if(deletedCurrent){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
         this.toast(failed.length?'已删除 '+deleted.length+' 段，'+failed.length+' 段未删除':'已删除 '+deleted.length+' 段对话');
       });}});
     },
@@ -984,13 +984,28 @@ Component({
       if(!notice||!notice.key||!sid)return;
       const all=Object.assign({},this.reportNoticeState());all[sid]=notice.key;api.save({ip12ReportNotices:all});
     },
-    viewAgentReportNotice(){this.markReportNoticeAnnounced();this.setData({agentReportNotice:null});return this.openAgentReport();},
+    // 打不开就不能算已读：只有真的打开了才清提示、才记成已提示
+    viewAgentReportNotice(){
+      if(!this.data.agentReportNotice)return Promise.resolve(false);
+      return Promise.resolve(this.openAgentReport()).then(opened=>{
+        if(!opened)return false;
+        this.markReportNoticeAnnounced();
+        this.setData({agentReportNotice:null});
+        return true;
+      }).catch(()=>false);
+    },
     dismissAgentReportNotice(){this.markReportNoticeAnnounced();this.setData({agentReportNotice:null});},
+    // 返回是否真的打开成功，供调用方决定要不要记已读（下载/打开失败时保留提示）
     openAgentReport(){
       const raw=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
-      if(!raw)return this.toast('报告还在整理中');
+      if(!raw){this.toast('报告还在整理中');return Promise.resolve(false);}
       const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;
-      this.run(async()=>{const file=await api.mediaSource(api.mediaURL(url));await new Promise((resolve,reject)=>wx.openDocument({filePath:file,fileType:'pdf',showMenu:true,success:resolve,fail:reject}));});
+      let opened=false;
+      return Promise.resolve(this.run(async()=>{
+        const file=await api.mediaSource(api.mediaURL(url));
+        await new Promise((resolve,reject)=>wx.openDocument({filePath:file,fileType:'pdf',showMenu:true,success:resolve,fail:reject}));
+        opened=true;
+      })).then(()=>opened).catch(()=>false);
     },
     confirmAgentReport(){
       if(!this.data.agentSessionId)return;

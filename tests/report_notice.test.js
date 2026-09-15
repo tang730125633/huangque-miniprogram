@@ -57,17 +57,47 @@ test('报告版本升级（初稿→定稿）会再次提示', () => {
   assert.match(c.data.agentReportNotice.title, /定稿/);
 });
 
-test('点“查看报告”打开的是当前报告的 PDF 并记为已提示', () => {
+test('点“查看报告”打开的是当前报告的 PDF 并记为已提示', async () => {
   const c = setup();
   c.data.agentReport = DRAFT;
   let opened = 0;
-  c.openAgentReport = () => { opened++; };
+  c.openAgentReport = () => { opened++; return Promise.resolve(true); };
   c.syncReportNotice('sid', DRAFT);
-  c.viewAgentReportNotice();
+  await c.viewAgentReportNotice();
   assert.equal(opened, 1, '应调用打开报告');
-  assert.equal(c.data.agentReportNotice, null, '点开后收起提示');
+  assert.equal(c.data.agentReportNotice, null, '成功打开后才收起提示');
   c.syncReportNotice('sid', DRAFT);
   assert.equal(c.data.agentReportNotice, null, '不重复提示');
+});
+
+test('新建对话后不再显示上一个对话的报告提示', async () => {
+  const c = setup();
+  c.syncReportNotice('sid', DRAFT);
+  assert.ok(c.data.agentReportNotice, '前置：旧对话已有提示');
+  api.request = async () => ({ session_id: 'new-sid', seq: 5 });
+  c.pollAgent = () => Promise.resolve();
+  await c.startNewAgent();
+  assert.equal(c.data.agentSessionId, 'new-sid');
+  assert.equal(c.data.agentReportNotice, null, '新对话不得带着旧对话的报告提示');
+  // 旧会话的报告随后回来，也不能在新对话里弹
+  c.syncReportNotice('sid', DRAFT);
+  assert.equal(c.data.agentReportNotice, null);
+});
+
+test('“查看报告”没打开成功时，不清提示、不记为已读', async () => {
+  const c = setup();
+  c.syncReportNotice('sid', DRAFT);
+  const key = c.data.agentReportNotice.key;
+  // 打不开（下载失败 / openDocument 失败）
+  c.openAgentReport = () => Promise.resolve(false);
+  await c.viewAgentReportNotice();
+  assert.ok(c.data.agentReportNotice, '没打开就不该清提示');
+  assert.equal((api.read().ip12ReportNotices || {}).sid, undefined, '没打开就不该记为已读');
+  // 真的打开了才清、才记已读
+  c.openAgentReport = () => Promise.resolve(true);
+  await c.viewAgentReportNotice();
+  assert.equal(c.data.agentReportNotice, null);
+  assert.equal(api.read().ip12ReportNotices.sid, key, '成功打开后才按版本记为已提示');
 });
 
 test('跨会话的迟到响应不误提示', () => {
