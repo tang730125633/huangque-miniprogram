@@ -580,3 +580,11 @@
 .asset-load-more { width:100%; min-height:76rpx; font-size:23rpx; }
 @keyframes agent-sheet-in { from { transform:translateY(100%); } to { transform:translateY(0); } }
 @media (prefers-reduced-motion:reduce) { .agent-sheet { animation:none; } }
+/* 聊天里的文件卡（api/download/… 渲染成可点卡片，与网页端 link-card 对齐） */
+.agent-files { display:block; margin-top:12rpx; }
+.agent-file-card { display:block; position:relative; width:100%; box-sizing:border-box; margin-bottom:10rpx; padding:18rpx 52rpx 18rpx 20rpx; border:1rpx solid #e2d6c0; border-radius:18rpx; background:#fdf8ee; text-align:left; }
+.agent-file-icon { float:left; width:36rpx; height:36rpx; margin:5rpx 14rpx 0 0; }
+.agent-file-copy { display:block; overflow:hidden; }
+.agent-file-name { display:block; font-size:25rpx; font-weight:700; color:#5c4423; line-height:1.45; }
+.agent-file-action { display:block; margin-top:4rpx; font-size:21rpx; color:#8a7a62; }
+.agent-file-open { position:absolute; right:18rpx; top:50%; margin-top:-22rpx; color:#a3937a; font-size:30rpx; line-height:44rpx; }

@@ -31,18 +31,30 @@ async function agentRead(path) {
     return api.request(path);
   }
 }
+// 从下载路径里取出可读文件名：/api/download/<sid>/<sid>_老王_IP人设定位_初稿.pdf -> 老王_IP人设定位_初稿.pdf
+function fileNameFromPath(value) {
+  const raw=String(value||'').split(/[?#]/)[0];
+  const last=raw.split('/').filter(Boolean).pop()||'';
+  let name=last;
+  try{name=decodeURIComponent(last);}catch(_){name=last;}
+  const parts=name.split('_');
+  if(parts.length>1&&/^[0-9a-f]{32}$/i.test(parts[0]))name=parts.slice(1).join('_');
+  return name||'文件';
+}
 function mediaFromContent(value) {
-  const content=String(value||''),images=[],videos=[],audios=[],known=[];
-  (content.match(/(?:https?:\/\/|\/api\/v4\/)[^\s<>"']+/g)||[]).forEach(raw=>{
+  const content=String(value||''),images=[],videos=[],audios=[],files=[],known=[];
+  (content.match(/(?:https?:\/\/|\/api\/v4\/|\/?api\/download\/|\/workbench\/ip12\/api\/download\/)[^\s<>"']+/g)||[]).forEach(raw=>{
     const url=raw.replace(/[)）\]}>*_，。；;]+$/,'');
     if(/\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(url)){images.push(url);known.push(url);}
     else if(/\.(?:mp4|mov|webm|m3u8)(?:[?#]|$)|\/api\/v4\/render\/[0-9a-f]{32}(?:[?#]|$)/i.test(url)){videos.push(url);known.push(url);}
     else if(/\.(?:mp3|wav|m4a|aac|ogg)(?:[?#]|$)/i.test(url)){audios.push(url);known.push(url);}
+    else if(/\.(?:pdf|docx?|xlsx?|pptx?|zip)(?:[?#]|$)/i.test(url)||/\/api\/download\//.test(url)){files.push({url,name:fileNameFromPath(url)});known.push(url);}
   });
   const clean=known.reduce((text,url)=>text.split(url).join(''),content).replace(/\[([^\]]*)\]\(\s*\)/g,'$1').replace(/<\s*>/g,'');
   return {
     content:clean.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!/^(?:成片|成片链接|视频|视频链接|模板小样|小样视频|预览视频|缩略图|音频|音频链接|录音|试听)[：:]?$/.test(line.replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
-    images:[...new Set(images)], videos:[...new Set(videos)], audios:[...new Set(audios)]
+    images:[...new Set(images)], videos:[...new Set(videos)], audios:[...new Set(audios)],
+    files:files.filter((file,index)=>files.findIndex(other=>other.url===file.url)===index)
   };
 }
 function agentInlineNodes(value) {
@@ -94,7 +106,8 @@ function agentMessages(items) {
       role:item&&item.role==='user'?'user':'assistant', content:media.content, richNodes:agentRichNodes(media.content),
       images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
       videos:media.videos.map((url,videoIndex)=>({url,src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex})),
-      audios:media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex})), attachments:[]
+      audios:media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex})),
+      files:media.files.map((file,fileIndex)=>({url:file.url,name:file.name,domId:'agent-file-'+index+'-'+fileIndex})), attachments:[]
     };
   });
 }
@@ -912,6 +925,20 @@ Component({
       if(kind==='report'){this.closeAgentIpDrawer();return this.openAgentReport();}
       const text=kind==='topics'?'请把我已经确认的选题列出来。':'请把我已经确认的口播稿列出来。';
       this.agentDraft=text;this.setData({promptInput:text,agentHasText:true,agentIpDrawerOpen:false});this.toast('已放到输入框，确认后发送');
+    },
+    // 聊天里的文件卡：正文中的 api/download/… 不再只是纯文本，渲染成可点卡片
+    openAgentFile(e){
+      const messageIndex=Number(e.currentTarget.dataset.message),fileIndex=Number(e.currentTarget.dataset.file);
+      const item=(this.data.agentMessages||[])[messageIndex],file=item&&item.files&&item.files[fileIndex];
+      if(!file||!file.url)return this.toast('文件地址无效，请让黄雀重新发一次');
+      const raw=String(file.url);
+      const url=raw.startsWith('api/')?'/workbench/ip12/'+raw:(/^https?:\/\//i.test(raw)?raw:'/workbench/ip12/'+raw.replace(/^\//,''));
+      const ext=(String(file.name||'').split('.').pop()||'').toLowerCase();
+      const fileType=['pdf','doc','docx','xls','xlsx','ppt','pptx'].includes(ext)?ext:'pdf';
+      return this.run(async()=>{
+        const path=await api.mediaSource(api.mediaURL(url));
+        await new Promise((resolve,reject)=>wx.openDocument({filePath:path,fileType,showMenu:true,success:resolve,fail:reject}));
+      });
     },
     openAgentReport(){
       const raw=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
