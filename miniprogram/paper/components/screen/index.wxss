@@ -587,3 +587,4 @@
 .report-notice-desc { display:block; margin-top:6rpx; font-size:22rpx; color:#8a7a62; line-height:1.45; }
 .report-notice-open { display:inline-block; width:auto; min-height:60rpx; margin-top:16rpx; padding:0 26rpx; border-radius:30rpx; background:#75501b; color:#fff; font-size:24rpx; line-height:60rpx; text-align:center; }
 .report-notice-close { position:absolute; top:8rpx; right:8rpx; display:inline-block; width:48rpx; min-height:48rpx; padding:0; border-radius:50%; background:transparent; color:#a3937a; font-size:30rpx; line-height:48rpx; text-align:center; }
+.report-notice-open[disabled], .report-notice-close[disabled] { opacity:.6; }

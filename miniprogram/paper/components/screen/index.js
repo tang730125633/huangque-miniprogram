@@ -204,7 +204,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
+    agentDelegations: [], agentWidgets: [], agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false },
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -243,7 +243,7 @@ Component({
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -277,7 +277,7 @@ Component({
       this.setData({agentSessions:sessions.slice(0,8),agentHistorySessions:sessions.slice(0,50).map(item=>Object.assign({},item,{selected:false}))});
       if(current&&this.properties.pageId==='chat')await this.restoreAgent(current.sid,valid);
       else if(current){wx.setStorageSync(IP12_SESSION_KEY,current.sid);this.setData({agentSessionId:current.sid,agentTargetLabel:agentSessionLabel(current)});}
-      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentBackgroundWorking:false});
+      else this.setData({agentMessages:[],agentSessionId:'',agentTargetLabel:'新对话',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentBackgroundWorking:false});
       if(!valid())return;
       const activeWaiting=waiting&&waiting.sid===this.data.agentSessionId;
       const homeDraft=local.ip12HomeDraft;
@@ -526,6 +526,7 @@ Component({
       this.reportPollOwner=owner;
       const valid=()=>this.alive&&this.visible!==false&&this.reportPollOwner===owner&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);
       const tick=()=>{
+        owner.timer=null; // 句柄已消费；只有真要续轮询时才重新排，停下来时状态是干净的
         if(!valid())return;
         api.request('/workbench/ip12/api/report/'+encodeURIComponent(sid),'GET',null,{timeout:5000})
           .then(data=>{
@@ -636,7 +637,7 @@ Component({
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
       clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
       const sessions=[{sid,preview:'新对话',turns:0,selected:false}].concat((this.data.agentHistorySessions||[]).filter(item=>item.sid!==sid)).slice(0,50);
-      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:sessions.slice(0,8),agentHistorySessions:sessions});
+      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:sessions.slice(0,8),agentHistorySessions:sessions});
       this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
     },
     addAgentAttachment(item){
@@ -760,7 +761,7 @@ Component({
         const remaining=this.data.agentHistorySessions.filter(item=>!deleted.includes(item.sid)).map(item=>Object.assign({},item,{selected:false}));
         const deletedCurrent=deleted.includes(this.data.agentSessionId);
         this.setData({agentHistorySessions:remaining,agentSessions:remaining.slice(0,8),agentHistorySelectedCount:0,agentHistoryManage:false,agentSheet:failed.length?'history':''});
-        if(deletedCurrent){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
+        if(deletedCurrent){api.save({ip12Outgoing:null,ip12HomeDraft:null});wx.setStorageSync(IP12_SESSION_KEY,IP12_NEW_SESSION);this.agentDraft='';this.setData({agentSessionId:'',agentMessages:[],agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:false,agentProgress:''});await this.startNewAgent();}
         this.toast(failed.length?'已删除 '+deleted.length+' 段，'+failed.length+' 段未删除':'已删除 '+deleted.length+' 段对话');
       });}});
     },
@@ -979,33 +980,65 @@ Component({
       if(this.data.agentReportNotice&&this.data.agentReportNotice.key===key)return;
       this.setData({agentReportNotice:Object.assign({key},payload)});
     },
-    markReportNoticeAnnounced(){
-      const notice=this.data.agentReportNotice,sid=this.data.agentSessionId;
-      if(!notice||!notice.key||!sid)return;
-      const all=Object.assign({},this.reportNoticeState());all[sid]=notice.key;api.save({ip12ReportNotices:all});
+    // 显式传参：只记录「这一次打开的是哪个会话、哪个版本」，绝不读页面当前状态，
+    // 避免把「打开初稿」的结果记到后来才出现的定稿头上。
+    markReportNoticeAnnounced(sid,key){
+      if(!sid||!key)return;
+      const all=Object.assign({},this.reportNoticeState());all[String(sid)]=String(key);api.save({ip12ReportNotices:all});
     },
-    // 打不开就不能算已读：只有真的打开了才清提示、才记成已提示
+    // 打开报告：点击瞬间冻结上下文（账号/会话/版本/文件），后续下载与打开都用快照；
+    // 异步完成后四重核对才收起提示；失败则保留入口可重试，不写已读、不重建任务、不扣点。
     viewAgentReportNotice(){
-      if(!this.data.agentReportNotice)return Promise.resolve(false);
-      return Promise.resolve(this.openAgentReport()).then(opened=>{
-        if(!opened)return false;
-        this.markReportNoticeAnnounced();
-        this.setData({agentReportNotice:null});
+      if(this.data.agentReportOpening)return Promise.resolve(false);
+      const notice=this.data.agentReportNotice||null,report=this.data.agentReport||{};
+      const snapshot={
+        sid:String(this.data.agentSessionId||''),
+        key:String(notice&&notice.key||''),
+        pdf:String((report.files||{}).pdf||''),
+        token:api.session()&&api.session().token,
+      };
+      if(!snapshot.sid||!snapshot.key||!snapshot.pdf)return Promise.resolve(false);
+      this.setData({agentReportOpening:true});
+      // 异步回来后页面可能已隐藏或组件已销毁：不再回写页面状态
+      const safeSet=patch=>{if(this.alive&&this.visible!==false)this.setData(patch);};
+      return Promise.resolve(this.openAgentReport(snapshot.pdf)).then(result=>{
+        if(!result||!result.opened){
+          // 失败：不动已读、不清提示，告诉用户可以再点一次
+          safeSet({agentReportOpening:false});
+          if(this.alive&&this.visible!==false)this.toast(result&&result.reason==='download_failed'?'报告下载失败，请重试':'报告打开失败，请重试');
+          return false;
+        }
+        // 四重核对：账号没换、会话没换、提示还在、版本还是点下去那一个
+        const sessionOk=Boolean(this.alive&&this.visible!==false&&api.session()&&api.session().token===snapshot.token&&snapshot.sid===this.data.agentSessionId);
+        const current=this.data.agentReportNotice||null;
+        const noticeOk=Boolean(current&&current.key&&current.key===snapshot.key);
+        if(sessionOk&&noticeOk){
+          this.markReportNoticeAnnounced(snapshot.sid,snapshot.key);
+          safeSet({agentReportNotice:null,agentReportOpening:false});
+        }else{
+          // 期间换了账号/会话，或页面已隐藏/销毁，或提示被关、或已被定稿顶替 —— 一律不结算
+          safeSet({agentReportOpening:false});
+        }
         return true;
-      }).catch(()=>false);
+      }).catch(()=>{safeSet({agentReportOpening:false});if(this.alive&&this.visible!==false)this.toast('报告打开失败，请重试');return false;});
     },
-    dismissAgentReportNotice(){this.markReportNoticeAnnounced();this.setData({agentReportNotice:null});},
-    // 返回是否真的打开成功，供调用方决定要不要记已读（下载/打开失败时保留提示）
-    openAgentReport(){
-      const raw=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
-      if(!raw){this.toast('报告还在整理中');return Promise.resolve(false);}
-      const url=String(raw).startsWith('api/')?'/workbench/ip12/'+raw:raw;
-      let opened=false;
-      return Promise.resolve(this.run(async()=>{
-        const file=await api.mediaSource(api.mediaURL(url));
-        await new Promise((resolve,reject)=>wx.openDocument({filePath:file,fileType:'pdf',showMenu:true,success:resolve,fail:reject}));
-        opened=true;
-      })).then(()=>opened).catch(()=>false);
+    dismissAgentReportNotice(){
+      const notice=this.data.agentReportNotice||null,sid=this.data.agentSessionId;
+      if(!notice||!notice.key||!sid)return;
+      this.markReportNoticeAnnounced(String(sid),String(notice.key));
+      this.setData({agentReportNotice:null});
+    },
+    // 明确返回结果：{opened:true} / {opened:false,reason:'download_failed'|'open_failed'|'no_pdf'}
+    openAgentReport(pdf){
+      const fallback=this.data.agentReport&&this.data.agentReport.files&&this.data.agentReport.files.pdf;
+      const raw=String(pdf||fallback||'');
+      if(!raw)return Promise.resolve({opened:false,reason:'no_pdf'});
+      const url=raw.startsWith('api/')?'/workbench/ip12/'+raw:(/^https?:\/\//i.test(raw)?raw:'/workbench/ip12/'+raw.replace(/^\//,''));
+      let gotFile=false;
+      return api.mediaSource(api.mediaURL(url)).then(source=>{
+        gotFile=true;
+        return new Promise((resolve,reject)=>wx.openDocument({filePath:source,fileType:'pdf',showMenu:true,success:resolve,fail:reject}));
+      }).then(()=>({opened:true})).catch(()=>({opened:false,reason:gotFile?'open_failed':'download_failed'}));
     },
     confirmAgentReport(){
       if(!this.data.agentSessionId)return;
