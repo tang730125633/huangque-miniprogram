@@ -588,3 +588,11 @@
 .asset-load-more { width:100%; min-height:76rpx; font-size:23rpx; }
 @keyframes agent-sheet-in { from { transform:translateY(100%); } to { transform:translateY(0); } }
 @media (prefers-reduced-motion:reduce) { .agent-sheet { animation:none; } }
+/* 报告完成提示：抽屉关着也要看得见（输入框上方常驻一条，块级布局不依赖 flex） */
+.agent-report-notice { position:relative; width:100%; box-sizing:border-box; margin:0 0 12rpx; padding:20rpx 22rpx; border:1rpx solid #e2d6c0; border-radius:20rpx; background:#fdf8ee; }
+.report-notice-main { display:block; }
+.report-notice-title { display:block; padding-right:56rpx; font-size:26rpx; font-weight:700; color:#5c4423; line-height:1.4; }
+.report-notice-desc { display:block; margin-top:6rpx; font-size:22rpx; color:#8a7a62; line-height:1.45; }
+.report-notice-open { display:inline-block; width:auto; min-height:60rpx; margin-top:16rpx; padding:0 26rpx; border-radius:30rpx; background:#75501b; color:#fff; font-size:24rpx; line-height:60rpx; text-align:center; }
+.report-notice-close { position:absolute; top:8rpx; right:8rpx; display:inline-block; width:48rpx; min-height:48rpx; padding:0; border-radius:50%; background:transparent; color:#a3937a; font-size:30rpx; line-height:48rpx; text-align:center; }
+.report-notice-open[disabled], .report-notice-close[disabled] { opacity:.6; }
