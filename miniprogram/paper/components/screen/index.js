@@ -1002,29 +1002,30 @@ Component({
       // 两类回写要分开：
       //  - uiSet：本地 UI 状态（按钮的「正在打开」）。隐藏时也必须复位，
       //    否则按钮会永久卡在“正在打开…”且被禁用，用户无法重试。
-      //  - settle：结算（清提示 / 写已读）。页面隐藏或组件销毁一律不结算。
+      //  - settle：结算（清提示 / 写已读）。openDocument 会让页面进入隐藏态，
+      //    所以不能用 visible 判断是否成功；只绑定点击时的账号、会话和提示版本。
       const uiSet=patch=>{if(this.alive)this.setData(patch);};
-      const settle=patch=>{if(this.alive&&this.visible!==false)this.setData(patch);};
-      const canSettle=()=>this.alive&&this.visible!==false;
+      const canNotify=()=>this.alive&&this.visible!==false;
       return Promise.resolve(this.openAgentReport(snapshot.pdf)).then(result=>{
         if(!result||!result.opened){
           // 失败：不动已读、不清提示，告诉用户可以再点一次
           uiSet({agentReportOpening:false});
-          if(canSettle())this.toast(result&&result.reason==='download_failed'?'报告下载失败，请重试':'报告打开失败，请重试');
+          if(canNotify())this.toast(result&&result.reason==='download_failed'?'报告下载失败，请重试':'报告打开失败，请重试');
           return false;
         }
-        // 四重核对：账号没换、会话没换、提示还在、版本还是点下去那一个
-        const sessionOk=Boolean(canSettle()&&api.session()&&api.session().token===snapshot.token&&snapshot.sid===this.data.agentSessionId);
+        // 四重核对：组件仍存活、账号没换、会话没换、版本还是点下去那一个。
+        // 页面因文档查看器隐藏仍应结算；否则用户每次返回都会重复看到已打开的报告。
+        const sessionOk=Boolean(this.alive&&api.session()&&api.session().token===snapshot.token&&snapshot.sid===this.data.agentSessionId);
         const current=this.data.agentReportNotice||null;
         const noticeOk=Boolean(current&&current.key&&current.key===snapshot.key);
         if(sessionOk&&noticeOk){
           this.markReportNoticeAnnounced(snapshot.sid,snapshot.key);
-          settle({agentReportNotice:null});
+          uiSet({agentReportNotice:null});
         }
-        // 期间换了账号/会话、页面隐藏或销毁、提示被关、或已被定稿顶替 —— 一律不结算
+        // 期间换了账号/会话、组件销毁、提示被关、或已被定稿顶替 —— 一律不结算
         uiSet({agentReportOpening:false});
         return true;
-      }).catch(()=>{uiSet({agentReportOpening:false});if(canSettle())this.toast('报告打开失败，请重试');return false;});
+      }).catch(()=>{uiSet({agentReportOpening:false});if(canNotify())this.toast('报告打开失败，请重试');return false;});
     },
     dismissAgentReportNotice(){
       const notice=this.data.agentReportNotice||null,sid=this.data.agentSessionId;

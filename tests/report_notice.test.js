@@ -276,20 +276,35 @@ test('打开期间切换账号：不向新账号写入旧账号已读', async ()
   assert.equal((api.read().ip12ReportNotices || {})[SID], undefined, '不得写到新账号的存储里');
 });
 
-test('页面隐藏时：不结算（不清提示、不记已读），但按钮必须复位不能卡住', async () => {
+test('openDocument 成功导致页面隐藏：仍按点击快照结算已读，按钮同时复位', async () => {
   const c = setup();
   c.data.agentReport = DRAFT;
   c.syncReportNotice(SID, DRAFT);
+  const key = c.data.agentReportNotice.key;
   let release;
   api.mediaSource = () => new Promise((r) => { release = () => r('local://tmp.pdf'); });
-  global.wx.openDocument = (o) => o.success && o.success();
+  global.wx.openDocument = (o) => { c.visible = false; o.success && o.success(); };
   const pending = c.viewAgentReportNotice();
-  c.visible = false;                            // 页面隐藏
   release();
-  await pending;
-  assert.equal((api.read().ip12ReportNotices || {})[SID], undefined, '隐藏时不得结算已读');
-  assert.ok(c.data.agentReportNotice, '隐藏时不得清掉提示');
+  assert.equal(await pending, true);
+  assert.equal((api.read().ip12ReportNotices || {})[SID], key, 'PDF 已打开，不能因页面隐藏漏记已读');
+  assert.equal(c.data.agentReportNotice, null, '返回聊天后不应重复显示已经打开的同一份报告');
   assert.equal(c.data.agentReportOpening, false, '按钮的「正在打开」必须复位，否则会永久禁用无法重试');
+});
+
+test('页面隐藏但文件尚未打开成功：不结算已读，按钮仍复位', async () => {
+  const c = setup();
+  c.data.agentReport = DRAFT;
+  c.syncReportNotice(SID, DRAFT);
+  let rejectDownload;
+  api.mediaSource = () => new Promise((_, reject) => { rejectDownload = reject; });
+  const pending = c.viewAgentReportNotice();
+  c.visible = false;
+  rejectDownload(new Error('download failed'));
+  assert.equal(await pending, false);
+  assert.equal((api.read().ip12ReportNotices || {})[SID], undefined, '文件未打开成功不得写已读');
+  assert.ok(c.data.agentReportNotice, '失败后提示必须保留，返回页面可以重试');
+  assert.equal(c.data.agentReportOpening, false, '隐藏时失败也必须复位按钮');
 });
 
 test('组件销毁后（alive=false）：迟到的打开结果完全不回写页面', async () => {
