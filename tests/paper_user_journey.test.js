@@ -189,7 +189,7 @@ test('recorded sample uploads and sends the structured widget action to the chat
     stopAgentPoll: component.methods.stopAgentPoll,
     clearAgentWaiting: component.methods.clearAgentWaiting,
     restoreAgent: component.methods.restoreAgent,
-    scrollAgent() {}, requireLogin: () => true, toast() {},
+    scrollAgent() {}, requireLogin: () => true, toast() {}, settleAgentPicks() {}, maybeSubmitAgentPicks() {},
   };
   await component.methods.submitAgentVoiceSample.call(ctx);
   await ctx.agentPoll;
@@ -234,6 +234,7 @@ test('uploaded sample action goes through the file picker and the same structure
     clearAgentWaiting: component.methods.clearAgentWaiting,
     restoreAgent: component.methods.restoreAgent,
     scrollAgent() {}, requireLogin: () => true,
+    settleAgentPicks() {}, maybeSubmitAgentPicks() {},
   };
   await component.methods.chooseAgentVoiceSampleAction.call(ctx, { currentTarget: { dataset: { widget: 0, mode: 'upload' } } });
   await ctx.agentPoll;
@@ -298,6 +299,7 @@ test('multi-select option card toggles checked items and submits them in one mes
     clearAgentWaiting: component.methods.clearAgentWaiting,
     restoreAgent: component.methods.restoreAgent,
     requireLogin: () => true,
+    settleAgentPicks() {}, maybeSubmitAgentPicks() {},
   };
   await component.methods.restoreAgent.call(ctx, 'sid-multi');
   const widget = ctx.data.agentWidgets[0];

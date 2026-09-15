@@ -231,7 +231,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
+    agentDelegations: [], agentWidgets: [], agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -348,7 +348,14 @@ Component({
       if(!valid())return;
       if(switching){if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy();this.agentAudio=null;this.agentAssetAudio=null;this.agentAudioMeta=null;}
       wx.setStorageSync(IP12_SESSION_KEY,sid);
+      // 勾选暂存维护：卡组换血后清掉已不在屏上的手动勾选记录
+      if(this._agentManualPicks){
+        const liveKeys=new Set(widgets.map(w=>w.key));
+        Object.keys(this._agentManualPicks).forEach(k=>{if(!liveKeys.has(k))delete this._agentManualPicks[k];});
+      }
       this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
+      // 思考结束补交：思考期间勾齐的选择，回复到达（本帧）后自动一次提交
+      setTimeout(()=>{if(this.alive)this.settleAgentPicks();},0);
       this.scrollAgent(widgets.length?widgets:items);
       if(this.syncReportNotice)this.syncReportNotice(sid,data.report||null);
       if(this.startReportPoll)this.startReportPoll(sid);
@@ -471,7 +478,7 @@ Component({
           // Only an explicit sequence watermark proves this particular reply was saved.
           complete=Number(restored.seq)>=Number(waiting.seq)&&Array.isArray(restored.history)&&restored.history.some(item=>item.role==='assistant');
         }
-        if(complete&&this.clearAgentWaiting(sid,waiting.seq)){this.setData({agentThinking:false,agentHomeAction:'查看回复',agentProgress:''});return;}
+        if(complete&&this.clearAgentWaiting(sid,waiting.seq)){this.setData({agentThinking:false,agentHomeAction:'查看回复',agentProgress:''});this.settleAgentPicks();return;}
         this.setData({agentThinking:state.state==='working',agentHomeAction:state.state==='working'?'查看进度':'查看对话',agentProgress:state.state==='working'?'黄雀正在回复…':'暂时无法确认回复进度，可进入对话查看'});
       }catch(_){if(!valid())return;delay=15000;this.setData({agentThinking:false,agentHomeAction:'查看对话',agentProgress:'暂时无法获取进度，可进入对话查看'});}
       if(valid())this.homeAgentTimer=setTimeout(()=>this.refreshHomeAgent(),delay);
@@ -626,7 +633,7 @@ Component({
       const uiValid=()=>{const w=api.read().ip12Waiting;return this.agentPollOwner===owner&&this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(!w||(w.sid===sid&&Number(w.seq)===Number(target)));};
       if(!uiValid())return;
       if(!matches())return;
-      if(tries>=240){this.setData({agentThinking:false,agentProgress:'处理时间较长，重新打开可查看进度'});return;}
+      if(tries>=240){this.setData({agentThinking:false,agentProgress:'处理时间较长，重新打开可查看进度'});this.settleAgentPicks();return;}
       let data;
       try{data=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid));}
       catch(error){if(!uiValid())return;if(error.status&&error.status<500)throw error;data={state:'working'};}
@@ -636,12 +643,14 @@ Component({
           if(!this.clearAgentWaiting(sid,target))return;
           await this.restoreAgent(sid,uiValid);
           if(uiValid())this.setData({agentThinking:false,agentProgress:''});
+          if(uiValid())this.settleAgentPicks();
           return;
         }
       }
       if(data.state==='idle'&&tries>=3){
         await this.restoreAgent(sid,uiValid);
         if(uiValid())this.setData({agentThinking:false,agentProgress:'暂时无法确认回复进度，等待记录已保留'});
+        if(uiValid())this.settleAgentPicks();
         return;
       }
       if(tries%2===0)await this.updateAgentProgress(sid,uiValid);
@@ -964,18 +973,68 @@ Component({
       this.setData({['agentWidgets['+index+'].catalogExpanded']:!widget.catalogExpanded});
     },
     chooseAgentWidget(e){
-      if(this.data.busy||this.data.agentThinking)return;
+      if(this.data.busy)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
       if(!widget||!item)return;
+      const prevSelectedId=widget.selectedId||'';
       const choice={id:item.id,label:item.title,image_url:item.imageUrl,preview_url:item.previewUrl,widgetTitle:widget.title,film:widget.film,manual:true,slot_id:item.slotId,created_at:item.createdAt};
-      const message='【点选】'+widget.title+'：'+item.title+'（id='+item.id+'）';
-      return this.run(async()=>{
-        const data=await api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice});
-        if(data.invalidated&&widget.type!=='option_pick')throw new Error('这个选项已经更新，请重新选择');
-        dismissAgentWidgets(this.data.agentSessionId,[widget]);this.setData({agentWidgets:[]});
-        return true;
-      }).then(ok=>{if(ok)this.sendAgentMessage(message);});
+      // 勾选暂存（2026-09-16 老板定调「一次选完」）：点卡只做本地勾选 + 后台持久化，
+      // 不清空其它卡、不立即发送——多张卡都勾完（或点「确认选择」）才一次性提交。
+      this._agentManualPicks=this._agentManualPicks||{};
+      this._agentManualPicks[widget.key]=String(item.id);
+      this.setData({['agentWidgets['+widgetIndex+'].selectedId']:String(item.id)});
+      api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice})
+        .then(data=>{
+          if(data&&data.invalidated&&widget.type!=='option_pick'){
+            this.toast('这个选项已经更新，请重新选择');
+            delete this._agentManualPicks[widget.key];
+            if(this.alive&&this.data.agentWidgets[widgetIndex])this.setData({['agentWidgets['+widgetIndex+'].selectedId']:prevSelectedId});
+          }
+        })
+        .catch(()=>{});
+      return this.maybeSubmitAgentPicks();
+    },
+    // 勾选后的提交时机：单卡=点选即发（与旧行为一致）；多卡=全部勾齐自动一次发完，
+    // 未勾齐则亮出「确认选择」按钮兜底。黄雀思考中只暂存，回复结束自动补交。
+    settleAgentPicks(){
+      if(!this._agentPicksPendingSubmit)return;
+      if(this.data.agentThinking)return;
+      this._agentPicksPendingSubmit=false;
+      return this.maybeSubmitAgentPicks();
+    },
+    maybeSubmitAgentPicks(){
+      if(this.data.agentThinking){this._agentPicksPendingSubmit=true;return;}
+      const widgets=(this.data.agentWidgets||[]).filter(w=>['avatar_pick','voice_pick','script_pick','option_pick'].includes(w.type));
+      if(!widgets.length)return;
+      const hasChoice=w=>!!w.selectedId||!!(this._agentManualPicks&&this._agentManualPicks[w.key]);
+      const required=widgets.filter(w=>w.id!=='template_catalog');
+      if(!required.length||required.every(hasChoice)){
+        this.setData({agentPicksCanConfirm:false});
+        return this.submitAgentPicks();
+      }
+      const anyManual=widgets.some(w=>!!(this._agentManualPicks&&this._agentManualPicks[w.key]));
+      this.setData({agentPicksCanConfirm:anyManual});
+    },
+    confirmAgentPicksSubmit(){
+      if(this.data.busy||this.data.agentThinking)return;
+      return this.submitAgentPicks();
+    },
+    submitAgentPicks(){
+      const widgets=(this.data.agentWidgets||[]).slice();
+      const lines=[];
+      widgets.forEach(w=>{
+        if(!['avatar_pick','voice_pick','script_pick','option_pick'].includes(w.type))return;
+        const selId=w.selectedId||'';
+        if(!selId)return;
+        const item=(w.items||[]).find(i=>String(i.id)===String(selId));
+        if(!item)return;
+        lines.push('【点选】'+w.title+'：'+item.title+'（id='+item.id+'）');
+      });
+      if(!lines.length)return;
+      this._agentManualPicks={};
+      this.setData({agentPicksCanConfirm:false});
+      return this.sendAgentMessage(lines.join('\n'));
     },
     toggleAgentMultiOption(e){
       if(this.data.busy||this.data.agentThinking)return;

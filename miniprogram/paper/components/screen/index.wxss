@@ -402,6 +402,9 @@
 .task-cancel { border:1rpx solid #d6d2c8; background:#faf9f6; }
 .task-confirm { color:#fffdf8; background:#202620; }
 .agent-widget-card { margin:0 0 24rpx 62rpx; overflow:hidden; border:1rpx solid #d8d1c5; border-radius:22rpx; background:#fffdf9; box-shadow:0 10rpx 28rpx rgba(46,39,27,.06); }
+.agent-picks-confirm { display:flex; margin:0 0 24rpx 62rpx; padding:20rpx 22rpx; align-items:center; gap:18rpx; border:1rpx solid #c9c2b4; border-radius:22rpx; background:#f7f3ea; }
+.agent-picks-confirm .agent-picks-confirm-hint { flex:1; color:#6d6553; font-size:22rpx; line-height:1.5; }
+.agent-picks-confirm .agent-voice-primary { width:auto; padding:12rpx 26rpx; }
 .agent-widget-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:22rpx 22rpx 16rpx; }
 .agent-widget-title { min-width:0; flex:1; color:#2c312c; font-size:28rpx; font-weight:700; line-height:1.4; }
 .agent-widget-badge { flex:none; padding:6rpx 12rpx; border-radius:999rpx; color:#7b5a25; background:#f3e7cf; font-size:18rpx; }
