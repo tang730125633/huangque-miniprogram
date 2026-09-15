@@ -366,6 +366,10 @@
 .agent-images { display:grid; grid-template-columns:1fr 1fr; gap:12rpx; margin-top:16rpx; }
 .agent-image-item { min-width:0; }
 .agent-image { width:100%; height:auto; min-height:180rpx; border-radius:16rpx; background:#eee9de; }
+.agent-covers { display:flex; margin-top:16rpx; }
+.agent-cover-item { width:240rpx; flex:none; }
+.agent-cover-img { width:240rpx; height:135rpx; border-radius:14rpx; background:#eee9de; }
+.agent-cover-share { min-height:52rpx; font-size:20rpx; margin-top:6rpx; }
 .agent-video-scroll { width:100%; margin-top:16rpx; white-space:nowrap; }
 .agent-videos { display:flex; width:max-content; gap:16rpx; padding-right:20rpx; }
 .agent-video-item { width:280rpx; flex:none; }

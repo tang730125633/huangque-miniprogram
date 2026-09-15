@@ -23,6 +23,10 @@ const REPORT_POLL_MAX_IDLE = 60;
 const AGENT_SAMPLE_LIMIT_BYTES = 10 * 1024 * 1024; // 样音 ≤10MB（平台契约）
 const AGENT_QUICK_PHRASES = ['帮我做一张商品图','帮我做一条短视频','帮我写一段文案','看看我的 IP 报告','我不太会用，请一步一步教我'];
 const AGENT_QUICK_KEY_PREFIX = 'hq-agent-quick-phrases-v1:';
+// 封面图识别：官方成片封面（video-covers/<job>.jpg）或文件名以 _cover/-cover 结尾的图片。
+// 成片交付消息里的封面图从普通图片卡里摘出，只留一张、小尺寸渲染（2026-09-16 老板实录：
+// 任务 9262 交付塞了两张封面大图——官方截帧 + 平台封面，另加配音 mp3 与重复视频卡）。
+const AGENT_COVER_IMAGE_RE = /(?:video-covers\/|[_\-]cover\.(?:jpe?g|png|webp|gif)(?:[?#]|$))/i;
 function cleanAgentQuickPhrases(value) {
   const items=Array.isArray(value)?value:[];
   return items.map(item=>String(item||'').trim().replace(/\s+/g,' ')).filter((item,index,list)=>item.length>=2&&item.length<=40&&!AGENT_QUICK_PHRASES.includes(item)&&list.indexOf(item)===index).slice(0,8);
@@ -103,12 +107,23 @@ function agentMessages(items) {
     const videos=[...byUrl.values()].map((v,videoIndex)=>({
       url:v.url||v.src||'',cover:(v&&v.cover)||'',src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex
     }));
+    const images=[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))];
+    // 封面图从图片卡里摘出：只留一张、小尺寸渲染（官方 video-covers 优先），
+    // 不再整张撑满气泡、也不出现两张一样的封面卡。
+    const coverImages=images.filter(url=>AGENT_COVER_IMAGE_RE.test(url))
+      .sort((a,b)=>(/video-covers\//i.test(b)?1:0)-(/video-covers\//i.test(a)?1:0));
+    const covers=coverImages.slice(0,1);
+    const keptImages=images.filter(url=>coverImages.indexOf(url)<0);
+    const audios=media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex}));
     return {
       domId:'agent-message-'+index,
       role:item&&item.role==='user'?'user':'assistant', content:media.content, richNodes:agentRichNodes(media.content),
-      images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
+      images:keptImages,
+      covers,
       videos,
-      audios:media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex})),
+      // 成片消息里的 mp3 是配音副产品（老板实录：多余文件）：同一消息已有视频卡时
+      // 不再渲染音频卡；纯音频产品（配乐/配音任务）的消息没有视频，照常渲染。
+      audios:videos.length?[]:audios,
       pdfs:media.pdfs.map((url,pdfIndex)=>({url,domId:'agent-pdf-'+index+'-'+pdfIndex})), attachments:[]
     };
   });
@@ -833,6 +848,16 @@ Component({
       const message=this.data.agentMessages[Number(e.currentTarget.dataset.message)],image=message&&message.images[Number(e.currentTarget.dataset.image)];
       if(!image)return this.toast('这张图片暂时无法转发');
       return this.run(async()=>{const path=await shareLocalPath(image);await new Promise((resolve,reject)=>wx.showShareImageMenu({path,needShowEntrance:true,entrancePath:'/paper/pages/chat/index',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('图片转发失败，请稍后重试'))}));});
+    },
+    previewAgentCover(e){
+      const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)],cover=item&&item.covers[Number(e.currentTarget.dataset.cover)];
+      if(cover)wx.previewImage({current:cover,urls:[cover]});
+    },
+    shareAgentCover(e){
+      if(!wx.showShareImageMenu)return this.toast('当前微信版本不支持转发图片，请升级后重试');
+      const message=this.data.agentMessages[Number(e.currentTarget.dataset.message)],cover=message&&message.covers[Number(e.currentTarget.dataset.cover)];
+      if(!cover)return this.toast('这张图片暂时无法转发');
+      return this.run(async()=>{const path=await shareLocalPath(cover);await new Promise((resolve,reject)=>wx.showShareImageMenu({path,needShowEntrance:true,entrancePath:'/paper/pages/chat/index',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('图片转发失败，请稍后重试'))}));});
     },
     shareAgentVideo(e){
       if(!wx.shareFileMessage)return this.toast('当前微信版本不支持转发视频，请升级后重试');

@@ -38,7 +38,7 @@ test('assistant Markdown becomes readable blocks and MP3 becomes a player', asyn
     return { ok: true, history: [{ role: 'assistant', content: '# 小结\n**重点**先做\n- 第一步\n> 慢慢来\n```\n**代码原样**\n```\n音频：https://cdn.example.com/demo.mp3' }], delegations: {}, widgets: [], film: false, report: {} };
   };
   api.mediaSource = async url => url;
-  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {}, settleAgentPicks() {}, maybeSubmitAgentPicks() {} };
   await component.methods.restoreAgent.call(ctx, 'sid-md');
   const message = ctx.data.agentMessages[0];
   assert.equal(message.audios.length, 1);
@@ -62,7 +62,7 @@ test('voice slots remain visible when the main turn film mode changes', async ()
     id: 'voice_pick:audio-slots', gen: 2, type: 'voice_pick', film: false, title: '声音克隆槽位',
     items: [{ id: 'slot-a', title: '我的克隆音色', slot_id: 'slot-a' }],
   }] });
-  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {}, settleAgentPicks() {}, maybeSubmitAgentPicks() {} };
   await component.methods.restoreAgent.call(ctx, 'sid-voice');
   assert.equal(ctx.data.agentWidgets.length, 1);
   assert.equal(ctx.data.agentWidgets[0].type, 'voice_pick');
@@ -83,7 +83,7 @@ test('voice sample card restores with its structured script and actions', async 
       actions: [{ mode: 'record', label: '开始录音' }, { mode: 'upload', label: '上传录音文件' }],
     }],
   });
-  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {}, settleAgentPicks() {}, maybeSubmitAgentPicks() {} };
   await component.methods.restoreAgent.call(ctx, 'sid-voice-sample');
   assert.equal(ctx.data.agentWidgets.length, 1);
   const widget = ctx.data.agentWidgets[0];
@@ -120,7 +120,7 @@ test('template catalog keeps the complete list in one horizontal card with inlin
     title: '模板成片 · 全部模板', hint: '共 22 个', items: templates,
   }] });
   api.mediaSource = async url => url;
-  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {}, settleAgentPicks() {}, maybeSubmitAgentPicks() {} };
   await component.methods.restoreAgent.call(ctx, 'sid-template-catalog');
   assert.equal(ctx.data.agentWidgets[0].layout, 'template_catalog');
   assert.equal(ctx.data.agentWidgets[0].items.length, 22);
@@ -342,7 +342,7 @@ test('film-flagged and non-film cards both render in any round', async () => {
       { id: 'template_catalog', gen: 1, type: 'option_pick', film: false, title: '模板成片 · 全部模板', items: [{ id: 't1', title: '模板 1' }] },
     ],
   });
-  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {} };
+  const ctx = { alive: true, data: { agentSessionId: '' }, setData, scrollAgent() {}, settleAgentPicks() {}, maybeSubmitAgentPicks() {} };
   await component.methods.restoreAgent.call(ctx, 'sid-both-sets');
   assert.equal(ctx.data.agentWidgets.length, 2, '网页端同口径：两套卡都渲染，film 不决定显隐');
   assert.equal(ctx.data.agentWidgets[0].film, true);
