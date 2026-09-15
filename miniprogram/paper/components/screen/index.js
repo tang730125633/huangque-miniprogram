@@ -954,7 +954,7 @@ Component({
     keepAgentIpDrawer(){},
     chooseAgentIpItem(e){
       const kind=e.currentTarget.dataset.ipKind;
-      if(kind==='report'){this.closeAgentIpDrawer();return this.openAgentReport();}
+      if(kind==='report'){this.closeAgentIpDrawer();return this.viewAgentReport();}
       const text=kind==='topics'?'请把我已经确认的选题列出来。':'请把我已经确认的口播稿列出来。';
       this.agentDraft=text;this.setData({promptInput:text,agentHasText:true,agentIpDrawerOpen:false});this.toast('已放到输入框，确认后发送');
     },
@@ -986,9 +986,9 @@ Component({
       if(!sid||!key)return;
       const all=Object.assign({},this.reportNoticeState());all[String(sid)]=String(key);api.save({ip12ReportNotices:all});
     },
-    // 打开报告：点击瞬间冻结上下文（账号/会话/版本/文件），后续下载与打开都用快照；
-    // 异步完成后四重核对才收起提示；失败则保留入口可重试，不写已读、不重建任务、不扣点。
-    viewAgentReportNotice(){
+    // 两个入口统一走这里：提示卡与「IP资料 → IP报告」都必须防重复点击、
+    // 给出失败反馈，并在有提示版本时按点击快照结算已读。
+    openAgentReportFromUi(requireNotice){
       if(this.data.agentReportOpening)return Promise.resolve(false);
       const notice=this.data.agentReportNotice||null,report=this.data.agentReport||{};
       const snapshot={
@@ -997,7 +997,7 @@ Component({
         pdf:String((report.files||{}).pdf||''),
         token:api.session()&&api.session().token,
       };
-      if(!snapshot.sid||!snapshot.key||!snapshot.pdf)return Promise.resolve(false);
+      if(!snapshot.sid||!snapshot.pdf||(requireNotice&&!snapshot.key))return Promise.resolve(false);
       this.setData({agentReportOpening:true});
       // 两类回写要分开：
       //  - uiSet：本地 UI 状态（按钮的「正在打开」）。隐藏时也必须复位，
@@ -1017,7 +1017,7 @@ Component({
         // 页面因文档查看器隐藏仍应结算；否则用户每次返回都会重复看到已打开的报告。
         const sessionOk=Boolean(this.alive&&api.session()&&api.session().token===snapshot.token&&snapshot.sid===this.data.agentSessionId);
         const current=this.data.agentReportNotice||null;
-        const noticeOk=Boolean(current&&current.key&&current.key===snapshot.key);
+        const noticeOk=Boolean(snapshot.key&&current&&current.key&&current.key===snapshot.key);
         if(sessionOk&&noticeOk){
           this.markReportNoticeAnnounced(snapshot.sid,snapshot.key);
           uiSet({agentReportNotice:null});
@@ -1027,6 +1027,8 @@ Component({
         return true;
       }).catch(()=>{uiSet({agentReportOpening:false});if(canNotify())this.toast('报告打开失败，请重试');return false;});
     },
+    viewAgentReportNotice(){return this.openAgentReportFromUi(true);},
+    viewAgentReport(){return this.openAgentReportFromUi(false);},
     dismissAgentReportNotice(){
       const notice=this.data.agentReportNotice||null,sid=this.data.agentSessionId;
       if(!notice||!notice.key||!sid)return;

@@ -225,6 +225,44 @@ test('连续点两次：只下载、只打开一次', async () => {
   assert.equal(calls.open, 1);
 });
 
+test('IP资料抽屉连续点两次报告：同样只下载、只打开一次', async () => {
+  const c = setup();
+  c.data.agentReport = DRAFT;
+  const calls = armOpen(c);
+  const event = { currentTarget: { dataset: { ipKind: 'report' } } };
+  const first = c.chooseAgentIpItem(event);
+  const second = c.chooseAgentIpItem(event);
+  const [a, b] = await Promise.all([first, second]);
+  assert.equal(a, true);
+  assert.equal(b, false, '抽屉入口的第二次点击也必须被拒绝');
+  assert.equal(calls.download, 1);
+  assert.equal(calls.open, 1);
+});
+
+test('IP资料抽屉下载失败：显示反馈且允许重试', async () => {
+  const c = setup();
+  c.data.agentReport = DRAFT;
+  const calls = armOpen(c, { downloadFails: true });
+  const ok = await c.chooseAgentIpItem({ currentTarget: { dataset: { ipKind: 'report' } } });
+  assert.equal(ok, false);
+  assert.equal(calls.download, 1);
+  assert.equal(calls.open, 0);
+  assert.equal(c.data.agentReportOpening, false);
+  assert.ok((c.toasts || []).some((t) => /下载失败/.test(t)));
+});
+
+test('IP资料抽屉 openDocument 失败：显示反馈且允许重试', async () => {
+  const c = setup();
+  c.data.agentReport = DRAFT;
+  const calls = armOpen(c, { openFails: true });
+  const ok = await c.chooseAgentIpItem({ currentTarget: { dataset: { ipKind: 'report' } } });
+  assert.equal(ok, false);
+  assert.equal(calls.download, 1);
+  assert.equal(calls.open, 1);
+  assert.equal(c.data.agentReportOpening, false);
+  assert.ok((c.toasts || []).some((t) => /打开失败/.test(t)));
+});
+
 test('打开期间初稿升级成定稿：定稿提示保留，且不把定稿标成已读', async () => {
   const c = setup();
   c.data.agentReport = DRAFT;
