@@ -118,14 +118,27 @@ test('纯音频产品消息（无视频）：音频卡照常渲染', async () =>
   assert.deepEqual(m.audios.map(a => a.url), ['https://cdn.example.com/audio/bgm.mp3?sig=1']);
 });
 
-test('收尾消息重复贴的视频链接：前端保留渲染能力（后端系统事件轮负责剥离）', async () => {
+test('自动收尾轮重复贴的视频链接：连续助手消息判重剔除，不再出现第二张点不开的卡', async () => {
   const messages = await restore([
     { role: 'assistant', content: '任务 9262 ✅ 已完成。\n'
       + 'https://cdn.example.com/video/subtitled.mp4?sig=1' },
     { role: 'assistant', content: '成片出来了 ✅ 👇\n\n'
       + 'https://cdn.example.com/video/subtitled.mp4?sig=broken\n\n已经存进你的素材库了。' },
   ]);
-  const closing = messages[1];
-  assert.deepEqual(closing.videos.map(v => v.url), ['https://cdn.example.com/video/subtitled.mp4?sig=broken']);
+  const delivery = messages[0], closing = messages[1];
+  assert.deepEqual(delivery.videos.map(v => v.url), ['https://cdn.example.com/video/subtitled.mp4?sig=1']);
+  assert.equal(closing.videos.length, 0, '连续助手消息里重贴的同名视频卡被剔除');
   assert.ok(closing.content.includes('已经存进你的素材库了'));
+});
+
+test('用户主动要重发：中间隔着用户消息，重贴的链接卡片保留', async () => {
+  const messages = await restore([
+    { role: 'assistant', content: '任务 9262 ✅ 已完成。\n'
+      + 'https://cdn.example.com/video/subtitled.mp4?sig=1' },
+    { role: 'user', content: '链接再发我一次' },
+    { role: 'assistant', content: '好的，成片在这：\n'
+      + 'https://cdn.example.com/video/subtitled.mp4?sig=2' },
+  ]);
+  const resent = messages[2];
+  assert.deepEqual(resent.videos.map(v => v.url), ['https://cdn.example.com/video/subtitled.mp4?sig=2']);
 });

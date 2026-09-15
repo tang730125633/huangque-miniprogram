@@ -95,8 +95,16 @@ async function shareLocalPath(value) {
   if(!/^https:\/\//i.test(source))return source;
   return new Promise((resolve,reject)=>wx.downloadFile({url:source,success:result=>result.statusCode===200&&result.tempFilePath?resolve(result.tempFilePath):reject(new Error('作品下载失败')),fail:()=>reject(new Error('作品下载失败'))}));
 }
+function mediaBase(url) {
+  return String(url||'').split('?')[0].split('/').filter(Boolean).pop().toLowerCase();
+}
 function agentMessages(items) {
+  // 上一条助手消息的媒体文件名集合：连续两条助手消息（中间的系统事件被后端过滤掉了）
+  // 出现同名媒体=自动收尾轮把成片重贴一遍（老板实录：点不开的第二张卡），判重剔除；
+  // 用户主动要重发时中间隔着用户消息，此集合已清空，不会被误剔。
+  let prevAssistantBases=null;
   return (Array.isArray(items)?items:[]).map((item,index)=>{
+    const isAssistant=!item||item.role!=='user';
     const media=mediaFromContent(item&&item.content);
     // 后端结构化 videos（{url,cover}）优先；文本里提取出的 URL 合并去重，拿不到封面的保持空
     const byUrl=new Map();
@@ -104,7 +112,7 @@ function agentMessages(items) {
       if(v&&(v.url||v.src))byUrl.set(v.url||v.src,v);
     });
     media.videos.forEach(url=>{if(!byUrl.has(url))byUrl.set(url,{url});});
-    const videos=[...byUrl.values()].map((v,videoIndex)=>({
+    let videos=[...byUrl.values()].map((v,videoIndex)=>({
       url:v.url||v.src||'',cover:(v&&v.cover)||'',src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex
     }));
     const images=[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))];
@@ -112,18 +120,31 @@ function agentMessages(items) {
     // 不再整张撑满气泡、也不出现两张一样的封面卡。
     const coverImages=images.filter(url=>AGENT_COVER_IMAGE_RE.test(url))
       .sort((a,b)=>(/video-covers\//i.test(b)?1:0)-(/video-covers\//i.test(a)?1:0));
-    const covers=coverImages.slice(0,1);
-    const keptImages=images.filter(url=>coverImages.indexOf(url)<0);
-    const audios=media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex}));
+    let covers=coverImages.slice(0,1);
+    let keptImages=images.filter(url=>coverImages.indexOf(url)<0);
+    let audios=media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex}));
+    // 成片消息里的 mp3 是配音副产品（老板实录：多余文件）：同一消息已有视频卡时
+    // 不再渲染音频卡；纯音频产品（配乐/配音任务）的消息没有视频，照常渲染。
+    if(videos.length)audios=[];
+    if(isAssistant&&prevAssistantBases){
+      videos=videos.filter(v=>!prevAssistantBases.has(mediaBase(v.url)));
+      keptImages=keptImages.filter(url=>!prevAssistantBases.has(mediaBase(url)));
+      covers=covers.filter(url=>!prevAssistantBases.has(mediaBase(url)));
+      audios=audios.filter(a=>!prevAssistantBases.has(mediaBase(a.url)));
+    }
+    const bases=new Set();
+    videos.forEach(v=>bases.add(mediaBase(v.url)));
+    covers.forEach(url=>bases.add(mediaBase(url)));
+    keptImages.forEach(url=>bases.add(mediaBase(url)));
+    audios.forEach(a=>bases.add(mediaBase(a.url)));
+    prevAssistantBases=isAssistant?(bases.size?bases:prevAssistantBases):null;
     return {
       domId:'agent-message-'+index,
-      role:item&&item.role==='user'?'user':'assistant', content:media.content, richNodes:agentRichNodes(media.content),
+      role:isAssistant?'assistant':'user', content:media.content, richNodes:agentRichNodes(media.content),
       images:keptImages,
       covers,
       videos,
-      // 成片消息里的 mp3 是配音副产品（老板实录：多余文件）：同一消息已有视频卡时
-      // 不再渲染音频卡；纯音频产品（配乐/配音任务）的消息没有视频，照常渲染。
-      audios:videos.length?[]:audios,
+      audios,
       pdfs:media.pdfs.map((url,pdfIndex)=>({url,domId:'agent-pdf-'+index+'-'+pdfIndex})), attachments:[]
     };
   });
