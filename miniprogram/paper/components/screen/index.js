@@ -13,6 +13,10 @@ const AGENT_IMAGE_LIMIT = 10;
 const AGENT_ATTACHMENT_LIMIT = 10;
 const AGENT_WIDGET_DISMISSED_LIMIT = 80;
 const AGENT_WATCH_INTERVAL = 4000;
+// 报告在服务端后台生成，不会往会话里追加消息：只能主动拉 /api/report/<sid>，
+// 否则「报告已完成」在页面上永远不出现（网页端已有 pollReport，小程序端缺失）。
+const REPORT_POLL_INTERVAL = 5000;
+const REPORT_POLL_MAX_IDLE = 60;
 const AGENT_VOICE_POLL_INTERVAL = 5000;
 const AGENT_VOICE_POLL_MAX = 60;
 const VOICE_CONSENT_VERSION = '2026-07-23-v2';
@@ -222,9 +226,9 @@ Component({
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
     },
-    detached() { if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
+    detached() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
+  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
     refreshTaskQueue(e){if(!this.queueController)this.queueController=new QueueController({scope:()=>({alive:this.alive,visible:this.visible!==false,sid:this.data.agentSessionId,token:api.session()&&api.session().token}),tasks:()=>this.data.agentQueueTasks,request:path=>api.request(path,'GET',null,{timeout:5000}),update:(tasks,reconnecting)=>this.setData({agentQueueTasks:tasks,agentQueueReconnecting:reconnecting})});return this.queueController.refresh(e&&e.detail&&e.detail.id);},
     stopTaskQueue(){if(this.queueController)this.queueController.stop();},
@@ -316,6 +320,7 @@ Component({
       wx.setStorageSync(IP12_SESSION_KEY,sid);
       this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false}:{}));
       this.scrollAgent(widgets.length?widgets:items);
+      if(this.startReportPoll)this.startReportPoll(sid);
       if(this.startAgentWatch)this.startAgentWatch(data.delegations);
       if(this.refreshTaskQueue)this.refreshTaskQueue();
       return data;
@@ -508,6 +513,43 @@ Component({
       const text=labels[domain]||'正在理解你的要求…';
       this.setData({agentProgress:text+(elapsed>=3?' 已等待 '+elapsed+' 秒':'')});
     },
+    // 报告轮询：对齐网页端 pollReport()。报告只在后台生成、且不会追加会话消息，
+    // 只能主动拉 /api/report/<sid>，否则小程序永远看不到报告完成。
+    // 到 final/confirmed/failed 自动停止；长时间无报告（REPORT_POLL_MAX_IDLE 拍）也停，
+    // 下次 restoreAgent（加载、每轮对话结束）会重新启动。
+    startReportPoll(sid){
+      this.stopReportPoll();
+      if(!sid)return;
+      const token=api.session()&&api.session().token;
+      const owner={sid,token,timer:null,idle:0};
+      this.reportPollOwner=owner;
+      const valid=()=>this.alive&&this.visible!==false&&this.reportPollOwner===owner&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);
+      const tick=()=>{
+        if(!valid())return;
+        api.request('/workbench/ip12/api/report/'+encodeURIComponent(sid),'GET',null,{timeout:5000})
+          .then(data=>{
+            if(!valid())return;
+            const next=data&&typeof data==='object'?data:{};
+            const prev=this.data.agentReport||{};
+            if(JSON.stringify(next)!==JSON.stringify(prev))this.setData({agentReport:next});
+            const status=String(next.status||'');
+            const terminal=status==='final'||status==='confirmed'||status==='failed';
+            if(terminal)return;
+            owner.idle=status?0:owner.idle+1;
+            if(owner.idle>REPORT_POLL_MAX_IDLE)return;
+            owner.timer=setTimeout(tick,REPORT_POLL_INTERVAL);
+          })
+          .catch(error=>{
+            if(!valid())return;
+            if(error&&[401,403,404].includes(error.status))return;
+            owner.idle+=1;
+            if(owner.idle>REPORT_POLL_MAX_IDLE)return;
+            owner.timer=setTimeout(tick,REPORT_POLL_INTERVAL);
+          });
+      };
+      owner.timer=setTimeout(tick,REPORT_POLL_INTERVAL);
+    },
+    stopReportPoll(){const owner=this.reportPollOwner;this.reportPollOwner=null;if(owner&&owner.timer)clearTimeout(owner.timer);},
     startAgentWatch(delegations){
       clearTimeout(this.agentWatchTimer);
       const active=agentBackgroundActive({delegations});
