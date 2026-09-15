@@ -595,4 +595,35 @@
 .report-notice-desc { display:block; margin-top:6rpx; font-size:22rpx; color:#8a7a62; line-height:1.45; }
 .report-notice-open { display:inline-block; width:auto; min-height:60rpx; margin-top:16rpx; padding:0 26rpx; border-radius:30rpx; background:#75501b; color:#fff; font-size:24rpx; line-height:60rpx; text-align:center; }
 .report-notice-close { position:absolute; top:8rpx; right:8rpx; display:inline-block; width:48rpx; min-height:48rpx; padding:0; border-radius:50%; background:transparent; color:#a3937a; font-size:30rpx; line-height:48rpx; text-align:center; }
-.report-notice-open[disabled], .report-notice-close[disabled] { opacity:.6; }
+.report-notice-open.is-disabled,.report-notice-close.is-disabled { opacity:.6; }
+
+/* Pencil journey preview: keep existing behavior, simplify the visible shell. */
+.eyebrow { display:none; }
+.hero-title { margin-top:18rpx; }
+.small,.caption,.note { font-size:26rpx; }
+.menu-row { min-height:112rpx; font-size:31rpx; }
+.profile-avatar-image { width:100%; height:100%; border-radius:50%; }
+.work-kind-icon { width:52rpx; height:52rpx; opacity:.78; }
+.text-thumb,.work-row-placeholder,.work-placeholder { display:flex; align-items:center; justify-content:center; }
+
+.agent-chat-content .agent-status { margin-bottom:10rpx; }
+.agent-chat-content .agent-mode { min-height:76rpx; font-size:24rpx; }
+.agent-thread { padding:14rpx 8rpx 30rpx; }
+.message-meta { font-size:22rpx; }
+.agent-bubble,.user-bubble { font-size:28rpx; }
+.user-message { animation:message-pop .24s cubic-bezier(.2,1.35,.45,1); transform-origin:88% 100%; }
+.agent-widget-card { margin-left:58rpx; border-radius:24rpx; }
+.agent-widget-title { font-size:30rpx; }
+.agent-widget-option { min-height:108rpx; }
+.agent-widget-name { font-size:28rpx; }
+.agent-widget-summary,.agent-widget-body,.agent-widget-action { font-size:23rpx; }
+.agent-task-card { margin-left:58rpx; }
+.agent-chat-content .compact-composer { padding:12rpx 14rpx calc(10rpx + env(safe-area-inset-bottom)); }
+.composer-icon-button { width:80rpx; height:80rpx; min-height:80rpx; flex-basis:80rpx; }
+.voice-unavailable { width:90rpx; flex-basis:90rpx; }
+.voice-unavailable-label { font-size:18rpx; line-height:22rpx; }
+.agent-chat-content .compact-composer .agent-input { min-height:72rpx; max-height:320rpx; font-size:30rpx; line-height:1.5; }
+.agent-chat-content .compact-send { width:100rpx; height:80rpx; min-height:80rpx; flex-basis:100rpx; font-size:26rpx; }
+.agent-sheet { max-height:78%; }
+@keyframes message-pop { from { opacity:.25; transform:translateY(12rpx) scale(.94); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce) { .user-message { animation:none; } }
