@@ -375,6 +375,14 @@
 .agent-video-icon { width:72rpx; height:72rpx; opacity:.78; }
 .agent-audios { display:flex; flex-direction:column; gap:10rpx; margin-top:16rpx; }
 .agent-audio-card { display:flex; width:100%; min-height:92rpx; align-items:center; gap:16rpx; padding:14rpx 18rpx; border:1rpx solid #ddd5c9; border-radius:16rpx; color:#343a34; background:#faf6ee; text-align:left; }
+.agent-pdfs { display:flex; flex-direction:column; gap:10rpx; margin-top:16rpx; }
+.agent-pdf-card { display:flex; width:100%; min-height:96rpx; align-items:center; gap:16rpx; padding:14rpx 18rpx; border:1rpx solid #d8c9ad; border-radius:16rpx; color:#343a34; background:#fffaf0; text-align:left; }
+.agent-pdf-icon { width:42rpx; height:42rpx; flex:none; }
+.agent-pdf-copy { min-width:0; flex:1; }
+.agent-pdf-title,.agent-pdf-action { display:block; }
+.agent-pdf-title { font-size:24rpx; font-weight:700; }
+.agent-pdf-action { margin-top:4rpx; color:#81786c; font-size:19rpx; }
+.agent-pdf-next { color:#a7792c; font-size:34rpx; }
 .agent-audio-icon { width:46rpx; height:46rpx; flex:none; }
 .agent-audio-copy { min-width:0; flex:1; }
 .agent-audio-title,.agent-audio-action { display:block; }

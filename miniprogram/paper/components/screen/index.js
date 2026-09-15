@@ -32,7 +32,8 @@ async function agentRead(path) {
   }
 }
 function mediaFromContent(value) {
-  const content=String(value||''),images=[],videos=[],audios=[],known=[];
+  const content=String(value||''),images=[],videos=[],audios=[],pdfs=[],known=[];
+  (content.match(/(?:https:\/\/huangquechuanmei\.com\/workbench\/ip12\/)?\/?api\/download\/[^\s<>"']+?\.pdf(?:\?[^\s<>"']*)?/gi)||[]).forEach(url=>{pdfs.push(url);known.push(url);});
   (content.match(/(?:https?:\/\/|\/api\/v4\/)[^\s<>"']+/g)||[]).forEach(raw=>{
     const url=raw.replace(/[)）\]}>*_，。；;]+$/,'');
     if(/\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(url)){images.push(url);known.push(url);}
@@ -42,7 +43,7 @@ function mediaFromContent(value) {
   const clean=known.reduce((text,url)=>text.split(url).join(''),content).replace(/\[([^\]]*)\]\(\s*\)/g,'$1').replace(/<\s*>/g,'');
   return {
     content:clean.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!/^(?:成片|成片链接|视频|视频链接|模板小样|小样视频|预览视频|缩略图|音频|音频链接|录音|试听)[：:]?$/.test(line.replace(/[)）\]}>*_，。；;]+$/,''))).join('\n').trim(),
-    images:[...new Set(images)], videos:[...new Set(videos)], audios:[...new Set(audios)]
+    images:[...new Set(images)], videos:[...new Set(videos)], audios:[...new Set(audios)], pdfs:[...new Set(pdfs)]
   };
 }
 function agentInlineNodes(value) {
@@ -79,7 +80,7 @@ function agentRichNodes(value) {
 }
 function ip12MediaPath(value) {
   const raw=String(value||'');
-  return /^\/?api\/v4\//.test(raw)?'/workbench/ip12/'+raw.replace(/^\//,''):raw;
+  return /^\/?api\/(?:v4|download)\//.test(raw)?'/workbench/ip12/'+raw.replace(/^\//,''):raw;
 }
 async function shareLocalPath(value) {
   const source=await api.mediaSource(value);
@@ -94,7 +95,8 @@ function agentMessages(items) {
       role:item&&item.role==='user'?'user':'assistant', content:media.content, richNodes:agentRichNodes(media.content),
       images:[...new Set((Array.isArray(item&&item.images)?item.images:[]).concat(media.images))],
       videos:media.videos.map((url,videoIndex)=>({url,src:'',loading:false,domId:'agent-video-'+index+'-'+videoIndex})),
-      audios:media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex})), attachments:[]
+      audios:media.audios.map((url,audioIndex)=>({url,src:'',loading:false,playing:false,domId:'agent-audio-'+index+'-'+audioIndex})),
+      pdfs:media.pdfs.map((url,pdfIndex)=>({url,domId:'agent-pdf-'+index+'-'+pdfIndex})), attachments:[]
     };
   });
 }
@@ -729,6 +731,16 @@ Component({
         const date=new Date().toISOString().slice(0,10).replace(/-/g,'');
         await new Promise((resolve,reject)=>wx.shareFileMessage({filePath:file,fileName:'黄雀对话-'+date+'.jsonl',success:resolve,fail:error=>/cancel/i.test(String(error&&error.errMsg||''))?resolve():reject(new Error('导出失败，请稍后重试'))}));
       });
+    },
+    copyAgentConversationLink(){
+      const sid=String(this.data.agentSessionId||'');
+      if(!/^[0-9a-f]{32}$/.test(sid))return this.toast('请先开始一段对话');
+      wx.setClipboardData({data:'https://huangquechuanmei.com/workbench/ip12/?sid='+sid,success:()=>this.toast('对话链接已复制'),fail:()=>this.toast('复制失败，请稍后重试')});
+    },
+    previewAgentPdf(e){
+      const message=this.data.agentMessages[Number(e.currentTarget.dataset.message)],pdf=message&&message.pdfs&&message.pdfs[Number(e.currentTarget.dataset.pdf)];
+      if(!pdf||!pdf.url)return this.toast('PDF 暂时无法预览');
+      return this.run(async()=>{const file=await api.mediaSource(api.mediaURL(ip12MediaPath(pdf.url)));await new Promise((resolve,reject)=>wx.openDocument({filePath:file,fileType:'pdf',showMenu:true,success:resolve,fail:()=>reject(new Error('PDF 预览失败，请稍后重试'))}));});
     },
     shareAgentImage(e){
       if(!wx.showShareImageMenu)return this.toast('当前微信版本不支持转发图片，请升级后重试');
