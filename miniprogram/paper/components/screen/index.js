@@ -997,7 +997,8 @@ Component({
         pdf:String((report.files||{}).pdf||''),
         token:api.session()&&api.session().token,
       };
-      if(!snapshot.sid||!snapshot.pdf||(requireNotice&&!snapshot.key))return Promise.resolve(false);
+      if(!snapshot.sid||(requireNotice&&!snapshot.key))return Promise.resolve(false);
+      if(!snapshot.pdf){if(this.alive&&this.visible!==false)this.toast('报告还在整理中');return Promise.resolve(false);}
       this.setData({agentReportOpening:true});
       // 两类回写要分开：
       //  - uiSet：本地 UI 状态（按钮的「正在打开」）。隐藏时也必须复位，

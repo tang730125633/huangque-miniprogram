@@ -263,6 +263,18 @@ test('IP资料抽屉 openDocument 失败：显示反馈且允许重试', async (
   assert.ok((c.toasts || []).some((t) => /打开失败/.test(t)));
 });
 
+test('IP资料抽屉尚无 PDF：保留原有整理中提示，不发下载请求', async () => {
+  const c = setup();
+  c.data.agentReport = { status: 'collecting', files: {} };
+  let downloads = 0;
+  api.mediaSource = async () => { downloads++; return 'local://tmp.pdf'; };
+  const ok = await c.chooseAgentIpItem({ currentTarget: { dataset: { ipKind: 'report' } } });
+  assert.equal(ok, false);
+  assert.equal(downloads, 0);
+  assert.equal(c.data.agentReportOpening, false);
+  assert.ok((c.toasts || []).some((t) => /报告还在整理中/.test(t)));
+});
+
 test('打开期间初稿升级成定稿：定稿提示保留，且不把定稿标成已读', async () => {
   const c = setup();
   c.data.agentReport = DRAFT;
