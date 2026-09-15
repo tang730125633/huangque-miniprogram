@@ -1,6 +1,7 @@
 const pages = require('./pages');
 const api = require('../../services/api');
 const creation = require('../../services/creation');
+const workSubscription = require('../../services/work-subscription');
 const taskQueue = require('../../services/task-queue');
 const QueueController = require('../../services/task-queue-controller');
 const titles = {}; pages.forEach(p => { titles[p.id] = p.title; });
@@ -208,7 +209,7 @@ Component({
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
     agentDelegations: [], agentWidgets: [], agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
-    notifications: { finished: true, failed: true, activity: false },
+    notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
     helpItems: [
@@ -227,6 +228,7 @@ Component({
       const f=creation.formats.find(f=>f.id===draft.kind)||creation.formats[0];
       this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
       this.load();
+      this.loadWorkSubscription();
     },
     detached() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
@@ -237,6 +239,8 @@ Component({
     async queueOpenResult(e){const id=String(e.detail&&e.detail.id||''),sid=this.data.agentSessionId,token=api.session()&&api.session().token;if(!this.data.agentQueueTasks.some(t=>t.id===id&&t.sid===sid))return;return this.run(async()=>{const job=await api.request('/api/gen/job/'+encodeURIComponent(id));if(!this.alive||sid!==this.data.agentSessionId||token!==(api.session()&&api.session().token))return;const task=taskQueue.view(job,sid);if(!task||task.status!=='done')return this.toast('结果尚未完成，请稍后查看');const kind=({copy:'text',xiaole_video:'video'})[job.kind]||job.kind;if(!['text','image','video','audio'].includes(kind))return this.toast('此类型请在作品栏查看');api.save({selected:{id:Number(id),kind}});this.navigate(kind+'-detail');});},
     queueGoWorks(){this.navigate('works');},
     toast(title) { wx.showToast({title,icon:'none'}); },
+    loadWorkSubscription(){return workSubscription.preload().then(status=>{if(this.alive)this.setData({workSubscriptionConfigured:status.configured,workSubscriptionRemaining:status.remaining});});},
+    requestWorkSubscription(showResult=true){return workSubscription.request().then(result=>{const status=result.status||{};if(this.alive)this.setData({workSubscriptionConfigured:Boolean(status.configured),workSubscriptionRemaining:Number(status.remaining||0)});if(showResult&&this.alive)this.toast(result.choice==='accept'?'已订阅一次作品完成提醒':result.choice==='unavailable'?'微信完成提醒暂未开通':'本次没有开启微信提醒');return result;});},
     fail(error) { if(!this.alive)return; const patch={error:error.message||'暂时无法完成，请重试'};if(error.status===401)Object.assign(patch,{user:null,works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[]});this.setData(patch); },
     async run(fn) { if(this.data.busy)return;this.setData({busy:true,error:''});try { return await fn(); }catch(e){this.fail(e);}finally{if(this.alive)this.setData({busy:false});} },
     async load() {
@@ -1067,7 +1071,7 @@ Component({
     stopThought(){this.setData({stopped:!this.data.stopped});},
     confirmPlan(){if(!this.requireLogin())return;this.run(async()=>{creation.payload(this.draft());api.save({draft:this.draft()});this.navigate('confirm');});},
     async loadQuote(){const draft=api.read().draft;if(!draft)throw new Error('请先填写创作需求');const q=await creation.quote(draft);if(this.alive)this.setData({quote:q,promptInput:draft.prompt,kind:draft.kind,kindName:creation.format(draft.kind).name,formatDetail:q.detail});},
-    startGeneration(){this.run(async()=>{if(!this.data.quote)throw new Error('请先取得当前报价');try {await creation.submit(api.read().draft,this.data.quote.cost);}catch(e){this.setData({attempt:api.read().attempt||null});if(e.code==='price_changed')await this.loadQuote();throw e;}this.navigate('processing');});},
+    startGeneration(){this.run(async()=>{if(!this.data.quote)throw new Error('请先取得当前报价');const draft=api.read().draft;if(draft&&draft.kind==='video')await this.requestWorkSubscription(false);try {await creation.submit(draft,this.data.quote.cost);}catch(e){this.setData({attempt:api.read().attempt||null});if(e.code==='price_changed')await this.loadQuote();throw e;}this.navigate('processing');});},
     recover(){this.run(async()=>{await creation.submit(null,null,true);this.navigate('processing');});},
     async refreshJob(){clearTimeout(this.timer);const s=api.read().selected;if(!s||(!s.id&&!s.asset))throw new Error('请从作品列表选择一个任务');const owner=api.session()&&api.session().user.username;let job;if(s.asset)job=Object.assign({},s.asset);else{const data=await api.request('/api/gen/job/'+encodeURIComponent(s.id));job=creation.jobView(data,s.kind);if(s.kind==='video'){job.kind='video';job.ratio=(data.result&&data.result.ratio)||job.ratio||'';job.videoHeight=videoHeight(job.ratio);}}if(!this.alive||!api.session()||owner!==api.session().user.username)return;job.displayUrls=await Promise.all((job.urls||[job.url]).filter(Boolean).map(api.mediaSource));job.displayUrl=job.displayUrls[0]||'';if(!this.alive||!api.session()||owner!==api.session().user.username)return;this.setData({job});if(this.visible&&this.properties.pageId==='processing'&&!job.done&&!job.failed)this.timer=setTimeout(()=>this.refreshJob().catch(e=>this.fail(e)),4000);},
     refreshTask(){this.run(()=>this.refreshJob());},
@@ -1122,6 +1126,6 @@ Component({
     submitFeedback(){this.run(async()=>{const content=this.data.feedbackInput.trim();if(content.length<5)throw new Error('请至少填写五个字');const rows=api.read().feedback||[];api.save({feedback:rows.concat({content,type:this.data.feedbackType,at:Date.now()})});this.setData({feedbackSent:true});});},
     newFeedback(){this.setData({feedbackSent:false,feedbackInput:''});},
     faq(e){const i=Number(e.currentTarget.dataset.index);this.setData({openFaq:this.data.openFaq===i?-1:i});},
-    info(e){const kind=e.currentTarget.dataset.info;const copy={login:'使用已有黄雀账号登录。密码仅用于本次验证，不保存在设备。登录凭证会保存到本机，退出时清除。',privacy:'名片资料保存于黄雀服务端；只有已发布名片及你允许公开的联系方式对外展示。',notice:'当前仅保存此设备的通知偏好；尚未接入微信订阅授权。',payment:'会员购买尚未接入此版本。已有会员权益与余额来自你的真实账号。',share:'可将作品整理进名片，再发布名片分享给朋友。',data:'账号登录凭证、创作草稿和任务恢复记录保存在此设备。云端作品不会因退出登录而删除。'};wx.showModal({title:'黄雀',content:copy[kind]||'此项功能正在接入。',showCancel:false});}
+    info(e){const kind=e.currentTarget.dataset.info;const copy={login:'使用已有黄雀账号登录。密码仅用于本次验证，不保存在设备。登录凭证会保存到本机，退出时清除。',privacy:'名片资料保存于黄雀服务端；只有已发布名片及你允许公开的联系方式对外展示。',notice:'作品完成提醒使用微信原生订阅消息。每次授权可接收一条服务通知，点击通知会进入作品列表。',payment:'会员购买尚未接入此版本。已有会员权益与余额来自你的真实账号。',share:'可将作品整理进名片，再发布名片分享给朋友。',data:'账号登录凭证、创作草稿和任务恢复记录保存在此设备。云端作品不会因退出登录而删除。'};wx.showModal({title:'黄雀',content:copy[kind]||'此项功能正在接入。',showCancel:false});}
   }
 });
