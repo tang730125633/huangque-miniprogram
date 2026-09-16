@@ -42,7 +42,7 @@ test('抽屉关着时，报告可看即在聊天窗口给提示（不依赖抽�
 
 test('提示卡是独立条件，按钮带 loading/disabled，关闭键也受同一状态控制', () => {
   const wxml = fs.readFileSync(WXML_PATH, 'utf8');
-  assert.match(wxml, /<view wx:if="\{\{agentReportNotice\}\}" class="hq-view agent-report-notice"/);
+  assert.match(wxml, /<view wx:if="\{\{agentReportNotice\}\}" class="hq-view agent-report-notice \{\{agentReportNotice\.pending\?'is-pending':''\}\}"/);
   assert.match(wxml, /bindtap="viewAgentReportNotice"[^>]*loading="\{\{agentReportOpening\}\}"/);
   assert.match(wxml, /bindtap="viewAgentReportNotice"[^>]*disabled="\{\{agentReportOpening\}\}"/);
   assert.match(wxml, /bindtap="dismissAgentReportNotice"[^>]*disabled="\{\{agentReportOpening\}\}"/);
@@ -79,6 +79,75 @@ test('报告不可看（无 PDF / 非可看状态）不提示', () => {
   assert.equal(c.data.agentReportNotice, null);
   c.syncReportNotice(SID, { status: 'draft_ready', files: {} });
   assert.equal(c.data.agentReportNotice, null);
+});
+
+// ---------- 生成中 / 校验中 / 失败提示（老板 09-17：后台生成必须有可见进度） ----------
+
+test('初稿生成中也有提示卡：pending、带「生成中…」标签、不渲染「查看报告」按钮', () => {
+  const c = setup();
+  c.syncReportNotice(SID, { status: 'draft_generating', files: {} });
+  assert.ok(c.data.agentReportNotice);
+  assert.equal(c.data.agentReportNotice.pending, true);
+  assert.equal(c.data.agentReportNotice.label, '生成中…');
+  assert.match(c.data.agentReportNotice.title, /初稿生成中/);
+  const wxml = fs.readFileSync(WXML_PATH, 'utf8');
+  assert.match(wxml, /<text wx:if="\{\{agentReportNotice\.label\}\}" class="hq-text report-notice-pending">\{\{agentReportNotice\.label\}\}<\/text>/);
+  assert.match(wxml, /<button wx:if="\{\{!agentReportNotice\.pending\}\}" class="hq-button report-notice-open/);
+});
+
+test('生成中 → 校验中 → 可查看：状态升级逐级顶替提示卡', () => {
+  const c = setup();
+  c.syncReportNotice(SID, { status: 'draft_generating', files: {} });
+  const genKey = c.data.agentReportNotice.key;
+  assert.match(genKey, /main:draft_generating/);
+  c.syncReportNotice(SID, { status: 'draft_validated', files: {} });
+  assert.ok(c.data.agentReportNotice);
+  assert.notEqual(c.data.agentReportNotice.key, genKey);
+  assert.equal(c.data.agentReportNotice.pending, true);
+  assert.match(c.data.agentReportNotice.title, /初稿校验中/);
+  c.syncReportNotice(SID, DRAFT);
+  assert.ok(c.data.agentReportNotice);
+  assert.ok(!c.data.agentReportNotice.pending);
+  assert.match(c.data.agentReportNotice.title, /初稿已生成/);
+});
+
+test('关闭生成中卡后，同一状态不再重复弹；状态一变再次弹出', () => {
+  const c = setup();
+  c.syncReportNotice(SID, { status: 'draft_generating', files: {} });
+  c.dismissAgentReportNotice();
+  c.syncReportNotice(SID, { status: 'draft_generating', files: {} });
+  assert.equal(c.data.agentReportNotice, null);
+  c.syncReportNotice(SID, { status: 'draft_validated', files: {} });
+  assert.ok(c.data.agentReportNotice);
+  assert.match(c.data.agentReportNotice.title, /初稿校验中/);
+});
+
+test('模块（选题/口播）生成中优先于主报告卡，定稿已好也不再重复弹定稿卡', () => {
+  const c = setup();
+  const report = { status: 'final', files: { pdf: 'api/download/sid/sid_定稿.pdf' }, m5: { status: 'm5_generating' } };
+  c.syncReportNotice(SID, report);
+  assert.ok(c.data.agentReportNotice);
+  assert.equal(c.data.agentReportNotice.pending, true);
+  assert.match(c.data.agentReportNotice.title, /选题 · 生成中/);
+  assert.match(c.data.agentReportNotice.key, /m5:m5_generating/);
+  report.m5 = { status: 'm5_validated' };
+  c.syncReportNotice(SID, report);
+  assert.match(c.data.agentReportNotice.title, /选题 · 校验中/);
+  report.m5 = { status: 'ready' };
+  report.m6 = { status: 'm6_generating' };
+  c.syncReportNotice(SID, report);
+  assert.match(c.data.agentReportNotice.title, /口播 · 生成中/);
+});
+
+test('失败也有提示卡：只显示标题和说明，无「生成中」标签、无「查看报告」按钮', () => {
+  const c = setup();
+  c.syncReportNotice(SID, { status: 'failed', files: {} });
+  assert.ok(c.data.agentReportNotice);
+  assert.equal(c.data.agentReportNotice.pending, true);
+  assert.equal(c.data.agentReportNotice.label, '');
+  assert.match(c.data.agentReportNotice.title, /生成失败/);
+  const wxml = fs.readFileSync(WXML_PATH, 'utf8');
+  assert.match(wxml, /wx:if="\{\{agentReportNotice\.label\}\}"/);
 });
 
 // ---------- 切换会话 / 账号 ----------

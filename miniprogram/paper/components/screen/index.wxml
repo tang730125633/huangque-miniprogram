@@ -147,12 +147,15 @@
         </view>
         <view class="hq-view agent-thread-end"/>
       </scroll-view>
-      <view wx:if="{{agentReportNotice}}" class="hq-view agent-report-notice">
+      <view wx:if="{{agentReportNotice}}" class="hq-view agent-report-notice {{agentReportNotice.pending?'is-pending':''}}">
         <view class="hq-view report-notice-main">
-          <text class="hq-text report-notice-title">{{agentReportNotice.title}}</text>
+          <view class="hq-view report-notice-head">
+            <text class="hq-text report-notice-title">{{agentReportNotice.title}}</text>
+            <text wx:if="{{agentReportNotice.label}}" class="hq-text report-notice-pending">{{agentReportNotice.label}}</text>
+          </view>
           <text class="hq-text report-notice-desc">{{agentReportNotice.desc}}</text>
         </view>
-        <button class="hq-button report-notice-open {{agentReportOpening?'is-disabled':''}}" bindtap="viewAgentReportNotice" loading="{{agentReportOpening}}" disabled="{{agentReportOpening}}">{{agentReportOpening?'正在打开…':'查看报告'}}</button>
+        <button wx:if="{{!agentReportNotice.pending}}" class="hq-button report-notice-open {{agentReportOpening?'is-disabled':''}}" bindtap="viewAgentReportNotice" loading="{{agentReportOpening}}" disabled="{{agentReportOpening}}">{{agentReportOpening?'正在打开…':'查看报告'}}</button>
         <button class="hq-button report-notice-close {{agentReportOpening?'is-disabled':''}}" bindtap="dismissAgentReportNotice" disabled="{{agentReportOpening}}" aria-label="忽略提示">×</button>
       </view>
       <view class="hq-view agent-composer compact-composer">

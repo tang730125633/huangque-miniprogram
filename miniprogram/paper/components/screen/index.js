@@ -1241,16 +1241,45 @@ Component({
     reportNoticeKey(report){const files=(report&&report.files)||{};return [String(report&&report.status||''),String(files.pdf||files.md||files.json||'')].join('|');},
     reportNoticePayload(report){
       const status=String(report&&report.status||'');
-      const pdf=(report&&report.files||{}).pdf;
-      if(!pdf||!['draft_ready','final','confirmed'].includes(status))return null;
-      const done=status==='final'||status==='confirmed';
-      return {status,title:done?'IP 定位报告 · 定稿已生成':'IP 定位报告 · 初稿已生成',desc:done?'点开查看 PDF，可直接存档或转发。':'点开查看 PDF；挑一套人设方案回我，我就出定稿。'};
+      const files=(report&&report.files)||{};
+      const pdf=files.pdf;
+      // 模块（选题/口播）生成中优先于主报告卡：定稿完成后跑选题/口播时，
+      // 用户要看到的是当前这段生成的进度，而不是重复弹出的定稿卡。
+      const MOD_GENERATING={
+        m5:['选题 · 生成中','正在按你确认的定位方向出选题，稍等一会儿'],
+        m6:['口播 · 生成中','正在按确认的选题写口播稿，稍等一会儿'],
+      };
+      const MOD_VALIDATED={m5:'选题 · 校验中',m6:'口播 · 校验中'};
+      for(const name of ['m5','m6']){
+        const mod=(report&&report[name])||{};
+        const ms=String(mod.status||'');
+        if(ms===name+'_generating')return {status:ms,pending:true,label:'生成中…',title:MOD_GENERATING[name][0],desc:MOD_GENERATING[name][1],keySuffix:name+':'+ms};
+        if(ms===name+'_validated')return {status:ms,pending:true,label:'生成中…',title:MOD_VALIDATED[name],desc:'内容已生成，正在整理，马上好',keySuffix:name+':'+ms};
+      }
+      if(pdf&&['draft_ready','final','confirmed'].includes(status)){
+        const done=status==='final'||status==='confirmed';
+        return {status,title:done?'IP 定位报告 · 定稿已生成':'IP 定位报告 · 初稿已生成',desc:done?'点开查看 PDF，可直接存档或转发。':'点开查看 PDF；挑一套人设方案回我，我就出定稿。',keySuffix:'main|'+status+'|'+String(pdf)};
+      }
+      // 老板 09-17 定调：后台生成必须让用户看得见进度，绝不无反馈地等。
+      // 生成中/校验中/失败都要挂卡；完成后再由上面的 ready/final 卡顶替。
+      const PENDING={
+        draft_generating:['IP 定位报告 · 初稿生成中','正在整理你的信息，稍等一会儿，好了卡片会自动变成可查看'],
+        draft_validated:['IP 定位报告 · 初稿校验中','内容已生成，正在校验排版，马上好'],
+        final_generating:['IP 定位报告 · 定稿生成中','已按你选的人设方案出定稿，正在整理，马上好'],
+        final_validated:['IP 定位报告 · 定稿校验中','定稿已生成，正在渲染 PDF，马上好'],
+      };
+      if(PENDING[status]){
+        const copy=PENDING[status];
+        return {status,pending:true,label:'生成中…',title:copy[0],desc:copy[1],keySuffix:'main:'+status};
+      }
+      if(status==='failed')return {status,pending:true,label:'',title:'IP 定位报告 · 生成失败',desc:'这次没生成成功，跟我说一声，我帮你重试',keySuffix:'main:'+status};
+      return null;
     },
     syncReportNotice(sid,report){
       if(!sid||sid!==this.data.agentSessionId)return;
       const payload=this.reportNoticePayload(report);
       if(!payload){if(this.data.agentReportNotice)this.setData({agentReportNotice:null});return;}
-      const key=sid+'@'+this.reportNoticeKey(report);
+      const key=sid+'@'+String(payload.keySuffix||this.reportNoticeKey(report));
       if(this.reportNoticeState()[sid]===key){if(this.data.agentReportNotice)this.setData({agentReportNotice:null});return;}
       if(this.data.agentReportNotice&&this.data.agentReportNotice.key===key)return;
       this.setData({agentReportNotice:Object.assign({key},payload)});
