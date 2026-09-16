@@ -50,7 +50,9 @@ assert.match(profileWxml, /membership\.discountText/);
 assert.match(profileJs, /goRecharge\(\) \{ wx\.navigateTo\(\{ url: '\/pages\/recharge\/recharge' \}\); \}/);
 assert.match(profileJs, /goCard\(\) \{ wx\.navigateTo\(\{ url: '\/pages\/my-card\/my-card' \}\); \}/);
 assert.match(profileWxml, /wx:if="\{\{membership\.status !== 'active'\}\}"/);
-assert.match(profileWxml, /¥\{\{membershipPriceYuan\}\} · 赠 \{\{membershipBonusPoints\}\} 点/);
+assert.match(profileWxml, /¥\{\{membershipPriceYuan\}\} \/ 年/);
+// 积分制度整体移出（2026-09-16）：账户点数卡与会员点数充值入口必须不存在
+assert.doesNotMatch(profileWxml, /账户点数|点数充值|赠 \{\{membershipBonusPoints\}\} 点/);
 assert.doesNotMatch(profileWxml, /¥499|赠 1000 点/);
 assert.doesNotMatch(profileJs, /7\.5折|5\.5折|7500|5500/);
 assert.doesNotMatch(profileJs, /setStorageSync|membership_expires_at\s*[<>]/);

@@ -8,6 +8,7 @@ Page({
     mode: 'login',
     username: '',
     password: '',
+    inviteCode: '',
     redirect: '',
     inviteRequired: false,
     inviteValidating: false,
@@ -74,6 +75,9 @@ Page({
   },
   onUsername(e) { this.setData({ username: e.detail.value }); },
   onPassword(e) { this.setData({ password: e.detail.value }); },
+  onInviteCode(e) {
+    this.setData({ inviteCode: String(e.detail.value || '').toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 6) });
+  },
   close() {
     if (this.data && this.data.loading) return;
     const pages = getCurrentPages();
@@ -111,10 +115,22 @@ Page({
       this.setData({ err: '邀请已失效，请重新打开分享链接' });
       return Promise.resolve();
     }
+    if (isRegister && !pending) {
+      const code = (this.data.inviteCode || '').trim().toUpperCase();
+      if (!code) {
+        this.setData({ err: '内测期间注册需要邀请码' });
+        return Promise.resolve();
+      }
+      if (code.length !== 6) {
+        this.setData({ err: '邀请码需要 6 位' });
+        return Promise.resolve();
+      }
+    }
     this.setData({ loading: true, err: '' });
     const path = isRegister ? '/api/auth/miniprogram-register' : '/api/auth/miniprogram-login';
     const payload = { username, password, device_id: device.getDeviceId() };
     if (isRegister && pending) Object.assign(payload, inviteContext.registrationPayload());
+    if (isRegister && !pending) payload.invite_code = (this.data.inviteCode || '').trim().toUpperCase();
     return api.request(path, {
       method: 'POST', data: payload
     })

@@ -4,7 +4,7 @@
       <view class="brand-seal">雀</view>
       <view><text class="brand">黄雀 AI</text><view class="brand-tagline">CREATIVE STUDIO</view></view>
     </view>
-    <view class="pts" bindtap="onTapPoints">{{points === null ? '登录 / 注册' : points + ' 点'}}</view>
+    <view class="pts" bindtap="onTapPoints">{{points === null ? '登录 / 注册' : '我的'}}</view>
   </view>
 
   <view class="content">

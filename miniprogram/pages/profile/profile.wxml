@@ -32,24 +32,11 @@
     <view wx:if="{{membership.status !== 'active'}}" class="membership-action" bindtap="goRecharge">
       <view>
         <view class="membership-action-title">开通一年体验官</view>
-        <view wx:if="{{membershipPriceYuan && membershipBonusPoints}}" class="muted small">¥{{membershipPriceYuan}} · 赠 {{membershipBonusPoints}} 点</view>
+        <view wx:if="{{membershipPriceYuan}}" class="muted small">¥{{membershipPriceYuan}} / 年</view>
         <view wx:else class="muted small">会员价格读取中</view>
       </view>
       <view class="membership-action-button">立即开通</view>
     </view>
-    <view wx:else class="membership-action" bindtap="goRecharge">
-      <view>
-        <view class="membership-action-title">会员专享点数充值</view>
-        <view class="muted small">固定点数包或自定义充值</view>
-      </view>
-      <view class="membership-action-button">去充值</view>
-    </view>
-  </view>
-
-  <view class="card points-card">
-    <text class="muted">账户点数</text>
-    <text class="points-num">{{user.points === undefined ? '—' : user.points}}</text>
-    <view class="muted small tip">点数用于体验生成任务 · 失败自动返还</view>
   </view>
 
   <view class="card menu-card">

@@ -30,6 +30,13 @@
         value="{{password}}" bindinput="onPassword" />
     </view>
 
+    <view wx:if="{{mode === 'register' && !inviteRequired}}" class="field">
+      <text class="field-label">邀请码（必填）</text>
+      <input class="input" type="text" maxlength="6" aria-label="邀请码" placeholder="6 位邀请码" placeholder-class="ph"
+        value="{{inviteCode}}" bindinput="onInviteCode" />
+      <text class="field-hint muted">内测期间注册需要邀请码，请向邀请人索取</text>
+    </view>
+
     <view wx:if="{{err}}" class="err">{{err}}</view>
 
     <view class="agreement-row">
