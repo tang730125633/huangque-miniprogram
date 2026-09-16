@@ -12,7 +12,6 @@ const IP12_NEW_SESSION = '__new__';
 const AGENT_MESSAGE_LIMIT = 30;
 const AGENT_IMAGE_LIMIT = 10;
 const AGENT_ATTACHMENT_LIMIT = 10;
-const AGENT_WIDGET_DISMISSED_LIMIT = 80;
 const AGENT_WATCH_INTERVAL = 4000;
 // 报告在服务端后台生成，不会往会话里追加消息：只能主动拉 /api/report/<sid>，
 // 否则「报告已完成」在页面上永远不出现（网页端已有 pollReport，小程序端缺失）。
@@ -202,9 +201,11 @@ function delegationCards(value) {
     };
   }).filter(item=>item.needsApproval);
 }
-function agentWidgets(value,film,selections,dismissed) {
+// 卡片是否上屏：只由后端每轮下发的 cards 决定（批次收敛 + 跨轮续挂），
+// 前端不再自己记「已关闭的卡」——以前发消息就把当前卡组整批记成永久关闭，
+// 用户点选过的文案卡因此再也回不来（报障台 #10：打字改选后文案卡消失）。
+function agentWidgets(value,film,selections) {
   const selected=selections&&typeof selections==='object'?selections:{};
-  const hidden=new Set(Array.isArray(dismissed)?dismissed:[]);
   // 渲染不做 film 门控：后端每轮返回的就是当前该渲染的卡（批次收敛 + 模板目录卡、
   // 音色/形象跨轮续挂），网页端同口径（出片/非出片两套都渲染）；按 film 过滤会让
   // film=false 的模板目录卡/样音卡在出片轮整张消失（与后端「任何轮都渲染」的契约相悖）。
@@ -239,13 +240,7 @@ function agentWidgets(value,film,selections,dismissed) {
       selectionMode,minSelected,maxSelected,selectedCount:0,
       layout,catalogExpanded:false,itemCount:items.length,items,actions
     };
-  }).filter(widget=>(widget.items.length||widget.type==='voice_sample'&&widget.actions.length)&&!hidden.has(widget.key));
-}
-function dismissAgentWidgets(sid,widgets) {
-  if(!sid||!widgets||!widgets.length)return;
-  const saved=api.read(),all=Object.assign({},saved.ip12DismissedWidgets||{});
-  all[sid]=[...new Set((all[sid]||[]).concat(widgets.map(widget=>widget.key).filter(Boolean)))].slice(-AGENT_WIDGET_DISMISSED_LIMIT);
-  api.save({ip12DismissedWidgets:all});
+  }).filter(widget=>(widget.items.length||widget.type==='voice_sample'&&widget.actions.length));
 }
 function agentBackgroundActive(value) {
   const delegations=value&&value.delegations&&typeof value.delegations==='object'?value.delegations:{};
@@ -372,8 +367,7 @@ Component({
       if(!valid())return;
       const items=agentMessages(data.history);
       const imageHidden=limitAgentImages(items);
-      const dismissed=(api.read().ip12DismissedWidgets||{})[sid]||[];
-      const widgets=agentWidgets(data.widgets,data.film,data.selected_choices,dismissed);
+      const widgets=agentWidgets(data.widgets,data.film,data.selected_choices);
       for(const item of items){
         const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
         if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
@@ -553,7 +547,11 @@ Component({
     sendAgentMessage(message,approval,widgetAction) {
       return this.run(async()=>{
         const sid=await this.ensureAgentSession();
-        if(!approval&&this.data.agentWidgets&&this.data.agentWidgets.length){dismissAgentWidgets(sid,this.data.agentWidgets);this.setData({agentWidgets:[]});}
+        // 发消息只把上一轮的卡先让位（清屏），绝不记成「永久关闭」：
+        // 卡片是否回来由后端每轮下发的卡组决定（批次收敛 + 跨轮续挂）。
+        // 旧写法把整批卡记进 ip12DismissedWidgets，用户点选过的文案卡/续挂卡
+        // 从此再也不上屏——打字改选后「文案卡消失」就是这么来的（报障台 #10）。
+        if(!approval&&this.data.agentWidgets&&this.data.agentWidgets.length)this.setData({agentWidgets:[]});
         const body={session_id:sid,message:String(message||'').trim()};
         const attachments=approval?[]:(this.data.agentAttachments||[]).slice();
         if(attachments.length)body.attachments=attachments.map(item=>item.fileId);
