@@ -246,6 +246,9 @@ function agentWidgets(value,film,selections) {
     return {
       key:String(widget.id||type+'-'+widgetIndex)+'@'+Math.max(1,Number(widget.gen)||1),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
       title:String(widget.title||'请选择').slice(0,80),hint:String(widget.hint||'').slice(0,240),selectedId:String(selected[kind]&&selected[kind].id||''),
+      // 已选卡收成一行（2026-09-16 老板实录：选过的单选卡一直挂在下面很怪）：
+      // selectedId 非空即 answered（restore 时按选择回填），点徽标 expanded 展开改选。
+      answered:false,expanded:false,selectedTitle:'',
       script:type==='voice_sample'?String(widget.script||'').slice(0,600):'',
       selectionMode,minSelected,maxSelected,selectedCount:0,
       layout,catalogExpanded:false,itemCount:items.length,items,actions
@@ -378,6 +381,14 @@ Component({
       const items=agentMessages(data.history);
       const imageHidden=limitAgentImages(items);
       const widgets=agentWidgets(data.widgets,data.film,data.selected_choices);
+      // 已选卡收成一行：selectedId 非空即 answered，跨轮续挂的卡也保持收起，
+      // 用户点徽标展开才能改选——绝不让选过的单选卡一直挂在对话下面。
+      widgets.forEach(widget=>{
+        if(!widget.selectedId||widget.type==='voice_sample'||widget.layout==='template_catalog')return;
+        const picked=(widget.items||[]).find(item=>String(item.id)===String(widget.selectedId));
+        widget.answered=true;
+        widget.selectedTitle=picked?picked.title:'';
+      });
       for(const item of items){
         const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
         if(item.images.length)item.images=(await Promise.all(item.images.map(resolve))).filter(Boolean);
@@ -964,6 +975,7 @@ Component({
       const widget=this.data.agentWidgets[widgetIndex];
       const option=widget&&widget.items[optionIndex];
       if(!widget||!option)return;
+      try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
       const path='agentWidgets['+widgetIndex+'].items['+optionIndex+'].playing';
       if(option.playing){
         if(this.agentVoicePreviewCtx)this.agentVoicePreviewCtx.stop();
@@ -1075,11 +1087,19 @@ Component({
       if(!widget||widget.layout!=='template_catalog')return;
       this.setData({['agentWidgets['+index+'].catalogExpanded']:!widget.catalogExpanded});
     },
+    toggleAgentWidgetExpand(e){
+      // 已选收起的卡点徽标展开改选；再点收起。
+      if(this.data.busy||this.data.agentThinking)return;
+      const index=Number(e.currentTarget.dataset.widget),widget=this.data.agentWidgets[index];
+      if(!widget||!widget.answered)return;
+      this.setData({['agentWidgets['+index+'].expanded']:!widget.expanded});
+    },
     chooseAgentWidget(e){
       if(this.data.busy||this.data.agentThinking)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
       if(!widget||!item)return;
+      try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
       const prevSelectedId=widget.selectedId||'';
       const choice={id:item.id,label:item.title,image_url:item.imageUrl,preview_url:item.previewUrl,widgetTitle:widget.title,film:widget.film,manual:true,slot_id:item.slotId,created_at:item.createdAt};
       // 勾选暂存（2026-09-16 老板定调「一次选完」）：点卡只做本地勾选 + 后台持久化，
@@ -1087,6 +1107,7 @@ Component({
       this._agentManualPicks=this._agentManualPicks||{};
       this._agentManualPicks[widget.key]=String(item.id);
       this.setData({['agentWidgets['+widgetIndex+'].selectedId']:String(item.id)});
+      if(widget.layout!=='template_catalog')this.setData({['agentWidgets['+widgetIndex+'].answered']:true,['agentWidgets['+widgetIndex+'].selectedTitle']:item.title,['agentWidgets['+widgetIndex+'].expanded']:false});
       api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice})
         .then(data=>{
           if(data&&data.invalidated&&widget.type!=='option_pick'){
@@ -1147,6 +1168,7 @@ Component({
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
       if(!widget||!item||widget.selectionMode!=='multiple')return;
+      try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
       const path='agentWidgets['+widgetIndex+']';
       let count=widget.selectedCount||0;
       let selected;

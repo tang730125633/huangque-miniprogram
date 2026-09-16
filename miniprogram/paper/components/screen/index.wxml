@@ -60,14 +60,14 @@
         </view>
         <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">作品正在后台处理，完成后会自动回到这里；你可以继续聊天。<button wx:if="{{workSubscriptionConfigured}}" class="hq-button text-button" bindtap="requestWorkSubscription">{{workSubscriptionRemaining?'再订阅一次微信提醒':'完成后微信提醒我'}}</button></view>
         <view wx:elif="{{agentDeliverySubNotice&&workSubscriptionConfigured&&!workSubscriptionRemaining&&!agentThinking}}" class="hq-view history-note">这次的作品没有开微信提醒。现在开一下，下次完成直接微信通知你。<button class="hq-button text-button" bindtap="requestWorkSubscription">开微信提醒</button></view>
-        <view wx:if="{{!agentVoiceFlow&&!agentThinking}}" wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card">
+        <view wx:if="{{!agentVoiceFlow}}" wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card {{agentThinking?'agent-widget-locked':''}} {{item.answered?'answered':''}} {{item.expanded?'expanded':''}}">
           <view class="hq-view agent-widget-head">
             <view class="hq-view agent-widget-title-wrap">
               <image wx:if="{{item.type==='voice_pick'}}" class="hq-image widget-title-icon" src="/assets/icons/em_wave.svg" mode="aspectFit"/>
               <view class="hq-view agent-widget-title">{{item.title}}</view>
             </view>
             <button wx:if="{{item.layout==='template_catalog'}}" class="hq-button agent-template-toggle" data-widget="{{widgetIndex}}" bindtap="toggleAgentTemplateCatalog" disabled="{{busy||agentThinking}}">{{item.catalogExpanded?'收起':'查看全部 ›'}}</button>
-            <view wx:elif="{{item.type!=='voice_sample'}}" class="hq-view agent-widget-badge">点一下选择</view>
+            <view wx:elif="{{item.type!=='voice_sample'}}" class="hq-view agent-widget-badge {{item.answered?'answered':''}}" data-widget="{{widgetIndex}}" bindtap="toggleAgentWidgetExpand">{{item.answered?'✓ 已选 · '+item.selectedTitle:'点一下选择'}}</view>
           </view>
           <text wx:if="{{item.hint}}" class="hq-text agent-widget-hint">{{item.hint}}</text>
           <scroll-view wx:if="{{item.layout==='template_catalog'}}" scroll-x="{{!item.catalogExpanded}}" enhanced show-scrollbar="{{false}}" class="agent-template-scroll" aria-label="全部模板">

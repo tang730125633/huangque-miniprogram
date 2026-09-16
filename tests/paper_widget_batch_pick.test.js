@@ -48,6 +48,10 @@ function ctx(widgets, extra = {}) {
   c.setData = setData;
   c.toast = () => {};
   c.scrollAgent = () => {};
+  c.startReportPoll = () => {};
+  c.startAgentWatch = () => {};
+  c.refreshTaskQueue = () => {};
+  c.stopReportPoll = () => {};
   c._agentManualPicks = {};
   c.sent = [];
   c.sendAgentMessage = message => { c.sent.push(message); return Promise.resolve(); };
@@ -159,6 +163,11 @@ test('音色卡项自动拆分主名称与胶囊标签，且支持试听播放�
   assert.equal(items[2].parsedTag, '');
 
   let innerAudioCreated = false;
+  let vibrateCount = 0;
+  global.wx.vibrateShort = (opts) => {
+    assert.equal(opts.type, 'light');
+    vibrateCount += 1;
+  };
   global.wx.createInnerAudioContext = () => {
     innerAudioCreated = true;
     return {
@@ -169,6 +178,15 @@ test('音色卡项自动拆分主名称与胶囊标签，且支持试听播放�
   };
   await c.toggleVoicePreview.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
   assert.equal(innerAudioCreated, true);
+  assert.equal(vibrateCount, 1);
+
+  await c.chooseAgentWidget.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  assert.equal(vibrateCount, 2);
+
+  c.data.agentWidgets[0].selectionMode = 'multiple';
+  await c.toggleAgentMultiOption.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  assert.equal(vibrateCount, 3);
+
   api.request = originalRequest;
 });
 
