@@ -58,7 +58,7 @@
           <view class="hq-view agent-thinking-sparkle"><image class="hq-image thinking-sparkle-icon" src="/assets/icons/sparkle.svg" mode="aspectFit"/></view>
           <text class="hq-text agent-thinking-text">{{agentProgress||'正在整理视频方案… 已等待 33 秒'}}</text>
         </view>
-        <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">作品正在后台处理，完成后会自动回到这里；你可以继续聊天。<button wx:if="{{workSubscriptionConfigured}}" class="hq-button text-button" bindtap="requestWorkSubscription">{{workSubscriptionRemaining?'再订阅一次微信提醒':'完成后微信提醒我'}}</button></view>
+        <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">成片正在渲染 · 已用时 {{agentWorkingElapsed}}，完成后会自动送到对话里；你可以继续聊天。<button wx:if="{{workSubscriptionConfigured}}" class="hq-button text-button" bindtap="requestWorkSubscription">{{workSubscriptionRemaining?'再订阅一次微信提醒':'完成后微信提醒我'}}</button></view>
         <view wx:elif="{{agentDeliverySubNotice&&workSubscriptionConfigured&&!workSubscriptionRemaining&&!agentThinking}}" class="hq-view history-note">这次的作品没有开微信提醒。现在开一下，下次完成直接微信通知你。<button class="hq-button text-button" bindtap="requestWorkSubscription">开微信提醒</button></view>
         <view wx:if="{{!agentVoiceFlow}}" wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card {{agentThinking?'agent-widget-locked':''}} {{item.answered?'answered':''}} {{item.expanded?'expanded':''}}">
           <view class="hq-view agent-widget-head">

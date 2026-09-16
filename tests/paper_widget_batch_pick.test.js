@@ -225,3 +225,22 @@ test('音色试听按钮：播放器不跟随手机静音键；无试听链接�
   api.request = originalRequest;
 });
 
+
+test('渲染中提示条：按后端 started_at 显示已用时；渲染结束清零（2026-09-17 老板实录：渲染多久了必须看得见）', async () => {
+  const c = ctx([]);
+  const originalRequest = api.request;
+  c.visible = true;
+  const startedAt = Math.floor(Date.now() / 1000) - 95;
+  c.startAgentWatch = component.methods.startAgentWatch;
+  c.startAgentWatch({ 'digital-human': { state: 'running', started_at: startedAt } });
+  assert.equal(c.data.agentBackgroundWorking, true, '渲染中标志置位');
+  assert.ok(/分|秒/.test(c.data.agentWorkingElapsed), '提示条带已用时');
+  assert.ok(c.data.agentWorkingElapsed.includes('1 分'), '用时从后端 started_at 起算（约 95 秒 → 1 分 x 秒）');
+  // 渲染结束：标志与用时清零，提示条消失
+  c.startAgentWatch({ 'digital-human': { state: 'completed', started_at: startedAt } });
+  assert.equal(c.data.agentBackgroundWorking, false);
+  assert.equal(c.data.agentWorkingElapsed, '');
+  clearTimeout(c.agentWatchTimer);
+  c.alive = false;
+  api.request = originalRequest;
+});

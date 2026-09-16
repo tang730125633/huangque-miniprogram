@@ -259,6 +259,10 @@ function agentBackgroundActive(value) {
   const delegations=value&&value.delegations&&typeof value.delegations==='object'?value.delegations:{};
   return Boolean((value&&Array.isArray(value.jobs)&&value.jobs.length)||Object.keys(delegations).some(domain=>['running','submitting','queued'].includes(String(delegations[domain]&&delegations[domain].state||''))));
 }
+function fmtWorkElapsed(ms) {
+  const s=Math.max(0,Math.floor(ms/1000));
+  return s<60?s+' 秒':Math.floor(s/60)+' 分 '+(s%60)+' 秒';
+}
 function agentDeliverySignature(value) {
   return JSON.stringify((value&&Array.isArray(value.deliveries)?value.deliveries:[]).map(item=>[item&&item.job&&String(item.job.job_id||item.job.id||''),String(item&&item.reply||'').length,(item&&item.images||[]).length]));
 }
@@ -659,7 +663,13 @@ Component({
       clearTimeout(this.agentWatchTimer);
       const active=agentBackgroundActive({delegations});
       this.agentWatchActive=active;this.agentDeliverySignature='';
-      this.setData({agentBackgroundWorking:active,agentDeliverySubNotice:active?false:this.data.agentDeliverySubNotice});
+      // 渲染用时：后端 started_at 优先（刷新页面不重置）；拿不到就本端起算
+      if(active&&!this.renderStartTs){
+        let ts=0;
+        Object.keys(delegations||{}).forEach(d=>{const t=delegations[d]&&delegations[d].started_at;if(typeof t==='number'&&t>0&&(!ts||t<ts))ts=t;});
+        this.renderStartTs=ts*1000||Date.now();
+      }else if(!active){this.renderStartTs=0;}
+      this.setData(Object.assign({agentBackgroundWorking:active,agentDeliverySubNotice:active?false:this.data.agentDeliverySubNotice},active?{agentWorkingElapsed:fmtWorkElapsed(Date.now()-(this.renderStartTs||Date.now()))}:{agentWorkingElapsed:''}));
       if(active&&this.alive&&this.visible!==false)this.agentWatchTimer=setTimeout(()=>this.watchAgent(this.data.agentSessionId),AGENT_WATCH_INTERVAL);
     },
     async watchAgent(sid){
@@ -673,7 +683,9 @@ Component({
       const refresh=(this.agentWatchActive&&!active)||Boolean(this.agentDeliverySignature&&signature!==this.agentDeliverySignature);
       this.agentWatchActive=active;this.agentDeliverySignature=signature;
       if(refresh){await this.restoreAgent(sid);return;}
-      this.setData({agentBackgroundWorking:active});
+      if(active&&!this.renderStartTs)this.renderStartTs=Date.now();
+      if(!active)this.renderStartTs=0;
+      this.setData({agentBackgroundWorking:active,agentWorkingElapsed:active?fmtWorkElapsed(Date.now()-(this.renderStartTs||Date.now())):''});
       if(active)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);
     },
     stopAgentPoll(){const owner=this.agentPollOwner;this.agentPollOwner=null;if(owner){clearTimeout(owner.timer);if(owner.wake)owner.wake();}},
