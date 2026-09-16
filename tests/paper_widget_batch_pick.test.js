@@ -134,3 +134,41 @@ test('只勾一部分时点「确认选择」：只提交已勾的', async () =>
   assert.doesNotMatch(c.sent[0], /探店种草型/);
   api.request = original;
 });
+
+test('音色卡项自动拆分主名称与胶囊标签，且支持试听播放切换', async () => {
+  const c = ctx([]);
+  const originalRequest = api.request;
+  api.request = async () => ({
+    ok: true, history: [], film: true, delegations: {}, report: {}, selected_choices: {},
+    widgets: [{
+      id: 'voice_pick', type: 'voice_pick', title: '音色（▶ 点一下试听）',
+      items: [
+        { id: '1', title: '温柔女声（情感种草）', preview_url: 'https://example.com/v1.mp3' },
+        { id: '2', title: '沉稳男声（知识口播）', preview_url: 'https://example.com/v2.mp3' },
+        { id: '3', title: '我的克隆音色' }
+      ]
+    }]
+  });
+  await component.methods.restoreAgent.call(c, 'sid-v');
+  const items = c.data.agentWidgets[0].items;
+  assert.equal(items[0].parsedName, '温柔女声');
+  assert.equal(items[0].parsedTag, '情感种草');
+  assert.equal(items[1].parsedName, '沉稳男声');
+  assert.equal(items[1].parsedTag, '知识口播');
+  assert.equal(items[2].parsedName, '我的克隆音色');
+  assert.equal(items[2].parsedTag, '');
+
+  let innerAudioCreated = false;
+  global.wx.createInnerAudioContext = () => {
+    innerAudioCreated = true;
+    return {
+      play() {}, stop() {}, destroy() {},
+      onPlay(fn) { this._onPlay = fn; },
+      onEnded() {}, onStop() {}, onError() {}
+    };
+  };
+  await c.toggleVoicePreview.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  assert.equal(innerAudioCreated, true);
+  api.request = originalRequest;
+});
+

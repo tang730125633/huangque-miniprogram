@@ -217,12 +217,22 @@ function agentWidgets(value,film,selections) {
     // 模板目录卡：后端注册的是 {type:'option_pick', id:'template_catalog'}（按 id 识别、
     // 不带 layout 字段）；旧协议只认 layout 会退化成普通列表。两个都认。
     const layout=(widget.layout==='template_catalog'||widget.id==='template_catalog')?'template_catalog':'list';
-    const items=(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>({
-      key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:String(item.title||item.name||item.label||'这个选项').slice(0,120),
-      summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
-      previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100),recommended:Boolean(item.recommended),
-      selected:false
-    })).slice(0,layout==='template_catalog'?40:12);
+    const items=(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>{
+      const rawTitle=String(item.title||item.name||item.label||'这个选项').slice(0,120);
+      let parsedName=rawTitle,parsedTag=String(item.summary||item.description||'').slice(0,300);
+      const tagMatch=rawTitle.match(/^([^(（·\s]+)[(（·\s]+([^()）\s]+)[)）]?$/);
+      if(tagMatch){
+        parsedName=tagMatch[1].trim();
+        parsedTag=tagMatch[2].trim();
+      }
+      return {
+        key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:rawTitle,
+        parsedName,parsedTag,
+        summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
+        previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100),recommended:Boolean(item.recommended),
+        selected:false,playing:false
+      };
+    }).slice(0,layout==='template_catalog'?40:12);
     // voice_sample：跟读稿与动作按钮全部来自卡结构（无默认稿、无 id 前缀判断）
     const actions=type==='voice_sample'?(Array.isArray(widget.actions)?widget.actions:[]).map(action=>({
       mode:action&&action.mode==='upload'?'upload':action&&action.mode==='record'?'record':'',
@@ -947,6 +957,49 @@ Component({
       this.agentVoicePlayer.src=flow.samplePath;this.agentVoicePlayer.play();this.setAgentVoiceFlow({playing:true});
     },
     retryAgentVoiceRecording(){if(this.agentVoicePlayer)this.agentVoicePlayer.stop();this.agentVoiceSeconds=0;this.setAgentVoiceFlow({stage:'record',recSec:0,progress:0,samplePath:'',playing:false,error:''});},
+    toggleVoicePreview(e){
+      if(this.data.busy)return;
+      const widgetIndex=Number(e.currentTarget.dataset.widget);
+      const optionIndex=Number(e.currentTarget.dataset.option);
+      const widget=this.data.agentWidgets[widgetIndex];
+      const option=widget&&widget.items[optionIndex];
+      if(!widget||!option)return;
+      const path='agentWidgets['+widgetIndex+'].items['+optionIndex+'].playing';
+      if(option.playing){
+        if(this.agentVoicePreviewCtx)this.agentVoicePreviewCtx.stop();
+        this.setData({[path]:false});
+        return;
+      }
+      if(this.agentVoicePreviewCtx){
+        this.agentVoicePreviewCtx.stop();
+        this.agentVoicePreviewCtx.destroy();
+        this.agentVoicePreviewCtx=null;
+      }
+      (widget.items||[]).forEach((item,i)=>{
+        if(item.playing&&i!==optionIndex){
+          this.setData({['agentWidgets['+widgetIndex+'].items['+i+'].playing']:false});
+        }
+      });
+      const url=option.previewUrl;
+      if(!url){
+        this.toast('正在试听：'+(option.parsedName||option.title));
+        this.setData({[path]:true});
+        setTimeout(()=>{
+          if(this.alive&&this.data.agentWidgets[widgetIndex]&&this.data.agentWidgets[widgetIndex].items[optionIndex]){
+            this.setData({[path]:false});
+          }
+        },2000);
+        return;
+      }
+      const audio=wx.createInnerAudioContext();
+      this.agentVoicePreviewCtx=audio;
+      audio.src=url;
+      audio.onPlay(()=>{if(this.alive)this.setData({[path]:true});});
+      audio.onEnded(()=>{if(this.alive)this.setData({[path]:false});});
+      audio.onStop(()=>{if(this.alive)this.setData({[path]:false});});
+      audio.onError(()=>{if(this.alive){this.setData({[path]:false});this.toast('试听播放失败');}});
+      audio.play();
+    },
     requestAgentVoiceClone(){
       // 音色卡下方「＋ 克隆音频」：把克隆需求直接交给后端（音频域），
       // 由后端按需下发 voice_sample 样音采集卡（跟读稿+录音/上传），前端不写死流程。
@@ -1016,7 +1069,7 @@ Component({
     closeAgentVoiceFlow(){
       const recording=this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording';this.setData({agentVoiceFlow:null});this.stopAgentVoiceTimer();if(recording&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.stop();
     },
-    disposeAgentVoice(){this.stopAgentVoiceTimer();if(this.agentVoiceRecorder&&this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording')this.agentVoiceRecorder.stop();if(this.agentVoicePlayer){this.agentVoicePlayer.destroy();this.agentVoicePlayer=null;}},
+    disposeAgentVoice(){this.stopAgentVoiceTimer();if(this.agentVoiceRecorder&&this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording')this.agentVoiceRecorder.stop();if(this.agentVoicePlayer){this.agentVoicePlayer.destroy();this.agentVoicePlayer=null;}if(this.agentVoicePreviewCtx){this.agentVoicePreviewCtx.stop();this.agentVoicePreviewCtx.destroy();this.agentVoicePreviewCtx=null;}},
     toggleAgentTemplateCatalog(e){
       const index=Number(e.currentTarget.dataset.widget),widget=this.data.agentWidgets[index];
       if(!widget||widget.layout!=='template_catalog')return;
