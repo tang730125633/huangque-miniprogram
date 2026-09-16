@@ -88,6 +88,7 @@
               <view class="hq-view agent-widget-copy"><text class="hq-text agent-widget-name">{{option.title}}</text><text wx:if="{{option.summary}}" class="hq-text agent-widget-summary">{{option.summary}}</text><text wx:if="{{option.body}}" class="hq-text agent-widget-body">{{option.body}}</text></view>
               <text class="hq-text agent-widget-action">{{option.id===item.selectedId?'已选':'选择'}}</text>
             </button>
+            <button wx:if="{{item.type==='voice_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentVoiceClone" disabled="{{busy||agentThinking}}">＋ 克隆音频</button>
           </view>
         </view>
         <view wx:if="{{agentPicksCanConfirm}}" class="hq-view agent-picks-confirm">

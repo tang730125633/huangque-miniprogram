@@ -947,6 +947,12 @@ Component({
       this.agentVoicePlayer.src=flow.samplePath;this.agentVoicePlayer.play();this.setAgentVoiceFlow({playing:true});
     },
     retryAgentVoiceRecording(){if(this.agentVoicePlayer)this.agentVoicePlayer.stop();this.agentVoiceSeconds=0;this.setAgentVoiceFlow({stage:'record',recSec:0,progress:0,samplePath:'',playing:false,error:''});},
+    requestAgentVoiceClone(){
+      // 音色卡下方「＋ 克隆音频」：把克隆需求直接交给后端（音频域），
+      // 由后端按需下发 voice_sample 样音采集卡（跟读稿+录音/上传），前端不写死流程。
+      if(this.data.busy||this.data.agentThinking)return;
+      return this.sendAgentMessage('克隆我的声音');
+    },
     chooseAgentVoiceSampleAction(e){
       if(this.data.busy||this.data.agentThinking)return;
       const widget=this.data.agentWidgets[Number(e.currentTarget.dataset.widget)];

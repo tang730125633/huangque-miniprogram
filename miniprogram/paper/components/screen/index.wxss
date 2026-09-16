@@ -469,6 +469,7 @@
 .agent-voice-primary { width:100%; color:#fffdf8; background:#252a25; }
 .agent-voice-primary-disabled { color:#a19a8f; background:#e5dfd5; }
 .agent-voice-secondary { border:1rpx solid #d8cebe; color:#4e514c; background:#fff; }
+.agent-voice-clone { display:flex; min-height:72rpx; align-items:center; justify-content:center; margin-top:6rpx; border:1rpx dashed #c9b78e; border-radius:16rpx; color:#8a6223; background:#fffdf6; font-size:24rpx; font-weight:650; }
 .agent-voice-stop { color:#fff; background:#b43c2d; }
 .agent-voice-recorder { display:flex; align-items:center; gap:18rpx; margin-top:14rpx; padding:16rpx; border:1rpx solid #dfd5c6; border-radius:18rpx; background:#fff; }
 .agent-voice-timer { display:flex; width:96rpx; height:96rpx; flex:none; align-items:center; justify-content:center; border:3rpx solid #b43c2d; border-radius:50%; color:#b43c2d; font-size:28rpx; font-weight:800; }
