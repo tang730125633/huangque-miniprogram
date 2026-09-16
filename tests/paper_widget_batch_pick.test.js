@@ -1,5 +1,5 @@
 // 组件卡「一次选完」（2026-09-16 老板定调）：多张卡一起勾、一次提交；
-// 单卡点选即发不变；思考中可继续勾选、回复结束自动补交。
+// 单卡点选即发不变；黄雀思考中卡片不出现、点卡直接拦截（同日定调：任务没做完不许再点出新任务）。
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -101,7 +101,7 @@ test('后端已默认勾选的卡算已勾：补勾最后一张即自动提交',
   api.request = original;
 });
 
-test('思考中勾选只暂存，回复结束自动补交一次', async () => {
+test('思考中点卡直接拦截：不发送、不暂存、不补交', async () => {
   const original = api.request;
   api.request = async () => ({});
   const c = ctx([
@@ -111,11 +111,11 @@ test('思考中勾选只暂存，回复结束自动补交一次', async () => {
   await c.chooseAgentWidget.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
   await c.chooseAgentWidget.call(c, { currentTarget: { dataset: { widget: 1, option: 0 } } });
   assert.equal(c.sent.length, 0, '思考中不发送');
-  assert.equal(c._agentPicksPendingSubmit, true, '标记待补交');
+  assert.deepEqual(c._agentManualPicks, {}, '思考中不暂存勾选');
+  assert.equal(c.data.agentWidgets[0].selectedId, '', '思考中不记录选中');
   c.setData.call(c, { agentThinking: false });
   c.settleAgentPicks.call(c);
-  assert.equal(c.sent.length, 1, '思考结束自动补交一次');
-  assert.match(c.sent[0], /卡·voice_pick/); assert.match(c.sent[0], /卡·script_pick/);
+  assert.equal(c.sent.length, 0, '没有待补交，也不补发');
   api.request = original;
 });
 

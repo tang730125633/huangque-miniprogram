@@ -544,7 +544,7 @@ Component({
       this.setData({agentSessionId:sid});
       return sid;
     },
-    sendAgentMessage(message,approval,widgetAction) {
+    sendAgentMessage(message,approval,widgetAction,displayText) {
       return this.run(async()=>{
         const sid=await this.ensureAgentSession();
         // 发消息只把上一轮的卡先让位（清屏），绝不记成「永久关闭」：
@@ -558,7 +558,7 @@ Component({
         if(approval)body.approval=approval;
         if(widgetAction)body.widget_action=widgetAction;
         const pending={sid,body,attachments,status:'sending',createdAt:Date.now()};
-        api.save({ip12Pending:pending,ip12Outgoing:null});if(!approval)this.agentDraft='';this.setData({agentPending:pending,agentThinking:true,promptInput:approval?this.data.promptInput:'',agentHasText:approval?this.data.agentHasText:false,agentAttachments:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:body.message,images:[],videos:[],attachments})});
+        api.save({ip12Pending:pending,ip12Outgoing:null});if(!approval)this.agentDraft='';this.setData({agentPending:pending,agentThinking:true,promptInput:approval?this.data.promptInput:'',agentHasText:approval?this.data.agentHasText:false,agentAttachments:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:displayText||body.message,images:[],videos:[],attachments})});
         this.scrollAgent();
         await this.executeAgent(pending);
       });
@@ -1023,7 +1023,7 @@ Component({
       this.setData({['agentWidgets['+index+'].catalogExpanded']:!widget.catalogExpanded});
     },
     chooseAgentWidget(e){
-      if(this.data.busy)return;
+      if(this.data.busy||this.data.agentThinking)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
       if(!widget||!item)return;
@@ -1072,19 +1072,22 @@ Component({
     },
     submitAgentPicks(){
       const widgets=(this.data.agentWidgets||[]).slice();
-      const lines=[];
+      const lines=[],displayLines=[];
       widgets.forEach(w=>{
         if(!['avatar_pick','voice_pick','script_pick','option_pick'].includes(w.type))return;
         const selId=w.selectedId||'';
         if(!selId)return;
         const item=(w.items||[]).find(i=>String(i.id)===String(selId));
         if(!item)return;
+        // 机器文本带 id（后端按「标题+选项+id」解析）；用户气泡只显示选项名，不带
+        // 「【点选】」前缀、卡片标题和 id 参数（2026-09-16 老板定调：点选消息里不要露技术参数）。
         lines.push('【点选】'+w.title+'：'+item.title+'（id='+item.id+'）');
+        displayLines.push(item.title);
       });
       if(!lines.length)return;
       this._agentManualPicks={};
       this.setData({agentPicksCanConfirm:false});
-      return this.sendAgentMessage(lines.join('\n'));
+      return this.sendAgentMessage(lines.join('\n'),undefined,undefined,displayLines.join('\n'));
     },
     toggleAgentMultiOption(e){
       if(this.data.busy||this.data.agentThinking)return;
