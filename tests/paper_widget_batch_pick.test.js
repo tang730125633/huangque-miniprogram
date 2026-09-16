@@ -190,3 +190,38 @@ test('音色卡项自动拆分主名称与胶囊标签，且支持试听播放�
   api.request = originalRequest;
 });
 
+test('音色试听按钮：播放器不跟随手机静音键；无试听链接时如实提示、绝不假装在播', async () => {
+  const c = ctx([]);
+  const originalRequest = api.request;
+  api.request = async () => ({
+    ok: true, history: [], film: true, delegations: {}, report: {}, selected_choices: {},
+    widgets: [{
+      id: 'voice_pick', type: 'voice_pick', title: '音色（▶ 点一下试听）',
+      items: [
+        { id: '1', title: '温柔女声（情感种草）', preview_url: 'https://example.com/v1.mp3' },
+        { id: '2', title: '我的克隆音色' }
+      ]
+    }]
+  });
+  await component.methods.restoreAgent.call(c, 'sid-v');
+  const players = [];
+  global.wx.createInnerAudioContext = () => {
+    const p = { play() { if (this._onPlay) this._onPlay(); }, stop() {}, destroy() {}, onPlay(fn) { this._onPlay = fn; }, onEnded() {}, onStop() {}, onError() {} };
+    players.push(p);
+    return p;
+  };
+  const toasts = [];
+  c.toast = (t) => toasts.push(t);
+  // 有链接：出声播放，且 obeyMuteSwitch=false（iOS 静音键不吞试听声）
+  await c.toggleVoicePreview.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  assert.equal(players.length, 1);
+  assert.equal(players[0].obeyMuteSwitch, false);
+  assert.equal(c.data.agentWidgets[0].items[0].playing, true);
+  // 无链接（克隆刚完成、卡未刷新）：如实提示，不建播放器、不闪「播放中」
+  await c.toggleVoicePreview.call(c, { currentTarget: { dataset: { widget: 0, option: 1 } } });
+  assert.equal(players.length, 1, '无链接不建播放器');
+  assert.ok(toasts.some((t) => /还没生成好/.test(t)), '要给出诚实提示');
+  assert.ok(!c.data.agentWidgets[0].items[1].playing, '不得假装在播');
+  api.request = originalRequest;
+});
+

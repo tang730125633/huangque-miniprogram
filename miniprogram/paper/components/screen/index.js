@@ -790,7 +790,7 @@ Component({
     },
     previewAgentAttachment(e){
       const item=this.data.agentAttachments[Number(e.currentTarget.dataset.index)];if(!item||!item.preview)return;
-      if(this.agentAssetAudio)this.agentAssetAudio.destroy();const audio=wx.createInnerAudioContext();this.agentAssetAudio=audio;audio.src=item.preview;audio.play();this.toast('正在播放音频');
+      if(this.agentAssetAudio)this.agentAssetAudio.destroy();const audio=wx.createInnerAudioContext();this.agentAssetAudio=audio;audio.obeyMuteSwitch=false;audio.src=item.preview;audio.play();this.toast('正在播放音频');
     },
     toggleAgentAssets(){if(this.data.agentSheet==='assets')return this.closeAgentSheet();this.setData({agentSheet:'assets',agentAssetsOpen:true,agentAssetManage:false,agentAssetSelectedCount:0});return this.run(()=>this.loadAgentAssets(true));},
     async loadAgentAssets(reset){
@@ -829,7 +829,7 @@ Component({
       const sid=this.data.agentSessionId,id=item.id,active=()=>this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&this.data.agentSheet==='assets'&&(this.data.agentAssets||[]).some(asset=>asset.id===id);
       if(item.kind==='image'||item.kind==='avatar')return this.run(async()=>{const url=await api.mediaSource(api.mediaURL(ip12MediaPath(item.url)));if(active())wx.previewImage({current:url,urls:[url]});});
       if(item.kind==='video')return this.run(async()=>{const url=await api.mediaSource(api.mediaURL(ip12MediaPath(item.url)));if(active())wx.previewMedia({sources:[{url,type:'video'}],current:0});});
-      return this.run(async()=>{const url=await api.mediaSource(api.mediaURL(ip12MediaPath(item.url)));if(!active())return;if(this.agentAssetAudio)this.agentAssetAudio.destroy();const audio=wx.createInnerAudioContext();this.agentAssetAudio=audio;audio.src=url;audio.play();this.toast('正在播放音频');});
+      return this.run(async()=>{const url=await api.mediaSource(api.mediaURL(ip12MediaPath(item.url)));if(!active())return;if(this.agentAssetAudio)this.agentAssetAudio.destroy();const audio=wx.createInnerAudioContext();this.agentAssetAudio=audio;audio.obeyMuteSwitch=false;audio.src=url;audio.play();this.toast('正在播放音频');});
     },
     toggleAgentAssetManage(){this.setData({agentAssetManage:!this.data.agentAssetManage,agentAssetSelectedCount:0,agentAssets:this.data.agentAssets.map(item=>Object.assign({},item,{selected:false}))});this.applyAgentAssetFilter();},
     toggleAgentAssetSelection(e){const id=e.currentTarget.dataset.id,assets=this.data.agentAssets.map(item=>item.id===id?Object.assign({},item,{selected:!item.selected}):item);this.setData({agentAssets:assets,agentAssetSelectedCount:assets.filter(item=>item.selected).length});this.applyAgentAssetFilter();},
@@ -938,6 +938,8 @@ Component({
       }
       if(withPlayer&&!this.agentVoicePlayer){
         const player=wx.createInnerAudioContext();this.agentVoicePlayer=player;
+        // 试听/回听按钮必须出声：不跟随手机静音键（iOS 静音键会静默吞掉播放，按钮却显示在播）
+        player.obeyMuteSwitch=false;
         player.onEnded(()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({playing:false});});
         player.onError(()=>{if(this.alive&&this.data.agentVoiceFlow)this.setAgentVoiceFlow({playing:false,error:'样音暂时无法播放，请重试'});});
       }
@@ -1000,17 +1002,13 @@ Component({
       });
       const url=option.previewUrl;
       if(!url){
-        this.toast('正在试听：'+(option.parsedName||option.title));
-        this.setData({[path]:true});
-        setTimeout(()=>{
-          if(this.alive&&this.data.agentWidgets[widgetIndex]&&this.data.agentWidgets[widgetIndex].items[optionIndex]){
-            this.setData({[path]:false});
-          }
-        },2000);
+        // 试听链接还没下发（如克隆刚完成、卡还没刷新）：如实提示，绝不假装在播
+        this.toast('这段试听音频还没生成好，稍后再点');
         return;
       }
       const audio=wx.createInnerAudioContext();
       this.agentVoicePreviewCtx=audio;
+      audio.obeyMuteSwitch=false;
       audio.src=url;
       audio.onPlay(()=>{if(this.alive)this.setData({[path]:true});});
       audio.onEnded(()=>{if(this.alive)this.setData({[path]:false});});
@@ -1226,6 +1224,7 @@ Component({
         if(!this.alive||sid!==this.data.agentSessionId||!current||current.url!==url||!src)return;
         if(this.visible===false){this.setData({[path+'.loading']:false});return;}
         const player=wx.createInnerAudioContext();this.agentAudio=player;this.agentAudioMeta={sid,message:messageIndex,audio:audioIndex};
+        player.obeyMuteSwitch=false;
         player.src=src;player.onEnded(()=>{if(this.alive&&this.data.agentSessionId===sid&&this.agentAudio===player)this.setData({[path+'.playing']:false});});player.onError(()=>{if(this.alive&&this.data.agentSessionId===sid&&this.agentAudio===player){this.setData({[path+'.loading']:false,[path+'.playing']:false});this.fail(new Error('音频播放失败，请稍后重试'));}});
         this.setData({[path+'.src']:src,[path+'.loading']:false,[path+'.playing']:true});player.play();
       }catch(_){const current=this.data.agentMessages[messageIndex]&&this.data.agentMessages[messageIndex].audios[audioIndex];if(this.alive&&sid===this.data.agentSessionId&&current&&current.url===url){this.setData({[path+'.loading']:false,[path+'.playing']:false});this.fail(new Error('音频加载失败，请检查网络'));}}
@@ -1381,7 +1380,7 @@ Component({
     chooseVoice(e){const v=this.data.voices[Number(e.detail.value)];if(v)this.setData({voice:v.key||v.id||v.voice,voiceName:v.name||v.title});},
     preview(){if(this.data.job&&this.data.job.urls.length)wx.previewImage({current:this.data.job.displayUrl,urls:this.data.job.displayUrls});},
     saveImage(){const url=this.data.job&&this.data.job.url;if(!url)return;this.run(()=>new Promise((resolve,reject)=>wx.downloadFile({url,header:api.mediaHeaders(url),success:r=>{if(r.statusCode!==200)return reject(new Error('图片下载失败，请刷新作品后重试'));wx.saveImageToPhotosAlbum({filePath:r.tempFilePath,success:()=>{this.toast('已保存到相册');resolve();},fail:()=>reject(new Error('保存失败，请检查相册权限'))});},fail:()=>reject(new Error('下载失败，请检查网络或下载域名配置'))})));},
-    playAudio(){const url=this.data.job&&this.data.job.displayUrl;if(!url)return this.toast('作品还没有可播放的音频');if(!this.audio){this.audio=wx.createInnerAudioContext();this.audio.onPlay(()=>this.setData({playing:true}));this.audio.onPause(()=>this.setData({playing:false}));this.audio.onEnded(()=>this.setData({playing:false}));this.audio.onTimeUpdate(()=>this.setData({audioTime:Math.floor(this.audio.currentTime),audioDuration:Math.floor(this.audio.duration)}));this.audio.onError(()=>{this.setData({playing:false});this.fail(new Error('音频暂时无法播放，请刷新作品后重试'));});}if(this.data.playing)this.audio.pause();else{this.audio.src=url;this.audio.play();}},
+    playAudio(){const url=this.data.job&&this.data.job.displayUrl;if(!url)return this.toast('作品还没有可播放的音频');if(!this.audio){this.audio=wx.createInnerAudioContext();this.audio.obeyMuteSwitch=false;this.audio.onPlay(()=>this.setData({playing:true}));this.audio.onPause(()=>this.setData({playing:false}));this.audio.onEnded(()=>this.setData({playing:false}));this.audio.onTimeUpdate(()=>this.setData({audioTime:Math.floor(this.audio.currentTime),audioDuration:Math.floor(this.audio.duration)}));this.audio.onError(()=>{this.setData({playing:false});this.fail(new Error('音频暂时无法播放，请刷新作品后重试'));});}if(this.data.playing)this.audio.pause();else{this.audio.src=url;this.audio.play();}},
     mediaError(){this.fail(new Error('媒体暂时无法加载，请刷新作品后重试'));},
     toggleScript(){this.setData({scriptOpen:!this.data.scriptOpen});},
     copyText(){const text=this.data.job&&this.data.job.text;if(!text)return this.toast('当前没有可复制的文稿');wx.setClipboardData({data:typeof text==='string'?text:JSON.stringify(text),fail:()=>this.toast('复制失败，可长按文稿选择文字')});},
