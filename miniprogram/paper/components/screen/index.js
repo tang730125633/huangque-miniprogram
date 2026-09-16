@@ -612,8 +612,8 @@ Component({
     },
     // 报告轮询：对齐网页端 pollReport()。报告只在后台生成、且不会追加会话消息，
     // 只能主动拉 /api/report/<sid>，否则小程序永远看不到报告完成。
-    // 到 final/confirmed/failed 自动停止；长时间无报告（REPORT_POLL_MAX_IDLE 拍）也停，
-    // 下次 restoreAgent（加载、每轮对话结束）会重新启动。
+    // 到 final/confirmed/failed 且选题/口播（m5/m6）都不在生成/校验时才停；
+    // 长时间无变化（REPORT_POLL_MAX_IDLE 拍）也停，下次 restoreAgent（加载、每轮对话结束）会重新启动。
     startReportPoll(sid){
       this.stopReportPoll();
       if(!sid)return;
@@ -629,12 +629,18 @@ Component({
             if(!valid())return;
             const next=data&&typeof data==='object'?data:{};
             const prev=this.data.agentReport||{};
-            if(JSON.stringify(next)!==JSON.stringify(prev))this.setData({agentReport:next});
+            const changed=JSON.stringify(next)!==JSON.stringify(prev);
+            if(changed)this.setData({agentReport:next});
             if(this.syncReportNotice)this.syncReportNotice(sid,next);
             const status=String(next.status||'');
+            // 选题/口播（m5/m6）可能晚于定稿才开跑：报告到了 final/confirmed/failed，
+            // 只要模块还在生成/校验，轮询就继续，把「口播 · 生成中」这类进度一路跟到完成。
+            const modStatus=s=>String((s&&s.status)||'');
+            const modActive=/_(generating|validated)$/.test(modStatus(next&&next.m5))||/_(generating|validated)$/.test(modStatus(next&&next.m6));
             const terminal=status==='final'||status==='confirmed'||status==='failed';
-            if(terminal)return;
-            owner.idle=status?0:owner.idle+1;
+            if(terminal&&!modActive)return;
+            // 空状态继续计数；模块卡在生成态但长时间无任何变化，也计数（防止永远轮询）。
+            owner.idle=(!status&&!modActive)||(modActive&&!changed)?owner.idle+1:0;
             if(owner.idle>REPORT_POLL_MAX_IDLE)return;
             owner.timer=setTimeout(tick,REPORT_POLL_INTERVAL);
           })

@@ -32,6 +32,55 @@ test('报告到终态后停止轮询，不再发请求', async (t) => {
   assert.equal(calls, 1, '终态后不再请求');
 });
 
+test('定稿后口播（m6）还在生成：轮询继续，提示卡出现，生成完才停', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const c = setup(); let calls = 0;
+  const FINAL_M6_GEN = { status: 'final', files: { pdf: 'api/download/sid/sid_f.pdf' }, m6: { status: 'm6_generating' } };
+  const FINAL_M6_READY = { status: 'final', files: { pdf: 'api/download/sid/sid_f.pdf' }, m6: { status: 'ready', files: { md: 'api/download/sid/sid_m6.md' } } };
+  api.request = async () => { calls++; return calls === 1 ? FINAL_M6_GEN : FINAL_M6_READY; };
+  c.startReportPoll('sid');
+  t.mock.timers.tick(5000); await flush();
+  assert.equal(calls, 1);
+  assert.ok(c.reportPollOwner.timer !== null, '口播生成中不能停');
+  assert.ok(c.data.agentReportNotice, '口播生成中要弹提示卡');
+  assert.match(c.data.agentReportNotice.title, /口播 · 生成中/);
+  t.mock.timers.tick(5000); await flush();
+  assert.equal(calls, 2);
+  assert.equal(c.reportPollOwner.timer, null, '口播生成完、报告仍终态，才停止');
+});
+
+test('定稿后选题（m5）校验中：同样继续轮询', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const c = setup(); let calls = 0;
+  api.request = async () => { calls++; return { status: 'final', files: { pdf: 'api/download/sid/sid_f.pdf' }, m5: { status: 'm5_validated' } }; };
+  c.startReportPoll('sid');
+  t.mock.timers.tick(5000); await flush();
+  t.mock.timers.tick(5000); await flush();
+  assert.equal(calls, 2, 'm5 校验中应持续轮询');
+  assert.ok(c.reportPollOwner.timer !== null);
+  assert.match(c.data.agentReportNotice.title, /选题 · 校验中/);
+});
+
+test('报告失败终态：模块也不在生成，立即停止', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const c = setup(); let calls = 0;
+  api.request = async () => { calls++; return { status: 'failed', m5: { status: 'failed' } }; };
+  c.startReportPoll('sid');
+  t.mock.timers.tick(5000); await flush();
+  assert.equal(calls, 1);
+  assert.equal(c.reportPollOwner.timer, null);
+});
+
+test('模块卡在生成态且长时间无变化：到上限停止，不会永远轮询', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const c = setup(); let calls = 0;
+  api.request = async () => { calls++; return { status: 'final', files: { pdf: 'api/download/sid/sid_f.pdf' }, m6: { status: 'm6_generating' } }; };
+  c.startReportPoll('sid');
+  for (let i = 0; i < 70; i++) { t.mock.timers.tick(5000); await flush(); if (!c.reportPollOwner.timer) break; }
+  assert.ok(calls <= 63, '无变化最多拍到上限（60 拍 + 首次）附近，不能无限轮询');
+  assert.equal(c.reportPollOwner.timer, null, '上限后必须停');
+});
+
 test('未到终态（draft_ready）继续轮询', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const c = setup(); let calls = 0;
