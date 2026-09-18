@@ -1034,6 +1034,12 @@ Component({
       if(this.data.busy||this.data.agentThinking)return;
       return this.sendAgentMessage('克隆我的声音');
     },
+    requestAgentAvatarCreate(){
+      // 数字人形象卡下方「＋ 定制数字人」：把定制需求交给 Agent，
+      // 由后端按需下发数字人形象采集引导，或支持录制。
+      if(this.data.busy||this.data.agentThinking)return;
+      return this.sendAgentMessage('定制我的数字人形象');
+    },
     chooseAgentVoiceSampleAction(e){
       if(this.data.busy||this.data.agentThinking)return;
       const widget=this.data.agentWidgets[Number(e.currentTarget.dataset.widget)];

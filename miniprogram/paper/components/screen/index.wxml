@@ -131,6 +131,7 @@
               </view>
             </button>
             <button wx:if="{{item.type==='voice_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentVoiceClone" disabled="{{busy||agentThinking}}">＋ 克隆音频</button>
+            <button wx:if="{{item.type==='avatar_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentAvatarCreate" disabled="{{busy||agentThinking}}">＋ 定制数字人</button>
           </view>
         </view>
         <view wx:if="{{agentPicksCanConfirm&&!agentThinking}}" class="hq-view agent-picks-confirm">
