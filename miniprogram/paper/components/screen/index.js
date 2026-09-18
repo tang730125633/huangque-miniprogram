@@ -219,16 +219,27 @@ function agentWidgets(value,film,selections) {
     const layout=(widget.layout==='template_catalog'||widget.id==='template_catalog')?'template_catalog':'list';
     const items=(Array.isArray(widget.items)?widget.items:[]).map((item,itemIndex)=>{
       const rawTitle=String(item.title||item.name||item.label||'这个选项').slice(0,120);
-      let parsedName=rawTitle,parsedTag=String(item.summary||item.description||'').slice(0,300);
-      const tagMatch=rawTitle.match(/^([^(（·\s]+)[(（·\s]+([^()）\s]+)[)）]?$/);
+      let parsedName=rawTitle;
+      let summary=String(item.summary||item.description||'').slice(0,300);
+      let parsedTag=String(item.tag||'').trim().slice(0,16);
+      const tagMatch=rawTitle.match(/^([^(（·]+)[(（·]\s*([^()）]+)\s*[)）]?$/);
       if(tagMatch){
-        parsedName=tagMatch[1].trim();
-        parsedTag=tagMatch[2].trim();
+        const candName=tagMatch[1].trim();
+        const candTag=tagMatch[2].trim();
+        if(candTag.length>0 && candTag.length<=8 && !/^(副标题|说明|备注|提示)/i.test(candTag)){
+          parsedName=candName;
+          parsedTag=candTag;
+        }else if(/^(副标题|说明|备注|提示)/i.test(candTag)){
+          parsedName=candName;
+          if(!summary){
+            summary=candTag;
+          }
+        }
       }
       return {
         key:String(item.id||itemIndex).slice(0,200),id:String(item.id||itemIndex).slice(0,200),title:rawTitle,
         parsedName,parsedTag,
-        summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
+        summary,body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
         previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100),recommended:Boolean(item.recommended),
         selected:false,playing:false,expanded:false
       };

@@ -130,7 +130,7 @@
                 <image class="hq-image agent-voice-play-svg" src="{{option.playing?'/assets/icons/pause_pink.svg':'/assets/icons/play_pink.svg'}}" mode="aspectFit"/>
               </view>
               <image wx:elif="{{option.displayImage}}" class="hq-image agent-widget-thumb {{item.type==='avatar_pick'?'agent-avatar-thumb':''}}" src="{{option.displayImage}}" mode="aspectFill"/>
-              <view class="hq-view agent-widget-copy voice-copy-layout">
+              <view class="hq-view agent-widget-copy">
                 <view class="hq-view agent-widget-name-row">
                   <text class="hq-text agent-widget-name">{{option.parsedName||option.title}}</text>
                   <text wx:if="{{option.parsedTag}}" class="hq-text agent-widget-pill">{{option.parsedTag}}</text>

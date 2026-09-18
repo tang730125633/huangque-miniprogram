@@ -269,3 +269,29 @@ test('文案卡全文展开与折叠：支持长文案切换，且触发触感�
   assert.equal(vibrateCount, 2);
 });
 
+test('标题与文案卡项：副标题长句不误作为 parsedTag，避免竖排挤压 bug', async () => {
+  const c = ctx([]);
+  const originalRequest = api.request;
+  api.request = async () => ({
+    ok: true, history: [], film: true, delegations: {}, report: {}, selected_choices: {},
+    widgets: [{
+      id: 'title_pick', type: 'script_pick', title: '第 3 步 · 标题',
+      items: [
+        { id: 't1', title: '不会打字也能做视频（副标题: 给中老年的零输入AI）', summary: '副标题：给中老年的零输入AI出片流程，一看就会' },
+        { id: 't2', title: '中老年做自媒体（第一步不是学AI）' },
+        { id: 't3', title: '三天前阿姨还不会用手机剪映' }
+      ]
+    }]
+  });
+  await component.methods.restoreAgent.call(c, 'sid-title-test');
+  const titleItems = c.data.agentWidgets[0].items;
+  assert.equal(titleItems[0].parsedName, '不会打字也能做视频');
+  assert.equal(titleItems[0].parsedTag, '', '副标题说明句绝不能变成 parsedTag');
+  assert.equal(titleItems[0].summary, '副标题：给中老年的零输入AI出片流程，一看就会');
+  assert.equal(titleItems[1].parsedName, '中老年做自媒体');
+  assert.equal(titleItems[1].parsedTag, '第一步不是学AI');
+  assert.equal(titleItems[2].parsedName, '三天前阿姨还不会用手机剪映');
+  assert.equal(titleItems[2].parsedTag, '');
+  api.request = originalRequest;
+});
+

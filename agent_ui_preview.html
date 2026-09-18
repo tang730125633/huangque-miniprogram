@@ -533,11 +533,19 @@
           
           // Parse tag from title if not separated
           let parsedName = item.title;
-          let parsedTag = item.summary || "";
-          const match = item.title.match(/^([^(（·\s]+)[(（·\s]+([^()）\s]+)[)）]?$/);
+          let parsedTag = item.tag || "";
+          let summary = item.summary || "";
+          const match = item.title.match(/^([^(（·]+)[(（·]\s*([^()）]+)\s*[)）]?$/);
           if (match) {
-            parsedName = match[1].trim();
-            parsedTag = match[2].trim();
+            const candName = match[1].trim();
+            const candTag = match[2].trim();
+            if (candTag.length > 0 && candTag.length <= 8 && !/^(副标题|说明|备注|提示)/i.test(candTag)) {
+              parsedName = candName;
+              parsedTag = candTag;
+            } else if (/^(副标题|说明|备注|提示)/i.test(candTag)) {
+              parsedName = candName;
+              if (!summary) summary = candTag;
+            }
           }
 
           // Check long body expand
