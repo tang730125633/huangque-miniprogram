@@ -433,6 +433,9 @@
 .agent-voice-play-circle { display:flex; align-items:center; justify-content:center; width:62rpx; height:62rpx; flex:none; border-radius:50%; background:#f7ede0; transition:transform .15s ease; }
 .agent-voice-play-circle.is-playing { background:#ebd7be; transform:scale(1.05); }
 .agent-play-icon { color:#835b22; font-size:22rpx; margin-left:3rpx; }
+.agent-voice-play-svg { width:24rpx; height:24rpx; display:block; }
+.agent-video-play-svg { width:40rpx; height:40rpx; display:block; margin-left:4rpx; }
+.agent-voice-sample-play-svg { width:22rpx; height:22rpx; display:block; }
 .agent-widget-copy { min-width:0; flex:1; }
 .voice-copy-layout .agent-widget-name-row { display:flex; align-items:center; gap:14rpx; }
 .agent-widget-name,.agent-widget-summary,.agent-widget-body { display:block; }
