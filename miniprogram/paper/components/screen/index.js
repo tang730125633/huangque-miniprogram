@@ -233,11 +233,15 @@ function agentWidgets(value,film,selections) {
         selected:false,playing:false,expanded:false
       };
     }).slice(0,layout==='template_catalog'?40:12);
-    // voice_sample：跟读稿与动作按钮全部来自卡结构（无默认稿、无 id 前缀判断）
+    // actions：优先来自卡结构（无硬编码限制），支持自定义 label 与 prompt
     const actions=type==='voice_sample'?(Array.isArray(widget.actions)?widget.actions:[]).map(action=>({
       mode:action&&action.mode==='upload'?'upload':action&&action.mode==='record'?'record':'',
       label:String(action&&action.label||(action&&action.mode==='upload'?'上传录音文件':'开始录音')).slice(0,20)
-    })).filter(action=>action.mode):[];
+    })).filter(action=>action.mode):(Array.isArray(widget.actions)?widget.actions:[]).map(action=>({
+      mode:String(action&&action.mode||'prompt'),
+      label:String((action&&(action.label||action.title))||'执行操作').slice(0,30),
+      prompt:String((action&&action.prompt)||(action&&action.label)||'').slice(0,200)
+    })).filter(a=>a.label);
     // 多选卡（selection_mode=multiple，2026-09-13 老板定调「该多选的地方要多选」）：
     // 勾选式 + 「确认选择」一次提交，消息形如「【点选】标题：甲、乙」。勾选数下限默认 1。
     const selectionMode=String(widget.selection_mode||'')==='multiple'?'multiple':'single';
@@ -253,7 +257,7 @@ function agentWidgets(value,film,selections) {
       selectionMode,minSelected,maxSelected,selectedCount:0,
       layout,catalogExpanded:false,itemCount:items.length,items,actions
     };
-  }).filter(widget=>(widget.items.length||widget.type==='voice_sample'&&widget.actions.length));
+  }).filter(widget=>(widget.items.length||widget.type==='voice_sample'&&widget.actions.length||widget.actions.length));
 }
 function agentBackgroundActive(value) {
   const delegations=value&&value.delegations&&typeof value.delegations==='object'?value.delegations:{};
@@ -279,7 +283,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskTitle: '', agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
+    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskId: '01', agentTaskTitle: '方案建议准备就绪', agentTaskDesc: '', agentTaskCollapsedDesc: '', agentWidgetsSummary: '', agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -408,7 +412,13 @@ Component({
         const liveKeys=new Set(widgets.map(w=>w.key));
         Object.keys(this._agentManualPicks).forEach(k=>{if(!liveKeys.has(k))delete this._agentManualPicks[k];});
       }
-      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentTaskTitle:String(data.task_title||'').slice(0,40),agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
+      const task=(data&&data.task&&typeof data.task==='object')?data.task:{};
+      const agentTaskId=String(task.id||data.task_id||(sid?sid.slice(-4):'01'));
+      const agentWidgetsSummary=widgets.map(w=>w.title).filter(Boolean).join(' · ');
+      const agentTaskTitle=String(task.title||data.task_title||(widgets.length>1?'方案建议准备就绪':'')).slice(0,60);
+      const agentTaskDesc=String(task.desc||data.task_desc||agentWidgetsSummary||'轻触可整体收起组件卡，保持对话整洁').slice(0,120);
+      const agentTaskCollapsedDesc=String(task.collapsed_desc||data.task_collapsed_desc||('方案已收起 · 点击展开 '+widgets.length+' 项组件卡')).slice(0,120);
+      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentTaskId,agentTaskTitle,agentTaskDesc,agentTaskCollapsedDesc,agentWidgetsSummary,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
       // 思考结束补交：思考期间勾齐的选择，回复到达（本帧）后自动一次提交
       setTimeout(()=>{if(this.alive)this.settleAgentPicks();},0);
       this.scrollAgent(widgets.length?widgets:items);
@@ -1027,6 +1037,21 @@ Component({
       audio.onStop(()=>{if(this.alive)this.setData({[path]:false});});
       audio.onError(()=>{if(this.alive){this.setData({[path]:false});this.toast('试听播放失败');}});
       audio.play();
+    },
+    triggerAgentWidgetAction(e){
+      if(this.data.busy||this.data.agentThinking)return;
+      const widgetIndex=Number(e.currentTarget.dataset.widget);
+      const actionIndex=Number(e.currentTarget.dataset.action);
+      const widget=this.data.agentWidgets&&this.data.agentWidgets[widgetIndex];
+      const action=widget&&widget.actions&&widget.actions[actionIndex];
+      if(!action)return;
+      if(action.mode==='record'||action.mode==='upload'){
+        return this.chooseAgentVoiceSampleAction(e);
+      }
+      const prompt=action.prompt||action.label||'';
+      if(prompt){
+        return this.sendAgentMessage(prompt);
+      }
     },
     requestAgentVoiceClone(){
       // 音色卡下方「＋ 克隆音频」：把克隆需求直接交给后端（音频域），

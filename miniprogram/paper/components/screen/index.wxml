@@ -61,14 +61,14 @@
         <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">成片正在渲染 · 已用时 {{agentWorkingElapsed}}，完成后会自动送到对话里；你可以继续聊天。<button wx:if="{{workSubscriptionConfigured}}" class="hq-button text-button" bindtap="requestWorkSubscription">{{workSubscriptionRemaining?'再订阅一次微信提醒':'完成后微信提醒我'}}</button></view>
         <view wx:if="{{!agentVoiceFlow && agentWidgets.length > 1}}" class="hq-view agent-task-bar" bindtap="toggleAgentTaskCollapse">
           <view class="hq-view agent-task-bar-left">
-            <view class="hq-view agent-task-tag">任务 #{{agentSessionId ? agentSessionId.slice(-4) : '01'}}</view>
+            <view class="hq-view agent-task-tag">任务 #{{agentTaskId || (agentSessionId ? agentSessionId.slice(-4) : '01')}}</view>
             <view class="hq-view agent-task-info">
               <view class="hq-view agent-task-title-row">
-                <text wx:if="{{agentTaskTitle}}" class="hq-text agent-task-title">{{agentTaskTitle}}</text>
+                <text class="hq-text agent-task-title">{{agentTaskTitle || '方案建议准备就绪'}}</text>
                 <text class="hq-text agent-task-badge">{{agentWidgets.length}} 项待选</text>
               </view>
-              <text wx:if="{{!agentTaskCollapsed}}" class="hq-text agent-task-desc">轻触可整体收起组件卡，保持对话整洁</text>
-              <text wx:else class="hq-text agent-task-desc">方案已收起 · 点击展开 {{agentWidgets.length}} 项组件卡</text>
+              <text wx:if="{{!agentTaskCollapsed}}" class="hq-text agent-task-desc">{{agentTaskDesc || '轻触可整体收起组件卡，保持对话整洁'}}</text>
+              <text wx:else class="hq-text agent-task-desc">{{agentTaskCollapsedDesc || ('方案已收起 · 点击展开 ' + agentWidgets.length + ' 项组件卡')}}</text>
             </view>
           </view>
           <view class="hq-view agent-task-bar-right">
@@ -145,8 +145,9 @@
                 <text wx:if="{{option.id===item.selectedId}}" class="agent-radio-tick">✓</text>
               </view>
             </button>
-            <button wx:if="{{item.type==='voice_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentVoiceClone" disabled="{{busy||agentThinking}}">＋ 克隆音频</button>
-            <button wx:if="{{item.type==='avatar_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentAvatarCreate" disabled="{{busy||agentThinking}}">＋ 定制数字人</button>
+            <button wx:for="{{item.actions}}" wx:key="label" wx:for-item="action" class="hq-button agent-voice-clone" data-widget="{{widgetIndex}}" data-action="{{index}}" bindtap="triggerAgentWidgetAction" disabled="{{busy||agentThinking}}">{{action.label}}</button>
+            <button wx:if="{{!item.actions.length && item.type==='voice_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentVoiceClone" disabled="{{busy||agentThinking}}">＋ 克隆音频</button>
+            <button wx:if="{{!item.actions.length && item.type==='avatar_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentAvatarCreate" disabled="{{busy||agentThinking}}">＋ 定制数字人</button>
           </view>
         </view>
         <view wx:if="{{agentPicksCanConfirm&&!agentThinking}}" class="hq-view agent-picks-confirm">
