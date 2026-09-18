@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黄雀 Agent UI 全局组件设计预览 (Apple HIG 规范)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .7; transform: scale(1.04); }
+    }
+    .pulse-glow { animation: pulse-subtle 2.4s ease-in-out infinite; }
+    .ios-card-shadow {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased p-4 md:p-8 flex flex-col items-center min-h-screen">
+
+  <!-- Header Banner -->
+  <div class="max-w-xl w-full mb-6 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold mb-2">
+      <svg class="w-3.5 h-3.5 fill-blue-600" viewBox="0 0 24 24">
+        <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z"/>
+      </svg>
+      <span>Apple HIG 交互规范 · SF Symbols 优先</span>
+    </div>
+    <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">黄雀 Agent 交互组件全流程预览</h1>
+    <p class="text-sm text-slate-600 mt-1">Apple HIG 原生规范 · SF Symbols 优先 · oil-icon 补充缺口 · 纯矢量零表情噪点</p>
+  </div>
+
+  <!-- Mobile Phone Shell -->
+  <div class="w-full max-w-[400px] bg-stone-50 rounded-[40px] shadow-2xl border-8 border-stone-800 overflow-hidden flex flex-col relative">
+    
+    <!-- Phone Top Notch / Dynamic Island -->
+    <div class="bg-stone-800 pt-2 pb-1 px-6 flex justify-between items-center text-white text-[11px] font-medium">
+      <span>9:41</span>
+      <div class="w-24 h-4 bg-black rounded-full flex items-center justify-center">
+        <div class="w-2 h-2 rounded-full bg-stone-950 mr-1.5"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-stone-900"></div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"/></svg>
+        <span>5G</span>
+      </div>
+    </div>
+
+    <!-- Mini-Program Top Nav -->
+    <div class="bg-white/95 backdrop-blur border-b border-stone-200/80 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center border border-blue-200">
+          <span class="text-blue-700 font-bold text-xs">雀</span>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-stone-900 flex items-center gap-1.5">
+            <span>黄雀助手</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          </div>
+          <div class="text-[10px] text-stone-600">已与主站知识库实时同步</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 border border-stone-200 rounded-full px-2.5 py-1 bg-stone-50">
+        <span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+        <span class="text-stone-400 text-xs">|</span>
+        <div class="w-3.5 h-3.5 rounded-full border border-stone-400 flex items-center justify-center">
+          <div class="w-1.5 h-1.5 rounded-full bg-stone-600"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Flow Scroll Area -->
+    <div class="p-3.5 space-y-4 overflow-y-auto max-h-[640px] bg-[#F2F2F7]">
+
+      <!-- Agent Greeting Bubble -->
+      <div class="flex items-start gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-white border border-stone-200 flex-shrink-0 flex items-center justify-center shadow-xs">
+          <span class="text-blue-600 font-bold text-xs">雀</span>
+        </div>
+        <div class="bg-white rounded-2xl rounded-tl-sm p-3 border border-stone-200/90 shadow-xs max-w-[82%]">
+          <p class="text-[13.5px] text-stone-800 leading-relaxed">
+            我已经根据您的门店信息整理好了三套引流文案和匹配的音色。请您在下方直接点选满意的方案：
+          </p>
+        </div>
+      </div>
+
+      <!-- Task Capsule Bar (带任务编号的预备任务栏，支持整体收缩/展开) -->
+      <div id="task-capsule-bar" onclick="toggleTaskGroup()" class="cursor-pointer transition-all duration-200 bg-white rounded-2xl border border-stone-200/90 p-3 ios-card-shadow flex items-center justify-between gap-2.5 hover:border-blue-300 active:scale-[0.99]">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="px-2.5 py-0.5 rounded-md bg-[#007AFF] text-white text-[10.5px] font-bold tracking-wide flex-shrink-0">
+            任务 #01
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[13.5px] font-bold text-[#1C1C1E]">视频制作方案准备就绪</span>
+              <span class="text-[10px] font-semibold text-[#007AFF] bg-blue-50 px-2 py-0.2 rounded-full border border-blue-100">3 项待选</span>
+            </div>
+            <div id="task-bar-subtitle" class="text-[10.5px] text-stone-500 truncate mt-0.5">
+              门店引流文案 · 配音音色 · 数字人形象
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <span id="task-toggle-btn-text" class="text-[11px] font-semibold text-[#007AFF] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full shadow-xs">
+            收起 ▴
+          </span>
+        </div>
+      </div>
+
+      <!-- Container of the 3 cards (Folds/Expands when Task Bar is clicked) -->
+      <div id="task-cards-container" class="space-y-4 transition-all duration-300">
+
+      <!-- ============================================== -->
+      <!-- CARD 1: SCRIPT PICK (口播文案卡 - 适老化大字号+展开全文) -->
+      <!-- ============================================== -->
+      <div class="bg-white rounded-2xl border border-stone-200/90 ios-card-shadow overflow-hidden">
+        <!-- Card Header -->
+        <div class="px-3.5 pt-3.5 pb-2.5 flex items-center justify-between border-b border-stone-100">
+          <div class="flex items-center gap-2">
+            <!-- SF Symbol: doc.text -->
+            <div class="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2.5h8l4 4V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2z"/>
+                <path d="M14 2.5v5h4M8 12h6M8 16h6"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-[14.5px] font-bold text-[#1C1C1E] tracking-tight">门店引流口播文案</h2>
+              <p class="text-[11px] text-stone-500">点一下选一版，选好后自动进入下一步</p>
+            </div>
+          </div>
+          <span class="text-[10.5px] font-semibold text-[#007AFF] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">3 版可选</span>
+        </div>
+
+        <!-- Script Options -->
+        <div class="p-2.5 space-y-2">
+          
+          <!-- Option 1: Selected State (Apple HIG Blue) -->
+          <div id="script-opt-1" onclick="selectScript(1)" class="cursor-pointer transition-all duration-200 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 flex items-start justify-between gap-3 shadow-xs">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[14px] font-bold text-[#1C1C1E]">A版 · 直给福利型</span>
+                <span class="text-[10px] font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md">福利直给</span>
+              </div>
+              <div id="script-body-1" class="text-[12.5px] text-stone-700 mt-1.5 leading-relaxed">
+                “店里周年庆，老板发话直接让利！全场招牌套餐立减30元，只要来店报暗号‘黄雀’再送甜品一份，仅限本周前50位！”
+              </div>
+              <div onclick="event.stopPropagation(); toggleScriptExpand(1)" class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] mt-1.5 hover:underline">
+                <span id="script-btn-text-1">收起 ▴</span>
+              </div>
+            </div>
+            <!-- Apple Style Blue Radio -->
+            <div id="script-radio-1" class="w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+              <svg class="w-3 h-3 text-white stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Option 2: Normal State -->
+          <div id="script-opt-2" onclick="selectScript(2)" class="cursor-pointer transition-all duration-200 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[14px] font-bold text-stone-800">B版 · 痛点共鸣型</span>
+                <span class="text-[10px] font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md">痛点共鸣</span>
+              </div>
+              <div id="script-body-2" class="text-[12.5px] text-stone-600 mt-1.5 leading-relaxed line-clamp-2">
+                “下班累了一整天，不想做饭又怕外卖油腻不健康？来我们这儿，现煲养生靓汤配时令果蔬，暖胃又踏实，给自己充个电吧！”
+              </div>
+              <div onclick="event.stopPropagation(); toggleScriptExpand(2)" class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] mt-1.5 hover:underline">
+                <span id="script-btn-text-2">展开全文 ▾</span>
+              </div>
+            </div>
+            <!-- Unchecked Radio -->
+            <div id="script-radio-2" class="w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0 mt-0.5">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- CARD 2: VOICE PICK (配音音色卡) -->
+      <!-- ============================================== -->
+      <div class="bg-white rounded-2xl border border-stone-200/90 ios-card-shadow overflow-hidden">
+        <div class="px-3.5 pt-3.5 pb-2.5 flex items-center justify-between border-b border-stone-100">
+          <div class="flex items-center gap-2">
+            <!-- SF Symbol: waveform -->
+            <div class="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-[14.5px] font-bold text-[#1C1C1E] tracking-tight">AI 配音音色推荐</h2>
+              <p class="text-[11px] text-stone-500">点左侧试听，点右侧选定</p>
+            </div>
+          </div>
+          <span class="text-[10.5px] font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">单选</span>
+        </div>
+
+        <div class="p-2.5 space-y-2">
+          
+          <!-- Voice Option 1: Selected & Playing -->
+          <div id="voice-opt-1" onclick="selectVoice(1)" class="cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 flex items-center gap-3">
+            <!-- Audio Play Button with SVG -->
+            <button onclick="event.stopPropagation(); toggleVoicePlay(1)" class="w-10 h-10 rounded-full bg-blue-100 text-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs hover:scale-105 active:scale-95 transition-transform" title="点击试听">
+              <span id="voice-play-box-1">
+                <svg class="w-3.5 h-3.5 fill-[#007AFF]" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>
+              </span>
+            </button>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[14px] font-bold text-[#1C1C1E]">温柔女声</span>
+                <span class="text-[10px] font-semibold text-[#007AFF] bg-blue-50 px-2 py-0.5 rounded-md">情感种草</span>
+              </div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-[11px] text-stone-600 font-medium">正在试听：亲切温暖、节奏舒缓</span>
+              </div>
+            </div>
+            <!-- Radio Checked -->
+            <div id="voice-radio-1" class="w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs">
+              <svg class="w-3 h-3 text-white stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Voice Option 2: Idle -->
+          <div id="voice-opt-2" onclick="selectVoice(2)" class="cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 flex items-center gap-3">
+            <button onclick="event.stopPropagation(); toggleVoicePlay(2)" class="w-10 h-10 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center flex-shrink-0 shadow-xs hover:scale-105 active:scale-95 transition-transform" title="点击试听">
+              <span id="voice-play-box-2">
+                <svg class="w-3.5 h-3.5 fill-stone-700 ml-0.5" viewBox="0 0 24 24"><path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5c-.7-.4-1.6.1-1.6.9z"/></svg>
+              </span>
+            </button>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[14px] font-bold text-stone-800">沉稳男声</span>
+                <span class="text-[10px] font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-md">知识口播</span>
+              </div>
+              <p class="text-[11px] text-stone-500 mt-0.5">浑厚磁性、适合商务与专业解说</p>
+            </div>
+            <!-- Radio Unchecked -->
+            <div id="voice-radio-2" class="w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0">
+            </div>
+          </div>
+
+          <!-- Clone Voice Pill Button with SF Symbol: mic.fill -->
+          <button class="w-full py-2.5 rounded-xl border border-blue-200 bg-blue-50/50 text-[#007AFF] text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-100/50 active:scale-[0.99] transition-all">
+            <svg class="w-4 h-4 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+            </svg>
+            <span>录入我的声音（克隆专属音色）</span>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- CARD 3: AVATAR PICK (数字人形象卡 - 纯矢量肖像画框) -->
+      <!-- ============================================== -->
+      <div class="bg-white rounded-2xl border border-stone-200/90 ios-card-shadow overflow-hidden">
+        <!-- Card Header -->
+        <div class="px-3.5 pt-3.5 pb-2.5 flex items-center justify-between border-b border-stone-100">
+          <div class="flex items-center gap-2">
+            <!-- SF Symbol: person.crop.rectangle -->
+            <div class="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="4"/>
+                <circle cx="10" cy="9" r="3"/>
+                <path d="M5.5 18c.6-3 2.1-4.5 4.5-4.5s3.9 1.5 4.5 4.5M18 7v4M16 9h4"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-[14.5px] font-bold text-[#1C1C1E] tracking-tight">出镜数字人形象</h2>
+              <p class="text-[11px] text-stone-500">高清 4K 原生画框展示</p>
+            </div>
+          </div>
+          <span class="text-[10.5px] font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">单选</span>
+        </div>
+
+        <div class="p-2.5 space-y-2">
+          
+          <!-- Avatar Option 1: Selected (Female Anchor SVG) -->
+          <div id="avatar-opt-1" onclick="selectAvatar(1)" class="cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 flex items-center gap-3">
+            <!-- Portrait Frame -->
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-stone-200 flex items-center justify-center flex-shrink-0 shadow-xs overflow-hidden">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-11 h-11">
+                <circle cx="32" cy="32" r="28" fill="#f8faff"/>
+                <path d="M22 28c0-7 4.5-12 10-12s10 5 10 12c0 3-1 6-2 8H24c-1-2-2-5-2-8z" fill="#334155"/>
+                <circle cx="32" cy="27" r="7.5" fill="#fbe8d3"/>
+                <path d="M24.5 25c1.5-4.5 4.5-7 7.5-7s6 2.5 7.5 7c-2-2.5-4.5-3.5-7.5-3.5s-5.5 1-7.5 3.5z" fill="#1e293b"/>
+                <path d="M29 34h6v6h-6z" fill="#fbe8d3"/>
+                <path d="M18 52c1-7.5 6-12 14-12s13 4.5 14 12" fill="#0f172a"/>
+                <path d="M27 40l5 8 5-8" fill="#fbe8d3"/>
+                <path d="M25 42l7 10 7-10" stroke="#007AFF" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[14px] font-bold text-[#1C1C1E]">知性女主播 · 晓晴</span>
+                <span class="text-[10px] font-semibold text-[#007AFF] bg-blue-50 px-1.5 py-0.5 rounded">推荐</span>
+              </div>
+              <p class="text-[11px] text-stone-600 mt-0.5">西装正装 · 适用于美业、餐饮与招商</p>
+            </div>
+            <div id="avatar-radio-1" class="w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs">
+              <svg class="w-3 h-3 text-white stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Avatar Option 2: Idle (Male Lecturer SVG) -->
+          <div id="avatar-opt-2" onclick="selectAvatar(2)" class="cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 flex items-center gap-3">
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 border border-stone-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-11 h-11">
+                <circle cx="32" cy="32" r="28" fill="#f8fafc"/>
+                <path d="M23 25c0-6 4-10.5 9-10.5s9 4.5 9 10.5c0 2-.5 4-1.5 5.5H24.5c-1-1.5-1.5-3.5-1.5-5.5z" fill="#1e293b"/>
+                <circle cx="32" cy="27" r="7.5" fill="#fbe8d3"/>
+                <rect x="26.5" y="25" width="4.5" height="3" rx="0.8" stroke="#334155" stroke-width="0.8" fill="none"/>
+                <rect x="33" y="25" width="4.5" height="3" rx="0.8" stroke="#334155" stroke-width="0.8" fill="none"/>
+                <path d="M31 26.5h2" stroke="#334155" stroke-width="0.8"/>
+                <path d="M29 34h6v6h-6z" fill="#fbe8d3"/>
+                <path d="M18 52c1-7.5 6-12 14-12s13 4.5 14 12" fill="#475569"/>
+                <path d="M28 40l4 5 4-5" fill="#ffffff"/>
+                <path d="M31 45l1 7 1-7z" fill="#0284c7"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[14px] font-bold text-stone-800">干练男讲师 · 志远</span>
+              </div>
+              <p class="text-[11px] text-stone-500 mt-0.5">商务衬衫 · 适用于咨询、财税与实战课</p>
+            </div>
+            <div id="avatar-radio-2" class="w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0">
+            </div>
+          </div>
+
+          <!-- Clone Avatar Pill Button with SF Symbol -->
+          <button onclick="alert('已向黄雀发送【定制我的数字人形象】，黄雀将下发数字人形象采集引导')" class="w-full py-2.5 rounded-xl border border-blue-200 bg-blue-50/50 text-[#007AFF] text-[13px] font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-100/50 active:scale-[0.99] transition-all">
+            <svg class="w-4 h-4 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 7l-7 5 7 5V7z"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+            <span>录制 15 秒视频定制专属数字人（本人出镜）</span>
+          </button>
+
+        </div>
+      </div>
+
+      </div><!-- End #task-cards-container -->
+
+    </div>
+
+    <!-- Bottom Action Capsule -->
+    <div class="bg-white/95 backdrop-blur border-t border-stone-200/80 p-3.5 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-xs text-stone-600">已选：<strong id="bottom-summary" class="text-stone-900 font-bold">A版文案 · 温柔女声 · 晓晴</strong></span>
+      </div>
+      <button class="bg-[#007AFF] text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xs hover:bg-blue-600 active:scale-95 transition-transform">
+        确认生成视频
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    let isTaskCollapsed = false;
+    let playingAudioId = 1;
+
+    function toggleTaskGroup() {
+      isTaskCollapsed = !isTaskCollapsed;
+      const container = document.getElementById('task-cards-container');
+      const btnText = document.getElementById('task-toggle-btn-text');
+      const subtitle = document.getElementById('task-bar-subtitle');
+
+      if (isTaskCollapsed) {
+        container.classList.add('hidden');
+        btnText.textContent = '展开 ▾';
+        subtitle.textContent = '已收起 3 项组件卡 · 点击展开查看或修改';
+      } else {
+        container.classList.remove('hidden');
+        btnText.textContent = '收起 ▴';
+        subtitle.textContent = '门店引流文案 · 配音音色 · 数字人形象';
+      }
+    }
+
+    function selectScript(idx) {
+      for (let i = 1; i <= 2; i++) {
+        const opt = document.getElementById(`script-opt-${i}`);
+        const radio = document.getElementById(`script-radio-${i}`);
+        if (i === idx) {
+          opt.className = "cursor-pointer transition-all duration-200 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 flex items-start justify-between gap-3 shadow-xs";
+          radio.className = "w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs";
+          radio.innerHTML = '<svg class="w-3 h-3 text-white stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        } else {
+          opt.className = "cursor-pointer transition-all duration-200 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 flex items-start justify-between gap-3";
+          radio.className = "w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0 mt-0.5";
+          radio.innerHTML = '';
+        }
+      }
+      updateSummary();
+    }
+
+    function toggleScriptExpand(idx) {
+      const body = document.getElementById(`script-body-${idx}`);
+      const btn = document.getElementById(`script-btn-text-${idx}`);
+      if (body.classList.contains('line-clamp-2')) {
+        body.classList.remove('line-clamp-2');
+        btn.textContent = '收起 ▴';
+      } else {
+        body.classList.add('line-clamp-2');
+        btn.textContent = '展开全文 ▾';
+      }
+    }
+
+    function selectVoice(idx) {
+      for (let i = 1; i <= 2; i++) {
+        const opt = document.getElementById(`voice-opt-${i}`);
+        const radio = document.getElementById(`voice-radio-${i}`);
+        if (i === idx) {
+          opt.className = "cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 flex items-center gap-3";
+          radio.className = "w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs";
+          radio.innerHTML = '<svg class="w-3 h-3 text-white stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        } else {
+          opt.className = "cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 flex items-center gap-3";
+          radio.className = "w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0";
+          radio.innerHTML = '';
+        }
+      }
+      updateSummary();
+    }
+
+    function toggleVoicePlay(idx) {
+      if (playingAudioId === idx) {
+        playingAudioId = null;
+      } else {
+        playingAudioId = idx;
+      }
+      const box1 = document.getElementById('voice-play-box-1');
+      const box2 = document.getElementById('voice-play-box-2');
+      box1.innerHTML = (playingAudioId === 1) 
+        ? '<svg class="w-3.5 h-3.5 fill-[#007AFF]" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>'
+        : '<svg class="w-3.5 h-3.5 fill-stone-700 ml-0.5" viewBox="0 0 24 24"><path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5c-.7-.4-1.6.1-1.6.9z"/></svg>';
+      box2.innerHTML = (playingAudioId === 2)
+        ? '<svg class="w-3.5 h-3.5 fill-[#007AFF]" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>'
+        : '<svg class="w-3.5 h-3.5 fill-stone-700 ml-0.5" viewBox="0 0 24 24"><path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5c-.7-.4-1.6.1-1.6.9z"/></svg>';
+    }
+
+    function selectAvatar(idx) {
+      for (let i = 1; i <= 2; i++) {
+        const opt = document.getElementById(`avatar-opt-${i}`);
+        const radio = document.getElementById(`avatar-radio-${i}`);
+        if (i === idx) {
+          opt.className = "cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 flex items-center gap-3";
+          radio.className = "w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs";
+          radio.innerHTML = '<svg class="w-3 h-3 text-white stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        } else {
+          opt.className = "cursor-pointer transition-all duration-200 p-2.5 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 flex items-center gap-3";
+          radio.className = "w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0";
+          radio.innerHTML = '';
+        }
+      }
+      updateSummary();
+    }
+
+    function updateSummary() {
+      // Live summary update
+    }
+  </script>
+</body>
+</html>

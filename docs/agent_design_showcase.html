@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    .ios-shadow {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+    .tap-active:active {
+      transform: scale(0.985);
+    }
+  </style>
+</head>
+<body class="bg-transparent text-slate-800 antialiased p-2 sm:p-3 select-none">
+  <div class="bg-white rounded-2xl border border-stone-200/90 shadow-xl overflow-hidden max-w-xl mx-auto flex flex-col">
+    
+    <!-- Top Bar: Apple HIG Native Header -->
+    <div class="bg-stone-50/90 px-4 py-3 border-b border-stone-200 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-6 h-6 rounded-lg bg-blue-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+          <!-- SF Symbol: apple logo / sparkles -->
+          <svg class="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24">
+            <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-stone-900 tracking-tight flex items-center gap-1.5">
+            <span>黄雀 Agent · 遵循 Apple HIG 设计规范</span>
+            <span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[9px] font-semibold">体验版 v0.132 已同步</span>
+          </h3>
+          <p class="text-[10px] text-stone-500">Apple HIG 规范为主 · SF Symbols 优先 · oil-icon 补充补齐缺口</p>
+        </div>
+      </div>
+      <span class="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">Apple HIG</span>
+    </div>
+
+    <!-- Segmented Control (Apple HIG 5 Tabs) -->
+    <div class="p-2 bg-stone-100/70 border-b border-stone-200">
+      <div class="grid grid-cols-5 gap-1 bg-stone-200/60 p-0.5 rounded-xl text-center text-xs font-medium text-stone-600">
+        <!-- Tab 1: Task Bar Accordion -->
+        <button id="tab-btn-1" onclick="switchTab(1)" class="py-1.5 rounded-lg bg-white text-blue-700 font-bold shadow-xs transition-all flex items-center justify-center gap-1">
+          <svg class="w-3.5 h-3.5 stroke-blue-600" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="6" rx="2"/><path d="M7 14h10M7 18h6"/>
+          </svg>
+          <span class="text-[11px]">任务收折</span>
+        </button>
+        <!-- Tab 2: Script -->
+        <button id="tab-btn-2" onclick="switchTab(2)" class="py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all flex items-center justify-center gap-1">
+          <svg class="w-3.5 h-3.5 stroke-stone-600" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2.5h8l4 4V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2z"/><path d="M14 2.5v5h4M8 12h6M8 16h6"/>
+          </svg>
+          <span class="text-[11px]">文案卡</span>
+        </button>
+        <!-- Tab 3: Voice -->
+        <button id="tab-btn-3" onclick="switchTab(3)" class="py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all flex items-center justify-center gap-1">
+          <svg class="w-3.5 h-3.5 stroke-stone-600" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+          </svg>
+          <span class="text-[11px]">音色卡</span>
+        </button>
+        <!-- Tab 4: Avatar -->
+        <button id="tab-btn-4" onclick="switchTab(4)" class="py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all flex items-center justify-center gap-1">
+          <svg class="w-3.5 h-3.5 stroke-stone-600" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <circle cx="10" cy="9" r="3"/>
+            <path d="M5.5 18c.6-3 2.1-4.5 4.5-4.5s3.9 1.5 4.5 4.5M18 7v4M16 9h4"/>
+          </svg>
+          <span class="text-[11px]">数字人卡</span>
+        </button>
+        <!-- Tab 5: Design Philosophy -->
+        <button id="tab-btn-5" onclick="switchTab(5)" class="py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all flex items-center justify-center gap-1">
+          <svg class="w-3.5 h-3.5 stroke-stone-600" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
+          </svg>
+          <span class="text-[11px]">规范说明</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab Contents Container -->
+    <div class="p-3 bg-[#F2F2F7] min-h-[380px] flex flex-col justify-start">
+
+      <!-- ============================================== -->
+      <!-- TAB 1: TASK BAR COLLAPSIBLE ACCORDION SUITE    -->
+      <!-- ============================================== -->
+      <div id="tab-content-1" class="space-y-3">
+        
+        <!-- Apple HIG Task Capsule Bar -->
+        <div onclick="toggleShowcaseTaskGroup()" class="cursor-pointer bg-white rounded-2xl border border-stone-200/90 p-3.5 ios-shadow flex items-center justify-between gap-2.5 hover:border-blue-300 tap-active transition-all">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <!-- Apple iOS Blue Badge -->
+            <div class="px-2.5 py-0.5 rounded-md bg-[#007AFF] text-white text-[11px] font-bold tracking-wide flex-shrink-0">
+              任务 #01
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[14px] font-bold text-[#1C1C1E]">视频制作方案准备就绪</span>
+                <span class="text-[10px] font-semibold text-[#007AFF] bg-blue-50 px-2 py-0.2 rounded-full border border-blue-100">3 项待选</span>
+              </div>
+              <div id="showcase-task-sub" class="text-[11px] text-[#8E8E93] truncate mt-0.5">
+                门店引流文案 · 配音音色 · 数字人形象（轻触收折全部）
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <span id="showcase-task-btn" class="text-[11px] font-semibold text-[#007AFF] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full shadow-xs">
+              收起 ▴
+            </span>
+          </div>
+        </div>
+
+        <!-- Collapsible 3 Cards Container (Apple Inset Grouped) -->
+        <div id="showcase-task-cards" class="space-y-2.5 transition-all duration-300">
+          
+          <!-- Mini Card 1: Script Pick Preview -->
+          <div class="bg-white rounded-xl border border-stone-200/80 p-3 shadow-xs">
+            <div class="flex items-center justify-between pb-1.5 border-b border-stone-100">
+              <div class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 2.5h8l4 4V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2z"/><path d="M14 2.5v5h4M8 12h6M8 16h6"/></svg>
+                <span class="text-xs font-bold text-[#1C1C1E]">1. 门店引流口播文案</span>
+              </div>
+              <span class="text-[10px] text-[#007AFF] font-semibold bg-blue-50 px-1.5 py-0.2 rounded">已选 A版</span>
+            </div>
+            <p class="text-[11.5px] text-stone-600 mt-1.5 line-clamp-1">“店里周年庆，老板发话直接让利！招牌立减30元…”</p>
+          </div>
+
+          <!-- Mini Card 2: Voice Pick Preview -->
+          <div class="bg-white rounded-xl border border-stone-200/80 p-3 shadow-xs">
+            <div class="flex items-center justify-between pb-1.5 border-b border-stone-100">
+              <div class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+                <span class="text-xs font-bold text-[#1C1C1E]">2. 配音音色</span>
+              </div>
+              <span class="text-[10px] text-[#007AFF] font-semibold bg-blue-50 px-1.5 py-0.2 rounded">已选 温柔女声</span>
+            </div>
+            <div class="flex items-center justify-between mt-1.5 text-[11.5px] text-stone-600">
+              <span>亲切邻家 · 情感种草</span>
+              <span class="text-[10px] text-stone-400">独立试听与选用解耦</span>
+            </div>
+          </div>
+
+          <!-- Mini Card 3: Avatar Pick Preview -->
+          <div class="bg-white rounded-xl border border-stone-200/80 p-3 shadow-xs">
+            <div class="flex items-center justify-between pb-1.5 border-b border-stone-100">
+              <div class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="10" cy="9" r="3"/><path d="M5.5 18c.6-3 2.1-4.5 4.5-4.5s3.9 1.5 4.5 4.5M18 7v4M16 9h4"/></svg>
+                <span class="text-xs font-bold text-[#1C1C1E]">3. 数字人形象</span>
+              </div>
+              <span class="text-[10px] text-[#007AFF] font-semibold bg-blue-50 px-1.5 py-0.2 rounded">已选 晓晴</span>
+            </div>
+            <div class="flex items-center justify-between mt-1.5 text-[11.5px] text-stone-600">
+              <span>知性女主播 · 西装正装</span>
+              <span class="text-[10.5px] text-[#007AFF] font-medium">支持 15 秒录制定制</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Collapsed Empty State Notice -->
+        <div id="showcase-collapsed-notice" class="hidden p-4 rounded-xl border border-dashed border-stone-300 bg-white text-center space-y-1">
+          <div class="text-xs font-bold text-stone-800">组件卡已全部收折入任务栏</div>
+          <p class="text-[10.5px] text-stone-500">遵循 Apple HIG 紧凑层级：轻触上方任务栏随时展开或修改。</p>
+        </div>
+
+        <div class="flex items-center justify-center gap-1.5 text-[10.5px] text-stone-500 pt-1">
+          <svg class="w-3 h-3 stroke-blue-600" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span>已遵循 Apple HIG 原生规范并同步发布至微信小程序体验版 v0.132。</span>
+        </div>
+
+      </div>
+
+      <!-- ============================================== -->
+      <!-- TAB 2: SCRIPT PICK                            -->
+      <!-- ============================================== -->
+      <div id="tab-content-2" class="space-y-2.5 hidden">
+        <div class="bg-white rounded-2xl border border-stone-200 p-3.5 ios-shadow">
+          <div class="flex items-center justify-between pb-2 border-b border-stone-100">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center">
+                <svg class="w-4 h-4 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2.5h8l4 4V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2z"/>
+                  <path d="M14 2.5v5h4M8 12h6M8 16h6"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-[13.5px] font-bold text-[#1C1C1E]">引流口播文案推荐</h4>
+                <p class="text-[10.5px] text-stone-500">点选确认方案，支持点击展开朗读全文</p>
+              </div>
+            </div>
+            <span class="text-[10px] bg-blue-50 text-[#007AFF] border border-blue-100 px-2 py-0.5 rounded-full font-semibold">适老化大字</span>
+          </div>
+
+          <!-- Script Option 1 (Selected - Apple Blue) -->
+          <div id="demo-script-1" onclick="selectScript(1)" class="mt-2.5 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 cursor-pointer tap-active transition-all">
+            <div class="flex items-start justify-between gap-2.5">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[14px] font-bold text-[#1C1C1E]">A版 · 周年庆直给让利型</span>
+                  <span class="text-[9.5px] bg-stone-100 text-stone-700 px-2 py-0.5 rounded-md font-semibold">福利直给</span>
+                </div>
+                <div id="demo-script-body-1" class="text-[12.5px] text-stone-700 mt-1.5 leading-relaxed">
+                  “各位街坊邻里！店里周年大回馈，全场招牌砂锅立减30元！进店报暗号‘黄雀’免费喝现熬绿豆沙，限量前50位，快带着家人一起尝尝鲜！”
+                </div>
+                <div onclick="event.stopPropagation(); toggleScript(1)" class="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#007AFF] mt-1.5 hover:underline">
+                  <span id="demo-script-btn-1">收起 ▴</span>
+                </div>
+              </div>
+              <!-- Apple Checkmark Circle Fill -->
+              <div id="demo-script-radio-1" class="w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+                <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Script Option 2 (Unselected) -->
+          <div id="demo-script-2" onclick="selectScript(2)" class="mt-2 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 cursor-pointer tap-active transition-all">
+            <div class="flex items-start justify-between gap-2.5">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[14px] font-bold text-stone-800">B版 · 养生健康共鸣型</span>
+                  <span class="text-[9.5px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md font-semibold">痛点共鸣</span>
+                </div>
+                <div id="demo-script-body-2" class="text-[12.5px] text-stone-600 mt-1.5 leading-relaxed line-clamp-2">
+                  “上班累了一整天，不想洗碗又怕外卖油腻伤胃？来我们这儿尝尝现炖的松茸老鸭汤，慢火熬足4小时，一口暖到胃里，给自己好好补一补！”
+                </div>
+                <div onclick="event.stopPropagation(); toggleScript(2)" class="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[#007AFF] mt-1.5 hover:underline">
+                  <span id="demo-script-btn-2">展开全文 ▾</span>
+                </div>
+              </div>
+              <div id="demo-script-radio-2" class="w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0 mt-0.5">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center justify-center gap-1.5 text-[10px] text-stone-500">
+          <svg class="w-3 h-3 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span>大字号设计 + 微信触感轻震，解决文字截断造成的理解盲区。</span>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- TAB 3: VOICE PICK                             -->
+      <!-- ============================================== -->
+      <div id="tab-content-3" class="space-y-2.5 hidden">
+        <div class="bg-white rounded-2xl border border-stone-200 p-3.5 ios-shadow">
+          <div class="flex items-center justify-between pb-2 border-b border-stone-100">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center">
+                <svg class="w-4 h-4 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-[13.5px] font-bold text-[#1C1C1E]">AI 配音音色选择</h4>
+                <p class="text-[10.5px] text-stone-500">左侧 iOS 原生试听，右侧点选打勾</p>
+              </div>
+            </div>
+            <span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-semibold">独立试听</span>
+          </div>
+
+          <!-- Voice 1 (Selected) -->
+          <div id="demo-voice-1" onclick="selectVoice(1)" class="mt-2.5 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 cursor-pointer tap-active transition-all flex items-center gap-2.5">
+            <!-- iOS Play Button (System Blue Tint) -->
+            <button onclick="event.stopPropagation(); toggleVoicePlay(1)" class="w-9 h-9 rounded-full bg-blue-100 text-[#007AFF] flex items-center justify-center shadow-xs hover:scale-105 active:scale-95 transition-transform" title="点击试听">
+              <span id="voice-icon-box-1" class="flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 fill-[#007AFF]" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>
+              </span>
+            </button>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[13.5px] font-bold text-[#1C1C1E]">温柔女声 · 亲切邻家</span>
+                <span class="text-[9.5px] bg-blue-50 text-[#007AFF] px-1.5 py-0.5 rounded font-semibold">情感种草</span>
+              </div>
+              <p class="text-[11px] text-stone-600 mt-0.5">亲切温暖、咬字清晰、节奏舒缓慢速</p>
+            </div>
+            <div id="demo-voice-radio-1" class="w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs">
+              <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+
+          <!-- Voice 2 (Unselected) -->
+          <div id="demo-voice-2" onclick="selectVoice(2)" class="mt-2 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 cursor-pointer tap-active transition-all flex items-center gap-2.5">
+            <button onclick="event.stopPropagation(); toggleVoicePlay(2)" class="w-9 h-9 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center shadow-xs hover:scale-105 active:scale-95 transition-transform" title="点击试听">
+              <span id="voice-icon-box-2" class="flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 fill-stone-700 ml-0.5" viewBox="0 0 24 24"><path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5c-.7-.4-1.6.1-1.6.9z"/></svg>
+              </span>
+            </button>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[13.5px] font-bold text-stone-800">沉稳男声 · 权威专业</span>
+                <span class="text-[9.5px] bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded font-semibold">知识口播</span>
+              </div>
+              <p class="text-[11px] text-stone-500 mt-0.5">浑厚磁性、适合商务解说与科普分享</p>
+            </div>
+            <div id="demo-voice-radio-2" class="w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0">
+            </div>
+          </div>
+
+          <!-- Apple HIG Tinted Clone Action -->
+          <div class="mt-2.5 py-2.5 px-3 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-center gap-1.5 text-[12px] font-semibold text-[#007AFF] cursor-pointer hover:bg-blue-100/50 tap-active transition-all">
+            <svg class="w-3.5 h-3.5 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+            </svg>
+            <span>录制 10 秒克隆店主自己的原声</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-center gap-1.5 text-[10px] text-stone-500">
+          <svg class="w-3 h-3 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span>试听与选用解耦，不播音频不假转，播放状态与手机静音键严格解绑。</span>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- TAB 4: AVATAR PICK                            -->
+      <!-- ============================================== -->
+      <div id="tab-content-4" class="space-y-2.5 hidden">
+        <div class="bg-white rounded-2xl border border-stone-200 p-3.5 ios-shadow">
+          <div class="flex items-center justify-between pb-2 border-b border-stone-100">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-stone-100 flex items-center justify-center">
+                <svg class="w-4 h-4 stroke-[#1C1C1E]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="4"/>
+                  <circle cx="10" cy="9" r="3"/>
+                  <path d="M5.5 18c.6-3 2.1-4.5 4.5-4.5s3.9 1.5 4.5 4.5M18 7v4M16 9h4"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-[13.5px] font-bold text-[#1C1C1E]">数字人形象肖像画框</h4>
+                <p class="text-[10.5px] text-stone-500">Apple 风格圆角画框 · 支持专属分身定制</p>
+              </div>
+            </div>
+            <span class="text-[10px] bg-blue-50 text-[#007AFF] border border-blue-100 px-2 py-0.5 rounded-full font-semibold">4K 画框</span>
+          </div>
+
+          <!-- Avatar 1: Female Anchor Vector Portrait -->
+          <div id="demo-avatar-1" onclick="selectAvatar(1)" class="mt-2.5 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 cursor-pointer tap-active transition-all flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-stone-200 flex items-center justify-center flex-shrink-0 shadow-xs overflow-hidden">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-10 h-10">
+                <circle cx="32" cy="32" r="28" fill="#f8faff"/>
+                <path d="M22 28c0-7 4.5-12 10-12s10 5 10 12c0 3-1 6-2 8H24c-1-2-2-5-2-8z" fill="#334155"/>
+                <circle cx="32" cy="27" r="7.5" fill="#fbe8d3"/>
+                <path d="M24.5 25c1.5-4.5 4.5-7 7.5-7s6 2.5 7.5 7c-2-2.5-4.5-3.5-7.5-3.5s-5.5 1-7.5 3.5z" fill="#1e293b"/>
+                <path d="M29 34h6v6h-6z" fill="#fbe8d3"/>
+                <path d="M18 52c1-7.5 6-12 14-12s13 4.5 14 12" fill="#0f172a"/>
+                <path d="M27 40l5 8 5-8" fill="#fbe8d3"/>
+                <path d="M25 42l7 10 7-10" stroke="#007AFF" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[13.5px] font-bold text-[#1C1C1E]">知性女主播 · 晓晴</span>
+                <span class="text-[9.5px] bg-blue-50 text-[#007AFF] px-1.5 py-0.2 rounded font-semibold">官方推荐</span>
+              </div>
+              <p class="text-[11px] text-stone-600 mt-0.5">西装正装 · 适用于美业、餐饮与实体招商</p>
+            </div>
+            <div id="demo-avatar-radio-1" class="w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs">
+              <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+
+          <!-- Avatar 2: Male Lecturer Vector Portrait -->
+          <div id="demo-avatar-2" onclick="selectAvatar(2)" class="mt-2 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 cursor-pointer tap-active transition-all flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 border border-stone-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-10 h-10">
+                <circle cx="32" cy="32" r="28" fill="#f8fafc"/>
+                <path d="M23 25c0-6 4-10.5 9-10.5s9 4.5 9 10.5c0 2-.5 4-1.5 5.5H24.5c-1-1.5-1.5-3.5-1.5-5.5z" fill="#1e293b"/>
+                <circle cx="32" cy="27" r="7.5" fill="#fbe8d3"/>
+                <rect x="26.5" y="25" width="4.5" height="3" rx="0.8" stroke="#334155" stroke-width="0.8" fill="none"/>
+                <rect x="33" y="25" width="4.5" height="3" rx="0.8" stroke="#334155" stroke-width="0.8" fill="none"/>
+                <path d="M31 26.5h2" stroke="#334155" stroke-width="0.8"/>
+                <path d="M29 34h6v6h-6z" fill="#fbe8d3"/>
+                <path d="M18 52c1-7.5 6-12 14-12s13 4.5 14 12" fill="#475569"/>
+                <path d="M28 40l4 5 4-5" fill="#ffffff"/>
+                <path d="M31 45l1 7 1-7z" fill="#0284c7"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[13.5px] font-bold text-stone-800">干练男讲师 · 志远</span>
+              </div>
+              <p class="text-[11px] text-stone-500 mt-0.5">商务衬衫 · 适用于咨询、财税与实战分享</p>
+            </div>
+            <div id="demo-avatar-radio-2" class="w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0">
+            </div>
+          </div>
+
+          <!-- Newly Created User Avatar Option -->
+          <div id="demo-avatar-3" onclick="selectAvatar(3)" class="hidden mt-2 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 cursor-pointer tap-active transition-all flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-300 flex items-center justify-center flex-shrink-0 shadow-xs overflow-hidden">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-10 h-10">
+                <circle cx="32" cy="32" r="28" fill="#fffdfa"/>
+                <path d="M22 26c0-6 4-10 10-10s10 4 10 10c0 2-.5 4-1.5 5.5H23.5c-1-1.5-1.5-3.5-1.5-5.5z" fill="#292524"/>
+                <circle cx="32" cy="27" r="7.5" fill="#fde68a"/>
+                <path d="M29 34h6v6h-6z" fill="#fde68a"/>
+                <path d="M18 52c1-7.5 6-12 14-12s13 4.5 14 12" fill="#1e3a8a"/>
+                <path d="M27 40l5 7 5-7" fill="#fde68a"/>
+                <path d="M25 42l7 9 7-9" stroke="#007AFF" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[13.5px] font-bold text-[#1C1C1E]">店主本人 · 专属分身</span>
+                <span class="text-[9.5px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-semibold">刚刚生成</span>
+              </div>
+              <p class="text-[11px] text-stone-600 mt-0.5">我的专属肖像 · 适用于门店全系列引流视频</p>
+            </div>
+            <div id="demo-avatar-radio-3" class="w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs">
+              <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+
+          <!-- Digital Human Customization Action Button (Apple Tinted Button) -->
+          <div onclick="toggleAvatarClonePanel()" id="avatar-custom-btn" class="mt-2.5 py-2.5 px-3 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-center gap-1.5 text-[12px] font-semibold text-[#007AFF] cursor-pointer hover:bg-blue-100/50 tap-active transition-all">
+            <svg class="w-3.5 h-3.5 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 7l-7 5 7 5V7z"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+            <span id="avatar-custom-btn-text">＋ 录制 15 秒视频定制专属数字人（本人出镜）</span>
+          </div>
+
+          <!-- Interactive Digital Human Recording Guide Panel -->
+          <div id="avatar-clone-panel" class="hidden mt-2.5 p-3 rounded-2xl border border-blue-200 bg-blue-50/40 space-y-2.5 transition-all">
+            <div class="flex items-center justify-between border-b border-blue-200/80 pb-2">
+              <div class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                </svg>
+                <span class="text-xs font-bold text-[#1C1C1E]">专属数字人出镜分身采集指引</span>
+              </div>
+              <button onclick="toggleAvatarClonePanel()" class="text-stone-400 hover:text-stone-700 text-xs p-1">✕</button>
+            </div>
+            
+            <div class="space-y-1.5 text-[11px] text-stone-700">
+              <div class="flex items-start gap-1.5">
+                <span class="w-3.5 h-3.5 rounded-full bg-blue-100 text-[#007AFF] flex items-center justify-center text-[9.5px] font-bold flex-shrink-0 mt-0.5">1</span>
+                <span>手机置于与眼睛平齐位置，光线明亮均匀，上半身正对镜头</span>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <span class="w-3.5 h-3.5 rounded-full bg-blue-100 text-[#007AFF] flex items-center justify-center text-[9.5px] font-bold flex-shrink-0 mt-0.5">2</span>
+                <span>自然朗读 15 秒店面介绍，嘴型清晰自然，避免剧烈晃动</span>
+              </div>
+              <div class="flex items-start gap-1.5">
+                <span class="w-3.5 h-3.5 rounded-full bg-blue-100 text-[#007AFF] flex items-center justify-center text-[9.5px] font-bold flex-shrink-0 mt-0.5">3</span>
+                <span>AI 自动提取 3D 面部特征，生成专属于您的永久数字人形象</span>
+              </div>
+            </div>
+
+            <!-- Two Recording Modes -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="simulateAvatarGeneration()" id="record-action-btn" class="py-2.5 px-2 rounded-xl bg-[#007AFF] text-white font-bold text-[11.5px] shadow-xs flex items-center justify-center gap-1 hover:bg-blue-600 active:scale-95 transition-all">
+                <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                <span>微信直接录制 15 秒</span>
+              </button>
+              <button onclick="simulateAvatarGeneration()" class="py-2.5 px-2 rounded-xl bg-white border border-stone-300 text-stone-700 font-semibold text-[11.5px] flex items-center justify-center gap-1 hover:bg-stone-50 active:scale-95 transition-all">
+                <svg class="w-3 h-3 stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 15V3"/></svg>
+                <span>从相册选正面视频</span>
+              </button>
+            </div>
+
+            <div id="avatar-generating-status" class="hidden text-center text-[11px] text-blue-900 font-semibold py-2 bg-blue-100 rounded-lg animate-pulse">
+              AI 正在建模 3D 肖像并同步唇形，请稍候约 2 秒…
+            </div>
+          </div>
+
+        </div>
+        <div class="flex items-center justify-center gap-1.5 text-[10px] text-stone-500">
+          <svg class="w-3 h-3 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span>与音色克隆完全对齐：支持直接选官方预设，也可 15 秒录制定制专属出镜分身。</span>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- TAB 5: DESIGN PHILOSOPHY & APPLE HIG ALIGNMENT-->
+      <!-- ============================================== -->
+      <div id="tab-content-5" class="space-y-2.5 hidden">
+        <div class="bg-white rounded-2xl border border-stone-200 p-3.5 ios-shadow space-y-3">
+          <div class="flex items-center gap-2 pb-2 border-b border-stone-100">
+            <div class="w-6 h-6 rounded-md bg-[#007AFF] text-white flex items-center justify-center text-xs font-bold">✓</div>
+            <div>
+              <h4 class="text-[13px] font-bold text-[#1C1C1E]">设计规范层级澄清（Apple HIG × SF Symbols × oil-icon）</h4>
+              <p class="text-[10px] text-stone-500">厘清设计主从关系，绝不颠倒规范标准</p>
+            </div>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <div class="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
+              <div class="font-bold text-[#007AFF] text-[12px] flex items-center gap-1">
+                <span>1. 全局设计规范：坚决以 Apple HIG 为基石</span>
+              </div>
+              <p class="text-[11px] text-stone-700 mt-1 leading-relaxed">
+                全系统遵循 Apple Human Interface Guidelines：主交互色为 Apple iOS 系统蓝（#007AFF）、分组圆角卡片（Inset Grouped）、打勾圆环（checkmark.circle.fill）、44pt 最小触控区域与触感轻震。杜绝将第三方小众色系设为全局标准的误区。
+              </p>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-stone-50 border border-stone-200">
+              <div class="font-bold text-stone-800 text-[12px] flex items-center gap-1">
+                <span>2. 视觉图标优先级：SF Symbols 优先，oil-icon 补充缺口</span>
+              </div>
+              <p class="text-[11px] text-stone-600 mt-1 leading-relaxed">
+                对于文稿（doc.text）、声波（waveform）、人像（person.crop.circle）、播放（play.fill）、麦克风（mic.fill）等标准交互图形，严格采用 Apple SF Symbols 规范设计；<strong>仅在遇到苹果符号库未覆盖的特殊本土/行业专属业务概念时，才选用 oil-icon 进行补齐</strong>。
+              </p>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200">
+              <div class="font-bold text-emerald-800 text-[12px] flex items-center gap-1">
+                <span>3. 预备任务栏折叠：解决信息过载与认知疲劳</span>
+              </div>
+              <p class="text-[11px] text-stone-700 mt-1 leading-relaxed">
+                针对中老年实体商户注意力易被冗长信息流干扰的问题，引入带编号的任务胶囊栏（任务 #01），单次点击即可将 3 项长卡片完整收起或展开，保持聊天界面通透清爽。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Selected State Drawer Preview (Apple HIG) -->
+    <div class="px-4 py-2.5 bg-stone-100/90 border-t border-stone-200 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="w-3.5 h-3.5 stroke-[#007AFF]" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6h16v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M4 10h16M10 6l-2 4M14 6l-2 4"/>
+        </svg>
+        <span class="text-[11px] text-stone-600">已生效方案：</span>
+        <span id="drawer-summary-pill" class="text-[11px] font-semibold text-[#007AFF] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">A版文案 + 温柔女声 + 晓晴</span>
+      </div>
+      <span class="text-[10.5px] font-semibold text-stone-700 bg-white border border-stone-300 px-2 py-1 rounded-full shadow-xs">随时修改 ▾</span>
+    </div>
+
+  </div>
+
+  <script>
+    const playSvg = '<svg class="w-3.5 h-3.5 fill-[#007AFF] ml-0.5" viewBox="0 0 24 24"><path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5c-.7-.4-1.6.1-1.6.9z"/></svg>';
+    const pauseSvg = '<svg class="w-3.5 h-3.5 fill-[#007AFF]" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>';
+    const playSvgMuted = '<svg class="w-3.5 h-3.5 fill-stone-700 ml-0.5" viewBox="0 0 24 24"><path d="M8 5.5v13c0 .8.9 1.3 1.6.9l10-6.5c.6-.4.6-1.4 0-1.8l-10-6.5c-.7-.4-1.6.1-1.6.9z"/></svg>';
+    const pauseSvgMuted = '<svg class="w-3.5 h-3.5 fill-stone-700" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>';
+
+    let voicePlaying = { 1: true, 2: false };
+    let hasCustomAvatar = false;
+    let showcaseTaskCollapsed = false;
+
+    function toggleShowcaseTaskGroup() {
+      showcaseTaskCollapsed = !showcaseTaskCollapsed;
+      const cards = document.getElementById('showcase-task-cards');
+      const notice = document.getElementById('showcase-collapsed-notice');
+      const btn = document.getElementById('showcase-task-btn');
+      const sub = document.getElementById('showcase-task-sub');
+
+      if (showcaseTaskCollapsed) {
+        cards.classList.add('hidden');
+        notice.classList.remove('hidden');
+        btn.textContent = '展开 ▾';
+        sub.textContent = '已收起 3 张卡片 · 轻触展开查看方案';
+      } else {
+        cards.classList.remove('hidden');
+        notice.classList.add('hidden');
+        btn.textContent = '收起 ▴';
+        sub.textContent = '门店引流文案 · 配音音色 · 数字人形象（轻触收折全部）';
+      }
+    }
+
+    function switchTab(tabIdx) {
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`tab-btn-${i}`);
+        const content = document.getElementById(`tab-content-${i}`);
+        if (i === tabIdx) {
+          btn.className = "py-1.5 rounded-lg bg-white text-blue-700 font-bold shadow-xs transition-all flex items-center justify-center gap-1";
+          content.classList.remove('hidden');
+        } else {
+          btn.className = "py-1.5 rounded-lg text-stone-600 hover:text-stone-900 transition-all flex items-center justify-center gap-1";
+          content.classList.add('hidden');
+        }
+      }
+    }
+
+    function selectScript(idx) {
+      for (let i = 1; i <= 2; i++) {
+        const item = document.getElementById(`demo-script-${i}`);
+        const radio = document.getElementById(`demo-script-radio-${i}`);
+        if (i === idx) {
+          item.className = "mt-2 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 cursor-pointer tap-active transition-all";
+          radio.className = "w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs";
+          radio.innerHTML = '<svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        } else {
+          item.className = "mt-2 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 cursor-pointer tap-active transition-all";
+          radio.className = "w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0 mt-0.5";
+          radio.innerHTML = '';
+        }
+      }
+    }
+
+    function toggleScript(idx) {
+      const body = document.getElementById(`demo-script-body-${idx}`);
+      const btn = document.getElementById(`demo-script-btn-${idx}`);
+      if (body.classList.contains('line-clamp-2')) {
+        body.classList.remove('line-clamp-2');
+        btn.textContent = '收起 ▴';
+      } else {
+        body.classList.add('line-clamp-2');
+        btn.textContent = '展开全文 ▾';
+      }
+    }
+
+    function selectVoice(idx) {
+      for (let i = 1; i <= 2; i++) {
+        const item = document.getElementById(`demo-voice-${i}`);
+        const radio = document.getElementById(`demo-voice-radio-${i}`);
+        if (i === idx) {
+          item.className = "mt-2 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 cursor-pointer tap-active transition-all flex items-center gap-2.5";
+          radio.className = "w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs";
+          radio.innerHTML = '<svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        } else {
+          item.className = "mt-2 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 cursor-pointer tap-active transition-all flex items-center gap-2.5";
+          radio.className = "w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0";
+          radio.innerHTML = '';
+        }
+      }
+    }
+
+    function toggleVoicePlay(idx) {
+      voicePlaying[idx] = !voicePlaying[idx];
+      const box = document.getElementById(`voice-icon-box-${idx}`);
+      if (idx === 1) {
+        box.innerHTML = voicePlaying[idx] ? pauseSvg : playSvg;
+      } else {
+        box.innerHTML = voicePlaying[idx] ? pauseSvgMuted : playSvgMuted;
+      }
+    }
+
+    function toggleAvatarClonePanel() {
+      const panel = document.getElementById('avatar-clone-panel');
+      const btn = document.getElementById('avatar-custom-btn');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        btn.classList.add('hidden');
+      } else {
+        panel.classList.add('hidden');
+        btn.classList.remove('hidden');
+      }
+    }
+
+    function simulateAvatarGeneration() {
+      const status = document.getElementById('avatar-generating-status');
+      status.classList.remove('hidden');
+      setTimeout(() => {
+        status.classList.add('hidden');
+        document.getElementById('avatar-clone-panel').classList.add('hidden');
+        document.getElementById('avatar-custom-btn').classList.remove('hidden');
+        document.getElementById('demo-avatar-3').classList.remove('hidden');
+        hasCustomAvatar = true;
+        selectAvatar(3);
+        document.getElementById('drawer-summary-pill').textContent = 'A版文案 + 温柔女声 + 店主本人分身';
+      }, 1600);
+    }
+
+    function selectAvatar(idx) {
+      const max = hasCustomAvatar ? 3 : 2;
+      for (let i = 1; i <= max; i++) {
+        const item = document.getElementById(`demo-avatar-${i}`);
+        const radio = document.getElementById(`demo-avatar-radio-${i}`);
+        if (!item || !radio) continue;
+        if (i === idx) {
+          item.className = "mt-2 p-3 rounded-2xl border-2 border-[#007AFF] bg-blue-50/30 cursor-pointer tap-active transition-all flex items-center gap-3";
+          radio.className = "w-5 h-5 rounded-full bg-[#007AFF] border border-[#007AFF] flex items-center justify-center flex-shrink-0 shadow-xs";
+          radio.innerHTML = '<svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        } else {
+          item.className = "mt-2 p-3 rounded-2xl border border-stone-200 bg-white hover:border-blue-300 cursor-pointer tap-active transition-all flex items-center gap-3";
+          radio.className = "w-5 h-5 rounded-full bg-white border-2 border-[#C7C7CC] flex items-center justify-center flex-shrink-0";
+          radio.innerHTML = '';
+        }
+      }
+      if (idx === 1) document.getElementById('drawer-summary-pill').textContent = 'A版文案 + 温柔女声 + 晓晴';
+      if (idx === 2) document.getElementById('drawer-summary-pill').textContent = 'A版文案 + 温柔女声 + 志远';
+      if (idx === 3) document.getElementById('drawer-summary-pill').textContent = 'A版文案 + 温柔女声 + 店主本人分身';
+    }
+  </script>
+</body>
+</html>
