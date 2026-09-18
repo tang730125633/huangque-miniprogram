@@ -198,7 +198,7 @@
         <button class="hq-button agent-queue-btn" bindtap="saveQueueEdit">保存修改</button>
         <button class="hq-button agent-queue-btn plain" bindtap="cancelQueueEdit">取消</button>
       </view>
-      <view wx:if="{{agentQueue.length>1||(agentQueue.length&&agentQueue[0].message)}}" class="hq-view agent-queue-panel">
+      <view wx:if="{{agentQueue.length>1}}" class="hq-view agent-queue-panel">
         <view class="hq-view agent-queue-head">
           <text class="hq-text agent-queue-title">消息队列</text>
           <text class="hq-text agent-queue-count">{{agentQueue.length}} 条待处理</text>
