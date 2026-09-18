@@ -90,16 +90,32 @@
 
 ---
 
+### 5. 真机端标题文字恶性竖排折行 Bug 根因剖析与 Apple HIG 原生单元格彻底重构（2026-09-18 晚）
+- **真机异常现象**：用户在真机体验版截图反馈：标题卡片中“不会打字也能做视频”被挤成一列单字竖排文字（`不\n会\n打\n字...`），胶囊标签悬空在右侧，单选对勾圆环被挤在下方，整张卡片严重畸形。
+- **根因剖析**：
+  1. `index.js` 中 `parsedTag` 错误地直接赋初值为 `item.summary || item.description`，导致长句副标题（如“副标题: 给中老年的零输入AI出片流程，一看就会”）全部被当做胶囊标签灌入 `parsedTag`；
+  2. `index.wxss` 中 `.agent-widget-pill` 设置了 `flex: none`，而容器 `.agent-widget-name-row` 未开启 `flex-wrap: wrap`。导致无弹性的超长标签独占整行，标题文本 `.agent-widget-name` 被迫压缩至 min-content 极限（汉字字符宽度 29rpx），发生单字恶性竖排换行；
+  3. `index.wxml` 中将用于短名称音色卡的 `voice-copy-layout` 误加到所有单选卡片容器上，破坏了通用组件的自适应能力。
+- **Apple HIG 原生重构方案**：
+  1. **解析层精准解耦**：`parsedTag` 仅在存在显式 `item.tag` 或括号内提取出 $\le 8$ 字符的非说明性短标签时生效；长句与副标题统一归入 `summary`；
+  2. **容器严格遵循 Apple Inset Grouped 规范**：`.agent-widget-option` 强制 `display: flex; flex-direction: row; align-items: center; justify-content: space-between;`，文本区采用 `flex: 1 1 0%; min-width: 0; width: 0;` 确保宽度严格受控；
+  3. **标题行支持 Apple 弹性自适应换行**：`.agent-widget-name-row` 配置 `flex-wrap: wrap; gap: 10rpx 14rpx;`，标题 `word-break: break-word; white-space: normal;`，彻底杜绝单字断行畸变；
+  4. **原生 iOS 配件样式**：单选圆环 `44rpx`（未选 `#C7C7CC`，选中实心 Apple 蓝 `#007AFF` 居中白色加粗勾号 `✓`），边距为标准的 20rpx 圆角与 1.5rpx 细发丝边框；
+  5. **测试与发布闭环**：新增 1 项针对长副标题与标题排版的回归测试，全量 214 项测试 100% 通过；已通过脚本成功发布至微信小程序体验版 `v0.137`。
+
+---
+
 ## 自动化测试验证
 
-工程全量 213 项单元测试执行结果：
+工程全量 214 项单元测试执行结果：
 ```bash
 node --test tests/*.test.js
 ```
-- **测试总数**：`213`
-- **通过数量**：`213`（100% 全部通过）
+- **测试总数**：`214`
+- **通过数量**：`214`（100% 全部通过）
 - **失败用例**：`0`
 - **回归验证范围**：
+  - 标题与文案卡项：副标题长句不误作为 parsedTag，避免竖排挤压 bug（全新通过）；
   - 动态任务栏折叠/展开与多卡片收纳逻辑；
   - 动态 actions 按钮分发与老旧方法向下兼容；
   - 单选点选即发与多选勾齐批量提交；
