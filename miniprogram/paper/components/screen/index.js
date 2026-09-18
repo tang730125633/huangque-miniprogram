@@ -279,7 +279,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
+    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskTitle: '', agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -408,7 +408,7 @@ Component({
         const liveKeys=new Set(widgets.map(w=>w.key));
         Object.keys(this._agentManualPicks).forEach(k=>{if(!liveKeys.has(k))delete this._agentManualPicks[k];});
       }
-      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
+      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentTaskTitle:String(data.task_title||'').slice(0,40),agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
       // 思考结束补交：思考期间勾齐的选择，回复到达（本帧）后自动一次提交
       setTimeout(()=>{if(this.alive)this.settleAgentPicks();},0);
       this.scrollAgent(widgets.length?widgets:items);
