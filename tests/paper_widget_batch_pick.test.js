@@ -32,8 +32,8 @@ function widget(id, type, opts = {}) {
     minSelected: 0, maxSelected: 0, selectedCount: 0, layout: 'list',
     catalogExpanded: false, itemCount: 2, script: '', actions: [],
     items: [
-      { key: 'a', id: 'A', title: '选项A', summary: '', body: '', imageUrl: '', displayImage: '', previewUrl: '', slotId: '', createdAt: '', recommended: false, selected: false },
-      { key: 'b', id: 'B', title: '选项B', summary: '', body: '', imageUrl: '', displayImage: '', previewUrl: '', slotId: '', createdAt: '', recommended: false, selected: false },
+      { key: 'a', id: 'A', title: '选项A', summary: '', body: '', imageUrl: '', displayImage: '', previewUrl: '', slotId: '', createdAt: '', recommended: false, selected: false, expanded: false },
+      { key: 'b', id: 'B', title: '选项B', summary: '', body: '', imageUrl: '', displayImage: '', previewUrl: '', slotId: '', createdAt: '', recommended: false, selected: false, expanded: false },
     ],
   }, opts);
 }
@@ -244,3 +244,28 @@ test('渲染中提示条：按后端 started_at 显示已用时；渲染结束�
   c.alive = false;
   api.request = originalRequest;
 });
+
+test('文案卡全文展开与折叠：支持长文案切换，且触发触感微震', async () => {
+  const c = ctx([
+    widget('script_pick', 'script_pick', {
+      title: '口播文案（三版）',
+      items: [
+        { id: 'A', title: 'A版（福利直给）', expanded: false, body: '这是一段很长很长的口播文案，超过五十个字，方便测试长文案展开与收起的完整功能，让长辈能够一眼看完全文。' },
+      ]
+    })
+  ]);
+  let vibrateCount = 0;
+  global.wx.vibrateShort = (opts) => {
+    assert.equal(opts.type, 'light');
+    vibrateCount += 1;
+  };
+  assert.equal(c.data.agentWidgets[0].items[0].expanded, false);
+  await c.toggleScriptBodyExpand.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  assert.equal(c.data.agentWidgets[0].items[0].expanded, true);
+  assert.equal(vibrateCount, 1);
+
+  await c.toggleScriptBodyExpand.call(c, { currentTarget: { dataset: { widget: 0, option: 0 } } });
+  assert.equal(c.data.agentWidgets[0].items[0].expanded, false);
+  assert.equal(vibrateCount, 2);
+});
+

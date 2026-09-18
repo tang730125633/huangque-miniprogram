@@ -230,7 +230,7 @@ function agentWidgets(value,film,selections) {
         parsedName,parsedTag,
         summary:String(item.summary||item.description||'').slice(0,300),body:String(item.body||'').slice(0,1200),imageUrl:String(item.image_url||'').slice(0,2000),displayImage:'',
         previewUrl:String(item.preview_url||'').slice(0,2000),slotId:String(item.slot_id||'').slice(0,200),createdAt:String(item.created_at||'').slice(0,100),recommended:Boolean(item.recommended),
-        selected:false,playing:false
+        selected:false,playing:false,expanded:false
       };
     }).slice(0,layout==='template_catalog'?40:12);
     // voice_sample：跟读稿与动作按钮全部来自卡结构（无默认稿、无 id 前缀判断）
@@ -1109,6 +1109,14 @@ Component({
       const index=Number(e.currentTarget.dataset.widget),widget=this.data.agentWidgets[index];
       if(!widget||!widget.answered)return;
       this.setData({['agentWidgets['+index+'].expanded']:!widget.expanded});
+    },
+    toggleScriptBodyExpand(e){
+      const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
+      const widget=this.data.agentWidgets[widgetIndex],option=widget&&widget.items[optionIndex];
+      if(!widget||!option)return;
+      try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
+      const path='agentWidgets['+widgetIndex+'].items['+optionIndex+'].expanded';
+      this.setData({[path]:!Boolean(option.expanded)});
     },
     chooseAgentWidget(e){
       if(this.data.busy||this.data.agentThinking)return;

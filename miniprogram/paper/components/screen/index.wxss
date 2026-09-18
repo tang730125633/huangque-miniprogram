@@ -413,7 +413,7 @@
 /* 已选卡收成一行：折叠提示与选项区，点徽标展开改选（2026-09-16 老板定调：选过的卡不许一直挂在下面） */
 .agent-widget-card.answered:not(.expanded) .agent-widget-hint,
 .agent-widget-card.answered:not(.expanded) .agent-widget-options { display:none; }
-.agent-widget-badge.answered { background:#eef0ea; color:#6d7269; }
+.agent-widget-badge.answered { background:#efe9dc; color:#6b5f4c; border:1rpx solid #dfd5c4; }
 .agent-widget-card.agent-widget-locked { opacity:.92; }
 .agent-widget-card.agent-widget-locked .agent-widget-option:not(.selected) { opacity:.45; }
 .agent-picks-confirm { display:flex; margin:0 20rpx 24rpx 20rpx; padding:20rpx 24rpx; align-items:center; gap:18rpx; border:1rpx solid #c9c2b4; border-radius:24rpx; background:#f7f3ea; }
@@ -429,6 +429,7 @@
 .agent-widget-option { display:flex; width:100%; min-height:104rpx; align-items:center; gap:18rpx; padding:16rpx 22rpx; border:1.5rpx solid #eae4d8; border-radius:20rpx; color:#30352f; background:#fff; text-align:left; box-sizing:border-box; transition:all .2s ease; }
 .agent-widget-option.selected { border-color:#d79c46; background:#fdf9f1; box-shadow:0 4rpx 16rpx rgba(215,156,70,.12); }
 .agent-widget-thumb { width:88rpx; height:88rpx; flex:none; border-radius:14rpx; background:#eee8dc; }
+.agent-avatar-thumb { width:108rpx !important; height:108rpx !important; border-radius:20rpx !important; border:2rpx solid #e0d5c3 !important; box-shadow:0 4rpx 14rpx rgba(138,98,35,.12) !important; }
 .agent-voice-play-circle { display:flex; align-items:center; justify-content:center; width:62rpx; height:62rpx; flex:none; border-radius:50%; background:#f7ede0; transition:transform .15s ease; }
 .agent-voice-play-circle.is-playing { background:#ebd7be; transform:scale(1.05); }
 .agent-play-icon { color:#835b22; font-size:22rpx; margin-left:3rpx; }
@@ -438,11 +439,17 @@
 .agent-widget-name { font-size:29rpx; font-weight:700; line-height:1.4; color:#1a1e1a; }
 .agent-widget-pill { display:inline-block; padding:5rpx 16rpx; border-radius:12rpx; background:#f1eae1; color:#6f6556; font-size:22rpx; line-height:1.3; font-weight:550; flex:none; }
 .agent-widget-summary { margin-top:4rpx; color:#777168; font-size:22rpx; line-height:1.45; }
-.agent-widget-body { display:-webkit-box; margin-top:6rpx; overflow:hidden; color:#5e625d; font-size:22rpx; line-height:1.5; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+.agent-widget-body-wrap { margin-top:6rpx; }
+.agent-widget-body { display:-webkit-box; overflow:hidden; color:#5e625d; font-size:22rpx; line-height:1.55; -webkit-box-orient:vertical; -webkit-line-clamp:3; }
+.agent-widget-body.is-expanded { display:block; -webkit-line-clamp:unset; }
+.agent-body-expand-btn { display:inline-block; margin-top:8rpx; color:#8a6223; font-size:21rpx; font-weight:600; padding:2rpx 0; }
 .agent-widget-action { flex:none; min-width:72rpx; color:#8a6223; font-size:23rpx; font-weight:650; text-align:center; }
 .agent-widget-radio { display:flex; align-items:center; justify-content:center; width:42rpx; height:42rpx; flex:none; border-radius:50%; border:2.5rpx solid #a89f92; box-sizing:border-box; background:#fff; transition:all .2s ease; }
-.agent-widget-radio.checked { border-color:#b07c33; background:#b07c33; }
+.agent-widget-radio.checked { border-color:#b07c33; background:#b07c33; box-shadow:0 2rpx 8rpx rgba(176,124,51,.35); }
 .agent-radio-tick { color:#fff; font-size:24rpx; font-weight:700; line-height:1; }
+.agent-widget-checkbox { display:flex; align-items:center; justify-content:center; width:42rpx; height:42rpx; flex:none; border-radius:12rpx; border:2.5rpx solid #a89f92; box-sizing:border-box; background:#fff; transition:all .2s ease; }
+.agent-widget-checkbox.checked { border-color:#b07c33; background:#b07c33; box-shadow:0 2rpx 8rpx rgba(176,124,51,.35); }
+.agent-checkbox-tick { color:#fff; font-size:24rpx; font-weight:700; line-height:1; }
 .agent-template-toggle { min-height:52rpx; flex:none; padding:8rpx 14rpx; border:1rpx solid #d9c7a8; border-radius:999rpx; color:#76531f; background:#faf1df; font-size:19rpx; line-height:1.2; }
 .agent-template-scroll { width:100%; }
 .agent-template-options { display:flex; gap:12rpx; padding:0 14rpx 16rpx; }
