@@ -284,6 +284,7 @@ Component({
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
     agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskId: '01', agentTaskTitle: '方案建议准备就绪', agentTaskDesc: '', agentTaskCollapsedDesc: '', agentWidgetsSummary: '', agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
+    agentQueue: [], agentEditQueueSeq: '',
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -366,7 +367,7 @@ Component({
       if(this.properties.pageId==='chat'&&homeDraft&&homeDraft.sid===this.data.agentSessionId){this.agentDraft=homeDraft.message||'';this.setData({promptInput:this.agentDraft,agentHasText:!!this.agentDraft});api.save({ip12HomeDraft:null});}
       this.setData({agentPending:pending,agentThinking:!!activeWaiting,agentHomeAction:activeWaiting?'查看进度':'开始',agentProgress:activeWaiting?'正在恢复处理进度…':''});
       if(this.properties.pageId==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
-      if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.pollAgent(waiting.sid,waiting.seq).catch(error=>this.fail(error)),0);
+      if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.resumeAgentQueue(this.data.agentSessionId,waiting.seq).catch(error=>this.fail(error)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
         this.agentDraft=outgoing.message||'';this.setData({promptInput:this.agentDraft});
         const target=outgoing.newConversation?saved===IP12_NEW_SESSION&&!this.data.agentSessionId:saved===outgoing.sid&&this.data.agentSessionId===outgoing.sid;
@@ -383,7 +384,7 @@ Component({
     },
     async restoreAgent(sid,valid=()=>this.alive) {
       const switching=sid!==this.data.agentSessionId;
-      if(switching){if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});}
+      if(switching){if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false,agentQueue:[],agentEditQueueSeq:''});}
       const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
@@ -564,7 +565,7 @@ Component({
     sendPrompt(){return this.sendAgent(false);},
     sendAgent() {
       if(!this.requireLogin())return;
-      if(this.data.agentThinking)return this.toast('黄雀还在回复，你可以先把下一句话写好');
+      if(this.data.agentEditQueueSeq)return this.saveQueueEdit();
       const attached=this.data.agentAttachments||[];
       const message=String(this.agentDraft===undefined?this.data.promptInput:this.agentDraft).trim()||(attached.length?'请查看我发送的素材：'+attached.slice(0,3).map(item=>item.name).join('、')+(attached.length>3?'等 '+attached.length+' 个文件':''):'');
       if(!message)return this.toast('请先写一句想说的话');
@@ -593,12 +594,13 @@ Component({
         if(approval)body.approval=approval;
         if(widgetAction)body.widget_action=widgetAction;
         const pending={sid,body,attachments,status:'sending',createdAt:Date.now()};
-        api.save({ip12Pending:pending,ip12Outgoing:null});if(!approval)this.agentDraft='';this.setData({agentPending:pending,agentThinking:true,promptInput:approval?this.data.promptInput:'',agentHasText:approval?this.data.agentHasText:false,agentAttachments:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentMessages:this.data.agentMessages.concat({domId:'agent-local-'+Date.now(),role:'user',content:displayText||body.message,images:[],videos:[],attachments})});
+        const domId='agent-local-'+Date.now();
+        api.save({ip12Pending:pending,ip12Outgoing:null});if(!approval)this.agentDraft='';this.setData({agentPending:pending,agentThinking:true,promptInput:approval?this.data.promptInput:'',agentHasText:approval?this.data.agentHasText:false,agentAttachments:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentMessages:this.data.agentMessages.concat({domId,role:'user',content:displayText||body.message,images:[],videos:[],attachments})});
         this.scrollAgent();
-        await this.executeAgent(pending);
+        await this.executeAgent(pending,domId);
       });
     },
-    async executeAgent(pending) {
+    async executeAgent(pending,domId) {
       let data;
       try {
         data=await api.request(IP12_API+'/chat','POST',pending.body);
@@ -609,9 +611,12 @@ Component({
         throw error;
       }
       if(!data.async||data.seq===undefined){this.agentDraft=pending.body.message;pending.status='unknown';api.save({ip12Pending:pending});this.setData({agentPending:pending,agentThinking:false,agentProgress:'',promptInput:pending.body.message,agentHasText:true,agentAttachments:pending.attachments||[]});throw new Error(data.error||'主 Agent 回执不完整，请先检查是否已经发送');}
-      api.save({ip12Pending:null,ip12Waiting:{sid:pending.sid,seq:data.seq}});
-      this.setData({agentPending:null,agentThinking:true,agentProgress:'正在理解你的要求…'});
-      this.agentPoll=this.pollAgent(pending.sid,data.seq).catch(error=>this.fail(error));
+      // 消息队列：后端按到达顺序排队跑；本地队列只是展示+插队/编辑的操作面板。
+      // 队首（含正在回复的那条）完成并被 /poll 交付后才出队，ip12Waiting 始终指向队首。
+      const q=(this.data.agentQueue||[]).concat({seq:String(data.seq),message:pending.body.message,ts:Date.now(),status:'queued',domId:domId||''});
+      api.save({ip12Pending:null,ip12Waiting:{sid:pending.sid,seq:Number(q[0].seq)}});
+      this.setData({agentPending:null,agentQueue:q,agentThinking:true,agentProgress:'正在理解你的要求…'});
+      this.agentPoll=this.pollAgent(pending.sid,Number(q[0].seq)).catch(error=>this.fail(error));
     },
     async updateAgentProgress(sid,valid=()=>true){
       let status;
@@ -698,35 +703,71 @@ Component({
       this.setData({agentBackgroundWorking:active,agentWorkingElapsed:active?fmtWorkElapsed(Date.now()-(this.renderStartTs||Date.now())):''});
       if(active)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);
     },
+    async resumeAgentQueue(sid,fallbackSeq){
+      // 页面重新打开/刷新后重建消息队列：排队中的消息以后端 /status 的 queue 为准
+      // （服务器是权威，页面关了也照样排队跑）；正在跑的那条不在 queue 里，用本地等待记录补。
+      let status=null;
+      try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}catch(_){}
+      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
+      const q=(status&&Array.isArray(status.queue)?status.queue:[]).map(item=>({seq:String(item.seq),message:String(item.message||''),ts:Number(item.ts||0),status:'queued',domId:''}));
+      if(q.length){
+        api.save({ip12Waiting:{sid,seq:Number(q[0].seq)}});
+        this.setData({agentQueue:q,agentThinking:true});
+        this.agentPoll=this.pollAgent(sid,Number(q[0].seq)).catch(error=>this.fail(error));
+      }else if(fallbackSeq){
+        api.save({ip12Waiting:{sid,seq:Number(fallbackSeq)}});
+        this.setData({agentQueue:[{seq:String(fallbackSeq),message:'',ts:0,status:'queued',domId:''}],agentThinking:true});
+        this.agentPoll=this.pollAgent(sid,Number(fallbackSeq)).catch(error=>this.fail(error));
+      }
+    },
     stopAgentPoll(){const owner=this.agentPollOwner;this.agentPollOwner=null;if(owner){clearTimeout(owner.timer);if(owner.wake)owner.wake();}},
     pollAgent(sid,target){
+      // 消息队列轮询：owner 按目标轮次号管理（新目标接管、旧目标晚到的结果一律丢弃），
+      // 消费按队列 FIFO 进行。比队首还早的目标是过时的旧等待，直接不接管。
       const token=api.session()&&api.session().token,old=this.agentPollOwner;
-      const waiting=api.read().ip12Waiting;
-      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId||!token||!waiting||waiting.sid!==sid||Number(waiting.seq)!==Number(target))return Promise.resolve();
-      if(old&&old.sid===sid&&Number(old.target)===Number(target)&&old.token===token)return old.promise;
+      if(!this.alive||this.visible===false||sid!==this.data.agentSessionId||!token)return Promise.resolve();
+      const targetNum=Number(target);
+      if(!Number.isFinite(targetNum)||targetNum<=0)return Promise.resolve();
+      const q=this.data.agentQueue||[];
+      if(q.length&&targetNum<Number(q[0].seq))return Promise.resolve();
+      if(!q.some(item=>Number(item.seq)===targetNum)){
+        const placeholder={seq:String(targetNum),message:'',ts:0,status:'queued',domId:''};
+        this.setData({agentQueue:q.length?q.concat([placeholder]):[placeholder]});
+      }
+      if(old&&old.sid===sid&&Number(old.target)===targetNum&&old.token===token)return old.promise;
       this.stopAgentPoll();
-      const owner={sid,target,token,timer:null,wake:null};this.agentPollOwner=owner;
-      owner.promise=Promise.resolve().then(()=>this.pollAgentStep(sid,target,0,owner)).finally(()=>{if(this.agentPollOwner===owner)this.stopAgentPoll();});
+      const owner={sid,target:targetNum,token,timer:null,wake:null};this.agentPollOwner=owner;
+      owner.promise=Promise.resolve().then(()=>this.pollAgentStep(sid,owner,0)).finally(()=>{if(this.agentPollOwner===owner)this.stopAgentPoll();});
       return owner.promise;
     },
-    async pollAgentStep(sid,target,tries,owner) {
+    async pollAgentStep(sid,owner,tries) {
       if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
-      const matches=()=>{const w=api.read().ip12Waiting;return w&&w.sid===sid&&Number(w.seq)===Number(target);};
       const token=owner.token;
-      const uiValid=()=>{const w=api.read().ip12Waiting;return this.agentPollOwner===owner&&this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(!w||(w.sid===sid&&Number(w.seq)===Number(target)));};
+      const uiValid=()=>{return this.agentPollOwner===owner&&this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(this.data.agentQueue||[]).some(item=>Number(item.seq)===owner.target);};
       if(!uiValid())return;
-      if(!matches())return;
       if(tries>=240){this.setData({agentThinking:false,agentProgress:'处理时间较长，重新打开可查看进度'});this.settleAgentPicks();return;}
       let data;
       try{data=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid));}
       catch(error){if(!uiValid())return;if(error.status&&error.status<500)throw error;data={state:'working'};}
-      if(!uiValid()||!matches())return;
+      if(!uiValid())return;
       if(data.state==='done'||data.state==='error'){
-        if(Number(data.seq)>=Number(target)){
-          if(!this.clearAgentWaiting(sid,target))return;
-          await this.restoreAgent(sid,uiValid);
-          if(uiValid())this.setData({agentThinking:false,agentProgress:''});
-          if(uiValid())this.settleAgentPicks();
+        // /poll 按 FIFO 交付已完成轮次：完成帧的 seq 覆盖到目标轮次时，把队列里
+        // seq ≤ 该帧的条目一并消费（连续完成时一次补齐）；晚到的旧帧按 uiValid 丢弃。
+        if(Number(data.seq)>=owner.target){
+          let q=(this.data.agentQueue||[]).slice();
+          while(q.length&&Number(data.seq)>=Number(q[0].seq))q=q.slice(1);
+          // 等待记录只跟随被消费的进度走：队列空了但等待记录比本帧更新
+          // （别的流程已接管）→ 本帧算过期，丢弃，绝不清、绝不下调。
+          const w=api.read().ip12Waiting;
+          if(!q.length&&w&&w.sid===sid&&Number(w.seq)>Number(data.seq))return;
+          if(q.length)api.save({ip12Waiting:{sid,seq:Number(q[0].seq)}});
+          else if(!w||(w.sid===sid&&Number(w.seq)<=Number(data.seq)))api.save({ip12Waiting:null});
+          this.setData({agentQueue:q});
+          const stillHere=()=>this.alive&&this.visible!==false&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);
+          await this.restoreAgent(sid,stillHere);
+          if(stillHere())this.setData({agentProgress:''});
+          if(!q.length){if(stillHere()){this.setData({agentThinking:false});this.settleAgentPicks();}return;}
+          if(stillHere()){this.agentPollOwner=null;this.agentPoll=this.pollAgent(sid,Number(q[0].seq)).catch(error=>this.fail(error));}
           return;
         }
       }
@@ -737,10 +778,53 @@ Component({
         return;
       }
       if(tries%2===0)await this.updateAgentProgress(sid,uiValid);
-      if(!uiValid()||!matches())return;
+      if(!uiValid())return;
       await new Promise(resolve=>{owner.wake=resolve;owner.timer=setTimeout(resolve,2500);});owner.wake=null;owner.timer=null;
-      if(!uiValid()||!matches())return;
-      return this.pollAgentStep(sid,target,tries+1,owner);
+      if(!uiValid())return;
+      return this.pollAgentStep(sid,owner,tries+1);
+    },
+    // ---- 消息队列操作：插队 / 重新编辑 ----
+    jumpQueueItem(e){
+      const seq=String(e.currentTarget.dataset.seq||'');
+      if(!seq)return;
+      return this.run(async()=>{
+        const sid=this.data.agentSessionId;
+        await api.request(IP12_API+'/queue/'+encodeURIComponent(sid)+'/jump','POST',{seq});
+        const q=(this.data.agentQueue||[]).slice();
+        const idx=q.findIndex(item=>String(item.seq)===seq);
+        if(idx>0){const item=q.splice(idx,1)[0];q.unshift(item);this.setData({agentQueue:q});}
+        this.toast('已插到最前，下一条就处理它');
+      }).catch(error=>{if(error&&error.message)this.toast(error.message);});
+    },
+    editQueueItem(e){
+      const seq=String(e.currentTarget.dataset.seq||'');
+      const item=(this.data.agentQueue||[]).find(x=>String(x.seq)===seq);
+      if(!item)return;
+      this.agentDraft=item.message||'';
+      this.setData({agentEditQueueSeq:seq,promptInput:item.message||'',agentHasText:Boolean(item.message)});
+    },
+    cancelQueueEdit(){
+      this.agentDraft='';
+      this.setData({agentEditQueueSeq:'',promptInput:'',agentHasText:false});
+    },
+    saveQueueEdit(){
+      const seq=this.data.agentEditQueueSeq;
+      if(!seq)return;
+      const message=String(this.agentDraft===undefined?this.data.promptInput:this.agentDraft).trim();
+      if(!message)return this.toast('内容不能为空');
+      return this.run(async()=>{
+        const sid=this.data.agentSessionId;
+        await api.request(IP12_API+'/queue/'+encodeURIComponent(sid)+'/edit','POST',{seq,message});
+        const q=(this.data.agentQueue||[]).map(item=>String(item.seq)===seq?Object.assign({},item,{message}):item);
+        // 同步更新这条消息已经渲染的用户气泡，避免「面板改了一句话、气泡还是旧话」
+        const msgs=(this.data.agentMessages||[]).map(m=>{
+          const hit=q.find(x=>x.domId&&x.domId===m.domId);
+          return hit?Object.assign({},m,{content:hit.message}):m;
+        });
+        this.agentDraft='';
+        this.setData({agentQueue:q,agentEditQueueSeq:'',promptInput:'',agentHasText:false,agentMessages:msgs});
+        this.toast('已保存修改');
+      }).catch(error=>{if(error&&error.message)this.toast(error.message);});
     },
     retryAgent(){
       const pending=this.data.agentPending||api.read().ip12Pending;

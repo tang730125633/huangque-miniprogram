@@ -193,14 +193,35 @@
         <button wx:if="{{!agentReportNotice.pending}}" class="hq-button report-notice-open {{agentReportOpening?'is-disabled':''}}" bindtap="viewAgentReportNotice" loading="{{agentReportOpening}}" disabled="{{agentReportOpening}}">{{agentReportOpening?'正在打开…':'查看报告'}}</button>
         <button class="hq-button report-notice-close {{agentReportOpening?'is-disabled':''}}" bindtap="dismissAgentReportNotice" disabled="{{agentReportOpening}}" aria-label="忽略提示">×</button>
       </view>
+      <view wx:if="{{agentEditQueueSeq}}" class="hq-view agent-queue-editbar">
+        <text class="hq-text agent-queue-editbar-text">正在编辑排队中的消息</text>
+        <button class="hq-button agent-queue-btn" bindtap="saveQueueEdit">保存修改</button>
+        <button class="hq-button agent-queue-btn plain" bindtap="cancelQueueEdit">取消</button>
+      </view>
+      <view wx:if="{{agentQueue.length>1||(agentQueue.length&&agentQueue[0].message)}}" class="hq-view agent-queue-panel">
+        <view class="hq-view agent-queue-head">
+          <text class="hq-text agent-queue-title">消息队列</text>
+          <text class="hq-text agent-queue-count">{{agentQueue.length}} 条待处理</text>
+        </view>
+        <view wx:for="{{agentQueue}}" wx:key="seq" class="hq-view agent-queue-item {{index===0?'is-head':''}}">
+          <view class="hq-view agent-queue-main">
+            <text class="hq-text agent-queue-pos">{{index===0?'正在回复':'排队中'}}</text>
+            <text class="hq-text agent-queue-text">{{item.message||'（上一条进行中）'}}</text>
+          </view>
+          <view wx:if="{{index>0}}" class="hq-view agent-queue-actions">
+            <button class="hq-button agent-queue-btn" data-seq="{{item.seq}}" bindtap="jumpQueueItem" disabled="{{index===1}}">{{index===1?'下一条轮到它':'插队'}}</button>
+            <button class="hq-button agent-queue-btn plain" data-seq="{{item.seq}}" bindtap="editQueueItem">编辑</button>
+          </view>
+        </view>
+      </view>
       <view class="hq-view agent-composer compact-composer">
         <view wx:if="{{agentAttachments.length}}" class="hq-view attachment-list"><view wx:for="{{agentAttachments}}" wx:key="fileId" class="hq-view attachment-chip"><image wx:if="{{item.kind==='image'&&item.preview}}" class="hq-image attachment-preview" src="{{item.preview}}" mode="aspectFill"/><video wx:elif="{{item.kind==='video'&&item.preview}}" class="attachment-preview" src="{{item.preview}}" controls object-fit="cover"/><button wx:elif="{{item.kind==='audio'}}" class="hq-button attachment-audio" data-index="{{index}}" bindtap="previewAgentAttachment">▶ 试听音频</button><view wx:else class="hq-view attachment-kind">{{item.kind==='video'?'视频':item.kind==='audio'?'音频':'图片'}}</view><text class="hq-text attachment-name">{{item.name}}</text><button class="hq-button attachment-remove" data-index="{{index}}" bindtap="removeAgentAttachment" aria-label="移除素材">×</button></view></view>
         <view class="hq-view compact-composer-row">
           <button class="hq-button composer-icon-button voice-unavailable" bindtap="voiceUnavailable" aria-label="语音输入暂未开放"><image class="hq-image composer-icon-image" src="/assets/icons/mic.svg" mode="aspectFit"/><text class="hq-text voice-unavailable-label">暂未开放</text></button>
-          <view class="hq-view composer-input-shell"><textarea class="hq-textarea agent-input" value="{{promptInput}}" placeholder="发消息…" maxlength="4000" bindinput="agentInput" bindconfirm="sendPrompt" confirm-type="send" cursor-spacing="28" auto-height show-confirm-bar="{{false}}" aria-label="给黄雀 Agent 发消息"/></view>
+          <view class="hq-view composer-input-shell"><textarea class="hq-textarea agent-input" value="{{promptInput}}" placeholder="{{agentEditQueueSeq?'修改这条消息的内容…':'发消息…'}}" maxlength="4000" bindinput="agentInput" bindconfirm="sendPrompt" confirm-type="send" cursor-spacing="28" auto-height show-confirm-bar="{{false}}" aria-label="给黄雀 Agent 发消息"/></view>
           <button class="hq-button composer-icon-button" bindtap="openAgentQuickPhrases" aria-label="快捷短语"><image class="hq-image composer-icon-image" src="/assets/icons/quick.svg" mode="aspectFit"/></button>
           <button wx:if="{{!agentHasText&&!agentAttachments.length}}" class="hq-button composer-icon-button" bindtap="openAgentTools" aria-label="更多功能"><text class="hq-text composer-plus">＋</text></button>
-          <button wx:else class="hq-button compact-send" bindtap="sendPrompt" loading="{{busy&&!agentThinking}}" disabled="{{busy||loading||agentThinking}}">{{agentThinking?'请稍等':busy?'发送中':'发送'}}</button>
+          <button wx:else class="hq-button compact-send" bindtap="sendPrompt" loading="{{busy&&!agentThinking}}" disabled="{{busy||loading}}">{{agentEditQueueSeq?'保存':busy?'发送中':'发送'}}</button>
         </view>
       </view>
       <view wx:if="{{agentSheet}}" class="hq-view agent-sheet-mask" catchtap="closeAgentSheet"><view class="hq-view agent-sheet" catchtap="keepAgentSheet" role="dialog" aria-label="{{agentSheet==='phrases'?'快捷短语':agentSheet==='assets'?'素材库':agentSheet==='history'?'以前的对话':'更多功能'}}"><view class="hq-view agent-sheet-head"><view class="hq-view agent-sheet-title">{{agentSheet==='phrases'?'快捷短语':agentSheet==='assets'?'我的素材库':agentSheet==='history'?'以前的对话':'更多功能'}}</view><button class="hq-button agent-sheet-close" bindtap="closeAgentSheet" aria-label="关闭">×</button></view>
