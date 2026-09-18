@@ -59,8 +59,22 @@
           <text class="hq-text agent-thinking-text">{{agentProgress||'正在整理视频方案… 已等待 33 秒'}}</text>
         </view>
         <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">成片正在渲染 · 已用时 {{agentWorkingElapsed}}，完成后会自动送到对话里；你可以继续聊天。<button wx:if="{{workSubscriptionConfigured}}" class="hq-button text-button" bindtap="requestWorkSubscription">{{workSubscriptionRemaining?'再订阅一次微信提醒':'完成后微信提醒我'}}</button></view>
-        <view wx:elif="{{agentDeliverySubNotice&&workSubscriptionConfigured&&!workSubscriptionRemaining&&!agentThinking}}" class="hq-view history-note">这次的作品没有开微信提醒。现在开一下，下次完成直接微信通知你。<button class="hq-button text-button" bindtap="requestWorkSubscription">开微信提醒</button></view>
-        <view wx:if="{{!agentVoiceFlow}}" wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card {{agentThinking?'agent-widget-locked':''}} {{item.answered?'answered':''}} {{item.expanded?'expanded':''}}">
+        <view wx:if="{{!agentVoiceFlow && agentWidgets.length > 1}}" class="hq-view agent-task-bar" bindtap="toggleAgentTaskCollapse">
+          <view class="hq-view agent-task-bar-left">
+            <view class="hq-view agent-task-tag">任务 #{{agentSessionId ? agentSessionId.slice(-4) : '01'}}</view>
+            <view class="hq-view agent-task-info">
+              <view class="hq-view agent-task-title-row">
+                <text class="hq-text agent-task-title">方案建议准备就绪</text>
+                <text class="hq-text agent-task-badge">{{agentWidgets.length}} 项待选</text>
+              </view>
+              <text class="hq-text agent-task-desc">{{agentTaskCollapsed ? '方案已收起 · 点击展开 3 项组件卡' : '轻触可整体收起组件卡，保持对话整洁'}}</text>
+            </view>
+          </view>
+          <view class="hq-view agent-task-bar-right">
+            <text class="hq-text agent-task-toggle-indicator">{{agentTaskCollapsed ? '展开 ▾' : '收起 ▴'}}</text>
+          </view>
+        </view>
+        <view wx:if="{{!agentVoiceFlow && (!agentTaskCollapsed || agentWidgets.length <= 1)}}" wx:for="{{agentWidgets}}" wx:key="key" wx:for-index="widgetIndex" id="{{item.domId}}" class="hq-view agent-widget-card {{agentThinking?'agent-widget-locked':''}} {{item.answered?'answered':''}} {{item.expanded?'expanded':''}}">
           <view class="hq-view agent-widget-head">
             <view class="hq-view agent-widget-title-wrap">
               <image wx:if="{{item.type==='voice_pick'}}" class="hq-image widget-title-icon" src="/assets/icons/em_wave.svg" mode="aspectFit"/>

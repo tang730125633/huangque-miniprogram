@@ -409,6 +409,17 @@
 .agent-thinking-sparkle { display:flex; align-items:center; justify-content:center; width:46rpx; height:46rpx; flex:none; border-radius:50%; background:#faeedd; }
 .thinking-sparkle-icon { width:26rpx; height:26rpx; }
 .agent-thinking-text { color:#2c312c; font-size:27rpx; font-weight:600; line-height:1.4; }
+.agent-task-bar { display:flex; align-items:center; justify-content:space-between; margin:0 20rpx 16rpx 20rpx; padding:18rpx 22rpx; border-radius:24rpx; background:#fffcf6; border:1.5rpx solid #e7d8bf; box-shadow:0 4rpx 16rpx rgba(215,156,70,.08); transition:all .2s ease; }
+.agent-task-bar:active { transform:scale(.985); }
+.agent-task-bar-left { display:flex; align-items:center; gap:16rpx; min-width:0; flex:1; }
+.agent-task-tag { padding:4rpx 12rpx; border-radius:10rpx; background:#8a6426; color:#fff; font-size:20rpx; font-weight:700; flex:none; }
+.agent-task-info { min-width:0; flex:1; }
+.agent-task-title-row { display:flex; align-items:center; gap:10rpx; }
+.agent-task-title { font-size:26rpx; font-weight:700; color:#1a1e1a; }
+.agent-task-badge { font-size:19rpx; color:#8a6426; background:#f5ebd8; padding:2rpx 10rpx; border-radius:8rpx; font-weight:600; }
+.agent-task-desc { display:block; font-size:20rpx; color:#8c8374; margin-top:2rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.agent-task-bar-right { flex:none; padding-left:14rpx; }
+.agent-task-toggle-indicator { font-size:21rpx; font-weight:700; color:#8a6426; padding:6rpx 16rpx; border-radius:999rpx; background:#fbf2e3; border:1rpx solid #e4d4ba; }
 .agent-widget-card { margin:0 20rpx 24rpx 20rpx; overflow:hidden; border:1rpx solid #ece6dc; border-radius:28rpx; background:#ffffff; box-shadow:0 12rpx 36rpx rgba(46,39,27,.06); }
 /* 已选卡收成一行：折叠提示与选项区，点徽标展开改选（2026-09-16 老板定调：选过的卡不许一直挂在下面） */
 .agent-widget-card.answered:not(.expanded) .agent-widget-hint,

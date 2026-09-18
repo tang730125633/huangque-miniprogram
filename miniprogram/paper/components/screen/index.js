@@ -279,7 +279,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
+    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
@@ -1108,6 +1108,11 @@ Component({
       const index=Number(e.currentTarget.dataset.widget),widget=this.data.agentWidgets[index];
       if(!widget||widget.layout!=='template_catalog')return;
       this.setData({['agentWidgets['+index+'].catalogExpanded']:!widget.catalogExpanded});
+    },
+    toggleAgentTaskCollapse(){
+      if(this.data.busy||this.data.agentThinking)return;
+      try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
+      this.setData({agentTaskCollapsed:!this.data.agentTaskCollapsed});
     },
     toggleAgentWidgetExpand(e){
       // 已选收起的卡点徽标展开改选；再点收起。
