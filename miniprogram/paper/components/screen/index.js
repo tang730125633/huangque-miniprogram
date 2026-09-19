@@ -294,7 +294,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskId: '01', agentTaskTitle: '方案建议准备就绪', agentTaskDesc: '', agentTaskCollapsedDesc: '', agentWidgetsSummary: '', agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
+    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskId: '01', agentTaskTitle: '方案建议准备就绪', agentTaskDesc: '', agentTaskCollapsedDesc: '', agentWidgetsSummary: '', agentTaskPendingCount: 0, agentTaskBadgeText: '', agentTaskDismissed: false, agentTaskManualExpanded: false, agentTaskManualCollapsed: false, agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
     agentQueue: [], agentEditQueueSeq: '',
     agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
@@ -314,13 +314,17 @@ Component({
       try { const w=wx.getWindowInfo(); const c=wx.getMenuButtonBoundingClientRect(); statusTop=w.statusBarHeight||24; navHeight=Math.max(44,(c.top-statusTop)*2+c.height); safeRight=w.windowWidth-c.left+12; } catch (_) {}
       const draft=api.read().draft||{}; this.reference=draft.reference||''; this.agentDraft=draft.prompt||'';
       const f=creation.formats.find(f=>f.id===draft.kind)||creation.formats[0];
-      this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
+      const sess=api.session();
+      const initialUser=sess&&sess.user&&sess.user.username?sess.user:null;
+      if(initialUser&&!this.owner)this.owner=initialUser.username;
+      this.setData({title:titles[this.properties.pageId],statusTop,navHeight,safeRight,chatNavOffset:statusTop+navHeight,user:initialUser,promptInput:draft.prompt||'',agentHasText:Boolean(String(draft.prompt||'').trim()),kind:f.id,kindName:f.name,formatDetail:f.detail,voice:draft.voice||'',referencePath:draft.reference||'',attempt:api.read().attempt||null,notifications:api.read().notifications||this.data.notifications});
+      this._lastLoadTime = Date.now();
       this.load();
       this.loadWorkSubscription();
     },
     detached() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
-  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive)this.load(); }, hide() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
+  pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive&&(!this._lastLoadTime||Date.now()-this._lastLoadTime>350))this.load(); }, hide() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
     refreshTaskQueue(e){if(!this.queueController)this.queueController=new QueueController({scope:()=>({alive:this.alive,visible:this.visible!==false,sid:this.data.agentSessionId,token:api.session()&&api.session().token}),tasks:()=>this.data.agentQueueTasks,request:path=>api.request(path,'GET',null,{timeout:5000}),update:(tasks,reconnecting)=>this.setData({agentQueueTasks:tasks,agentQueueReconnecting:reconnecting})});return this.queueController.refresh(e&&e.detail&&e.detail.id);},
     stopTaskQueue(){if(this.queueController)this.queueController.stop();},
@@ -334,21 +338,40 @@ Component({
     async load() {
       if(this.owner&&(!api.session()||api.session().user.username!==this.owner))this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
       if(this.loading)return;this.loading=true;
+      this._lastLoadTime = Date.now();
       const token=api.session()&&api.session().token;
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
-      this.setData({loading:true,error:'',user:api.session()&&api.session().user,attempt:api.read().attempt||null});
+      const currentUser=api.session()&&api.session().user&&api.session().user.username?api.session().user:null;
+      this.setData({loading:true,error:'',user:currentUser,attempt:api.read().attempt||null});
       if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
-        const identity=await api.request('/api/auth/me');if(!valid())return;
-        api.rememberIdentity(token,identity.user);
-        const saved=api.read();
-        if(!this.owner||this.owner!==identity.user.username){this.owner=identity.user.username;const d=saved.draft||{};const f=creation.formats.find(x=>x.id===d.kind)||creation.formats[0];this.reference=d.reference||'';this.setData({promptInput:d.prompt||'',kind:f.id,kindName:f.name,formatDetail:f.detail,voice:d.voice||'',referencePath:d.reference||'',attempt:saved.attempt||null});}
-        this.setData({user:identity.user});
-        if(page==='home')await Promise.all([this.loadWorks(valid),this.loadAgent(valid)]);
-        else if(['works','messages','card-works'].includes(page))await this.loadWorks(valid);
-        else if(page==='chat')await this.loadAgent(valid);
+        const identityTask = api.request('/api/auth/me').then(identity => {
+          if (!valid()) return null;
+          api.rememberIdentity(token, identity.user);
+          const saved = api.read();
+          if (!this.owner || this.owner !== identity.user.username) {
+            this.owner = identity.user.username;
+            const d = saved.draft || {};
+            const f = creation.formats.find(x => x.id === d.kind) || creation.formats[0];
+            this.reference = d.reference || '';
+            this.setData({ promptInput: d.prompt || '', kind: f.id, kindName: f.name, formatDetail: f.detail, voice: d.voice || '', referencePath: d.reference || '', attempt: saved.attempt || null });
+          }
+          this.setData({ user: identity.user });
+          return identity;
+        });
+
+        if (page === 'home') {
+          await Promise.all([identityTask, this.loadWorks(valid), this.loadAgent(valid)]);
+        } else if (['works', 'messages', 'card-works'].includes(page)) {
+          await Promise.all([identityTask, this.loadWorks(valid)]);
+        } else if (page === 'chat') {
+          await Promise.all([identityTask, this.loadAgent(valid)]);
+        } else {
+          await identityTask;
+        }
+
         if(['card','card-edit','privacy','card-works','card-public'].includes(page)) {
           const data=await api.request('/api/auth/card/me?create=0').catch(e=>{if(e.status===404)return {card:null};throw e;}); if(valid())this.setData({card:Object.assign({},emptyCard,data.card||{}),publicCard:null});
           if(page==='card-public'&&data.card&&data.card.published) { const pub=await api.request('/api/auth/card/public?id='+encodeURIComponent(data.card.public_id));if(valid())this.setData({publicCard:pub.card||null}); }
@@ -377,7 +400,7 @@ Component({
       const homeDraft=local.ip12HomeDraft;
       if(this.properties.pageId==='chat'&&homeDraft&&homeDraft.sid===this.data.agentSessionId){this.agentDraft=homeDraft.message||'';this.setData({promptInput:this.agentDraft,agentHasText:!!this.agentDraft});api.save({ip12HomeDraft:null});}
       this.setData({agentPending:pending,agentThinking:!!activeWaiting,agentHomeAction:activeWaiting?'查看进度':'开始',agentProgress:activeWaiting?'正在恢复处理进度…':''});
-      if(this.properties.pageId==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
+      if((this.data.pageId||this.properties.pageId)==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
       if(this.properties.pageId==='chat'&&waiting&&waiting.sid===this.data.agentSessionId)setTimeout(()=>this.resumeAgentQueue(this.data.agentSessionId,waiting.seq).catch(error=>this.fail(error)),0);
       else if(this.properties.pageId==='chat'&&outgoing&&outgoing.status==='queued'){
         this.agentDraft=outgoing.message||'';this.setData({promptInput:this.agentDraft});
@@ -426,11 +449,30 @@ Component({
       }
       const task=(data&&data.task&&typeof data.task==='object')?data.task:{};
       const agentTaskId=String(task.id||data.task_id||(sid?sid.slice(-4):'01'));
+      const pendingWidgets=widgets.filter(w=>!w.answered&&!w.selectedId);
+      const agentTaskPendingCount=pendingWidgets.length;
+      const allAnswered=widgets.length>0&&agentTaskPendingCount===0;
+      const agentTaskBadgeText=agentTaskPendingCount>0?(agentTaskPendingCount+' 项待选'):'已选齐';
+      const isNewTask=this._lastHandledTaskId!==agentTaskId;
+      if(isNewTask){
+        this._lastHandledTaskId=agentTaskId;
+        this._taskDismissedForId='';
+      }
+      let agentTaskCollapsed=this.data.agentTaskCollapsed;
+      if(isNewTask){
+        agentTaskCollapsed=allAnswered;
+      }else if(allAnswered&&!this.data.agentTaskManualExpanded){
+        agentTaskCollapsed=true;
+      }else if(!allAnswered&&agentTaskPendingCount>0&&!this.data.agentTaskManualCollapsed){
+        agentTaskCollapsed=false;
+      }
+      const agentTaskDismissed=Boolean(this._taskDismissedForId&&this._taskDismissedForId===agentTaskId);
       const agentWidgetsSummary=widgets.map(w=>w.title).filter(Boolean).join(' · ');
       const agentTaskTitle=String(task.title||data.task_title||(widgets.length>1?'方案建议准备就绪':'')).slice(0,60);
       const agentTaskDesc=String(task.desc||data.task_desc||agentWidgetsSummary||'轻触可整体收起组件卡，保持对话整洁').slice(0,120);
-      const agentTaskCollapsedDesc=String(task.collapsed_desc||data.task_collapsed_desc||('方案已收起 · 点击展开 '+widgets.length+' 项组件卡')).slice(0,120);
-      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentTaskId,agentTaskTitle,agentTaskDesc,agentTaskCollapsedDesc,agentWidgetsSummary,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
+      const defaultCollapsedDesc=allAnswered?('方案配置已就绪 · 点击展开可修改 '+widgets.length+' 项组件卡'):('方案已收起 · 点击展开 '+widgets.length+' 项组件卡');
+      const agentTaskCollapsedDesc=String(task.collapsed_desc||data.task_collapsed_desc||defaultCollapsedDesc).slice(0,120);
+      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentTaskId,agentTaskTitle,agentTaskDesc,agentTaskCollapsedDesc,agentWidgetsSummary,agentTaskPendingCount,agentTaskBadgeText,agentTaskCollapsed,agentTaskDismissed,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
       // 思考结束补交：思考期间勾齐的选择，回复到达（本帧）后自动一次提交
       setTimeout(()=>{if(this.alive)this.settleAgentPicks();},0);
       this.scrollAgent(widgets.length?widgets:items);
@@ -442,10 +484,12 @@ Component({
     },
     scrollAgent(items=this.data.agentMessages) {
       const last=items[items.length-1];
-      if(last)setTimeout(()=>{if(this.alive)this.setData({agentScrollTarget:last.domId});},30);
+      if(!last||!this.alive)return;
+      if(this.data.agentScrollTarget===last.domId)return;
+      setTimeout(()=>{if(this.alive&&this.data.agentScrollTarget!==last.domId)this.setData({agentScrollTarget:last.domId});},30);
     },
     async loadWorks(valid=()=>this.alive) {
-      const page=this.properties.pageId,limit=page==='home'?6:120;
+      const page=this.data.pageId||this.properties.pageId,limit=page==='home'?6:120;
       const kinds=['image','copy','audio'];
       const [responses,videos]=await Promise.all([
         Promise.all(kinds.map(kind=>api.request('/api/gen/history?kind='+kind+'&include_failed=1&limit='+limit))),
@@ -467,7 +511,13 @@ Component({
         j.displayCover=await api.mediaSource(api.mediaURL('/api/gen/file/'+j.coverFile)).catch(()=>'');
       }));
       if(valid()){
-        this.setData({works,hasMore:page==='works'&&batches.some(b=>b.length>=limit)});this.applyFilter();
+        const q=(this.data.search||'').trim().toLowerCase(),filter=this.data.filter||'all';
+        const visibleWorks=works.filter(w=>{
+          const allowed=page!=='card-works'||(w.done&&['image','video'].includes(w.kind));
+          const matched=page==='works'?(filter==='all'||filter==='done'&&w.done||filter==='failed'&&w.failed||filter==='processing'&&!w.done&&!w.failed):(filter==='all'||w.kind===filter);
+          return allowed&&matched&&(!q||w.title.toLowerCase().includes(q));
+        });
+        this.setData({works,visibleWorks,hasMore:page==='works'&&batches.some(b=>b.length>=limit)});
         if(page==='home'){
           const previews=works.slice(0,2).filter(j=>j.kind==='video'&&!j.displayCover&&j.url);
           Promise.all(previews.map(async j=>{j.previewVideo=await api.mediaSource(j.url).catch(()=>'');})).then(()=>{if(valid())this.setData({works});});
@@ -500,23 +550,61 @@ Component({
     cardField(e) {const key=e.currentTarget.dataset.field;if(['name','headline','company','bio','email','address'].includes(key))this.setData({['card.'+key]:e.detail.value});},
     openLegacy(e){const routes={recharge:'/pages/recharge/recharge',invite:'/pages/invite/invite',card:'/pages/my-card/my-card',inspiration:'/pages/inspiration/inspiration',ip12:'/pages/ip12/ip12'};const url=routes[e.currentTarget.dataset.legacy];if(url)wx.navigateTo({url});},
     homeShortcut(e){this.setData({promptInput:e.currentTarget.dataset.prompt||''});},
+    switchTab(route){
+      if(!['home','works','profile'].includes(route))return;
+      const current=this.data.pageId||this.properties.pageId;
+      if(current===route){
+        if(typeof wx !== 'undefined' && typeof wx.pageScrollTo === 'function'){
+          try{wx.pageScrollTo({scrollTop:0,duration:300});}catch(_){}
+        }
+        return;
+      }
+      if(this.stopHomeAgent)this.stopHomeAgent();
+      if(typeof wx !== 'undefined' && typeof wx.pageScrollTo === 'function'){
+        try{wx.pageScrollTo({scrollTop:0,duration:0});}catch(_){}
+      }
+      const patch={pageId:route,title:titles[route]||''};
+      if(route==='works'){
+        const q=(this.data.search||'').trim().toLowerCase(),filter=this.data.filter||'all';
+        patch.visibleWorks=(this.data.works||[]).filter(w=>{
+          const matched=(filter==='all'||filter==='done'&&w.done||filter==='failed'&&w.failed||filter==='processing'&&!w.done&&!w.failed);
+          return matched&&(!q||w.title.toLowerCase().includes(q));
+        });
+      }
+      this.setData(patch);
+      if(this.properties)this.properties.pageId=route;
+      const valid=()=>this.alive&&(this.data.pageId||this.properties.pageId)===route;
+      if(route==='home'){
+        this.loadAgent(valid);
+        if(this.refreshHomeAgent)this.refreshHomeAgent();
+      }else if(route==='works'){
+        this.loadWorks(valid);
+      }else if(route==='profile'){
+        api.request('/api/auth/me').then(res=>{if(valid()&&res&&res.user)this.setData({user:res.user});}).catch(()=>{});
+      }
+    },
     go(e){this.navigate(e.currentTarget.dataset.route);},
     navigate(id){
       if(!pages.some(p=>p.id===id))return;
       if(this.stopHomeAgent)this.stopHomeAgent();
+      const current=this.data.pageId||this.properties.pageId;
+      if(['home','works','profile'].includes(id)&&['home','works','profile'].includes(current)){
+        this.switchTab(id);
+        return;
+      }
       const navigationToken=api.session()&&api.session().token,outgoing=api.read().ip12Outgoing;
       const failed=()=>{
         this.homeEntering=false;
         if(navigationToken!==(api.session()&&api.session().token))return;
         const latest=api.read().ip12Outgoing;
-        if(this.properties.pageId==='home'&&outgoing&&latest&&latest.createdAt===outgoing.createdAt&&latest.sid===outgoing.sid&&latest.message===outgoing.message)api.save({ip12Outgoing:null});
+        if((this.data.pageId||this.properties.pageId)==='home'&&outgoing&&latest&&latest.createdAt===outgoing.createdAt&&latest.sid===outgoing.sid&&latest.message===outgoing.message)api.save({ip12Outgoing:null});
         if(!this.alive||this.visible===false)return;
         this.setData({error:'打开页面失败，请重试；你的草稿已保留'});
-        if(this.properties.pageId==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
+        if((this.data.pageId||this.properties.pageId)==='home'&&this.refreshHomeAgent)this.refreshHomeAgent();
       };
       if(id==='login'){wx.navigateTo({url:'/pages/login/login?redirect=paper',fail:failed});return;}
       const url='/paper/pages/'+id+'/index';
-      if(['home','works','profile'].includes(id))wx.reLaunch({url,fail:failed});
+      if(['home','works','profile'].includes(id))wx.redirectTo({url,fail:()=>wx.reLaunch({url,fail:failed})});
       else wx.navigateTo({url,fail:()=>wx.redirectTo({url,fail:failed})});
     },
     back(){if(getCurrentPages().length>1)wx.navigateBack();else this.navigate('home');},
@@ -544,8 +632,8 @@ Component({
     clearAgentWaiting(sid,seq){const current=api.read().ip12Waiting;if(current&&current.sid===sid&&Number(current.seq)===Number(seq)){api.save({ip12Waiting:null});return true;}return false;},
     async refreshHomeAgent(){
       this.stopHomeAgent();const epoch=this.homeAgentEpoch,sid=this.data.agentSessionId,waiting=api.read().ip12Waiting,token=api.session()&&api.session().token;
-      if(this.properties.pageId!=='home'||!this.alive||this.visible===false||!waiting||waiting.sid!==sid)return;
-      const valid=()=>this.alive&&this.visible!==false&&this.properties.pageId==='home'&&epoch===this.homeAgentEpoch&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);
+      if((this.data.pageId||this.properties.pageId)!=='home'||!this.alive||this.visible===false||!waiting||waiting.sid!==sid)return;
+      const valid=()=>this.alive&&this.visible!==false&&(this.data.pageId||this.properties.pageId)==='home'&&epoch===this.homeAgentEpoch&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token);
       let delay=5000;
       try{
         const state=await api.request(IP12_API+'/poll/'+encodeURIComponent(sid),'GET',null,{timeout:5000});if(!valid())return;
@@ -599,6 +687,7 @@ Component({
         // 旧写法把整批卡记进 ip12DismissedWidgets，用户点选过的文案卡/续挂卡
         // 从此再也不上屏——打字改选后「文案卡消失」就是这么来的（报障台 #10）。
         if(!approval&&this.data.agentWidgets&&this.data.agentWidgets.length)this.setData({agentWidgets:[]});
+        if(!approval&&!widgetAction)this.setData({agentTaskCollapsed:true,agentTaskManualExpanded:false});
         const body={session_id:sid,message:String(message||'').trim()};
         const attachments=approval?[]:(this.data.agentAttachments||[]).slice();
         if(attachments.length)body.attachments=attachments.map(item=>item.fileId);
@@ -702,16 +791,22 @@ Component({
       if(!sid||!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
       let status;
       try{status=await api.request(IP12_API+'/status/'+encodeURIComponent(sid),'GET',null,{timeout:5000});}
-      catch(_){if(this.alive&&sid===this.data.agentSessionId)this.setData({agentQueueReconnecting:true});if(this.agentWatchActive)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);return;}
+      catch(_){if(this.alive&&sid===this.data.agentSessionId&&!this.data.agentQueueReconnecting)this.setData({agentQueueReconnecting:true});if(this.agentWatchActive)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);return;}
       if(!this.alive||this.visible===false||sid!==this.data.agentSessionId)return;
-      this.setData({agentQueueTasks:taskQueue.merge(this.data.agentQueueTasks,taskQueue.collect(status),sid),agentQueueReconnecting:false});
+      const nextTasks=taskQueue.merge(this.data.agentQueueTasks,taskQueue.collect(status),sid);
+      if(JSON.stringify(nextTasks)!==JSON.stringify(this.data.agentQueueTasks)||this.data.agentQueueReconnecting){
+        this.setData({agentQueueTasks:nextTasks,agentQueueReconnecting:false});
+      }
       const active=agentBackgroundActive(status),signature=agentDeliverySignature(status);
       const refresh=(this.agentWatchActive&&!active)||Boolean(this.agentDeliverySignature&&signature!==this.agentDeliverySignature);
       this.agentWatchActive=active;this.agentDeliverySignature=signature;
       if(refresh){await this.restoreAgent(sid);return;}
       if(active&&!this.renderStartTs)this.renderStartTs=Date.now();
       if(!active)this.renderStartTs=0;
-      this.setData({agentBackgroundWorking:active,agentWorkingElapsed:active?fmtWorkElapsed(Date.now()-(this.renderStartTs||Date.now())):''});
+      const nextElapsed=active?fmtWorkElapsed(Date.now()-(this.renderStartTs||Date.now())):''
+      if(this.data.agentBackgroundWorking!==active||this.data.agentWorkingElapsed!==nextElapsed){
+        this.setData({agentBackgroundWorking:active,agentWorkingElapsed:nextElapsed});
+      }
       if(active)this.agentWatchTimer=setTimeout(()=>this.watchAgent(sid),AGENT_WATCH_INTERVAL);
     },
     async resumeAgentQueue(sid,fallbackSeq){
@@ -1232,7 +1327,14 @@ Component({
     toggleAgentTaskCollapse(){
       if(this.data.busy||this.data.agentThinking)return;
       try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
-      this.setData({agentTaskCollapsed:!this.data.agentTaskCollapsed});
+      const next=!this.data.agentTaskCollapsed;
+      this.setData({agentTaskCollapsed:next,agentTaskManualExpanded:!next,agentTaskManualCollapsed:next});
+    },
+    dismissAgentTaskBar(){
+      if(this.data.busy||this.data.agentThinking)return;
+      try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
+      this._taskDismissedForId=this.data.agentTaskId;
+      this.setData({agentTaskDismissed:true});
     },
     toggleAgentWidgetExpand(e){
       // 已选收起的卡点徽标展开改选；再点收起。
@@ -1522,7 +1624,7 @@ Component({
     openWork(e){const key=e.currentTarget.dataset.key,job=this.data.works.find(j=>j.key===key);if(!job)return;this.run(async()=>{api.save({selected:job.kind==='video'&&job.done?{asset:job}:{id:job.jobId||job.id,kind:job.kind}});this.navigate(job.done?job.kind+'-detail':job.failed?'failed':'processing');});},
     viewResult(){const j=this.data.job;if(j&&j.done)this.navigate(j.kind+'-detail');},
     retry(){this.run(async()=>{const local=api.read();if(!local.draft||!local.attempt||Number(local.attempt.jobId)!==Number(this.data.job&&this.data.job.id))throw new Error('这件作品的原始需求未保存在此设备，请回首页填写后重新确认');this.navigate('confirm');});},
-    applyFilter(){const q=this.data.search.trim().toLowerCase(),page=this.properties.pageId,filter=this.data.filter;this.setData({visibleWorks:this.data.works.filter(w=>{const allowed=page!=='card-works'||(w.done&&['image','video'].includes(w.kind));const matched=page==='works'?(filter==='all'||filter==='done'&&w.done||filter==='failed'&&w.failed||filter==='processing'&&!w.done&&!w.failed):(filter==='all'||w.kind===filter);return allowed&&matched&&(!q||w.title.toLowerCase().includes(q));})});},
+    applyFilter(){const q=this.data.search.trim().toLowerCase(),page=this.data.pageId||this.properties.pageId,filter=this.data.filter;this.setData({visibleWorks:this.data.works.filter(w=>{const allowed=page!=='card-works'||(w.done&&['image','video'].includes(w.kind));const matched=page==='works'?(filter==='all'||filter==='done'&&w.done||filter==='failed'&&w.failed||filter==='processing'&&!w.done&&!w.failed):(filter==='all'||w.kind===filter);return allowed&&matched&&(!q||w.title.toLowerCase().includes(q));})});},
     selectFilter(e){this.setData({filter:e.currentTarget.dataset.filter});this.applyFilter();},
     clearSearch(){this.setData({search:'',filter:'all'});this.applyFilter();},
     chooseReference(){if(!['image','text'].includes(this.data.kind))return this.toast('请在图片或文案创作中添加参考图');wx.chooseMedia({count:1,mediaType:['image'],success:r=>{const f=r.tempFiles[0];if(f.size>5*1024*1024)return this.toast('参考图请小于 5 MB');wx.getFileSystemManager().readFile({filePath:f.tempFilePath,encoding:'base64',success:x=>{const mime=x.data.startsWith('iVBOR')?'image/png':x.data.startsWith('UklGR')?'image/webp':x.data.startsWith('/9j/')?'image/jpeg':'';if(!mime)return this.toast('请选择 PNG、JPG 或 WebP 图片');this.reference='data:'+mime+';base64,'+x.data;this.setData({referencePath:f.tempFilePath});},fail:()=>this.toast('无法读取这张图片')});},fail:e=>{if(!/cancel/.test(e.errMsg||''))this.toast('无法打开相册，请检查授权');}});},

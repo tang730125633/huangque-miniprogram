@@ -124,5 +124,67 @@ const draft={kind:'image',prompt:'晨光中的茶杯'};
  await shared.downloadProtected(api.BASE+'/workbench/ip12/api/report.pdf');assert.equal(download.header.Authorization,'Bearer fake-test-token');
  shared.setToken('another-token');await shared.downloadProtected(api.BASE+'/api/gen/file/12');assert.equal(download.header.Authorization,'Bearer another-token');
  assert.equal(api.session().user.username,'');assert.throws(()=>api.save({draft}),/核对账号/);
- console.log('PASS: 26 routes, event bindings, payload validation, media URLs, quote changes, durable submission, recovery key, account isolation stale 401, malformed response, low balance, double submit, card upload limits and text chat contract');
+  // In-component seamless tab switching without page reload
+  const tabComponent = {
+    alive: true,
+    properties: { pageId: 'home' },
+    data: { pageId: 'home', title: '', search: '', filter: 'all', works: [{ id: 10, title: '作品10', done: true }] },
+    setData(patch) { Object.assign(this.data, patch); },
+    applyFilter: component.methods.applyFilter,
+    loadWorks: async () => {},
+    loadAgent: async () => {}
+  };
+  component.methods.switchTab.call(tabComponent, 'works');
+  assert.equal(tabComponent.data.pageId, 'works');
+  assert.equal(tabComponent.data.title, '作品');
+  assert.equal(tabComponent.data.visibleWorks.length, 1);
+  component.methods.switchTab.call(tabComponent, 'home');
+  assert.equal(tabComponent.data.pageId, 'home');
+  assert.equal(tabComponent.data.title, '对话首页');
+
+  // Task bar intelligent hanging: auto-collapse when all answered, smart badge, and dismissable
+  const taskScreen = {
+    alive: true,
+    data: {
+      agentSessionId: 'sid-task-1',
+      agentWidgets: [],
+      agentTaskCollapsed: false,
+      agentTaskId: '7681',
+      agentTaskTitle: '方案建议准备就绪',
+      agentTaskBadgeText: '',
+      agentTaskPendingCount: 2,
+      agentTaskDismissed: false
+    },
+    setData(patch) { Object.assign(this.data, patch); },
+    scrollAgent() {},
+    settleAgentPicks() {}
+  };
+  const mockRestoreData = {
+    ok: true,
+    history: [],
+    delegations: {},
+    task: { id: '7681', title: '方案建议准备就绪' },
+    widgets: [
+      { id: 'avatar_1', type: 'avatar_pick', items: [{ id: 'av_self', title: '本人形象' }] },
+      { id: 'voice_1', type: 'voice_pick', items: [{ id: 'vo_clone', title: '我的克隆音色' }] }
+    ],
+    selected_choices: {
+      avatar: { id: 'av_self' },
+      voice: { id: 'vo_clone' }
+    },
+    film: false,
+    report: {}
+  };
+  const savedReq = api.request;
+  api.request = async () => mockRestoreData;
+  await component.methods.restoreAgent.call(taskScreen, 'sid-task-1');
+  assert.equal(taskScreen.data.agentTaskPendingCount, 0, '全部已选时待选项数量为 0');
+  assert.equal(taskScreen.data.agentTaskBadgeText, '已选齐', '全部已选时徽标文案显示已选齐，不再误显示 2项待选');
+  assert.equal(taskScreen.data.agentTaskCollapsed, true, '全部选齐后任务卡自动收起，不霸占大半屏');
+  assert.equal(taskScreen.data.agentTaskDismissed, false);
+  component.methods.dismissAgentTaskBar.call(taskScreen);
+  assert.equal(taskScreen.data.agentTaskDismissed, true, '点关闭按钮后任务卡被忽略收敛');
+  api.request = savedReq;
+
+  console.log('PASS: 26 routes, event bindings, payload validation, media URLs, quote changes, durable submission, recovery key, account isolation stale 401, malformed response, low balance, double submit, card upload limits and text chat contract');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,18 +1,27 @@
 const shared = require('../../utils/api');
 const BASE = shared.getBase();
 let identity = null;
+const IDENTITY_CACHE_KEY = 'hq_identity_cache_v1';
 function session() {
   const token=shared.getToken();
-  return token ? {token,user:identity&&identity.token===token?identity.user:{username:''}} : null;
+  if(!token)return null;
+  if(!identity||identity.token!==token){
+    try{
+      const cached=wx.getStorageSync(IDENTITY_CACHE_KEY);
+      if(cached&&cached.token===token&&cached.user&&cached.user.username)identity=cached;
+    }catch(_){}
+  }
+  return {token,user:identity&&identity.token===token?identity.user:{username:''}};
 }
 function rememberIdentity(token,user) {
   if(token!==shared.getToken())throw new Error('登录状态已变化，请重新加载');
   if(!user||typeof user.username!=='string'||!user.username)throw new Error('账号信息不完整，请重新登录');
   identity={token,user};
+  try{wx.setStorageSync(IDENTITY_CACHE_KEY,identity);}catch(_){}
 }
 function setSession(value) {
   if(value){shared.setToken(value.token);rememberIdentity(value.token,value.user);}
-  else{shared.clearToken();identity=null;}
+  else{shared.clearToken();identity=null;try{wx.removeStorageSync(IDENTITY_CACHE_KEY);}catch(_){}}
 }
 async function request(path,method='GET',data,extra={}) {
   if(!/^\/api\//.test(path)&&!/^\/workbench\/ip12\/api\//.test(path))throw new Error('接口地址无效');

@@ -1,4 +1,5 @@
 {
+  "entryPagePath": "paper/pages/home/index",
   "pages": [
     "pages/home/home",
     "pages/ip12/ip12",
@@ -56,6 +57,12 @@
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
+  "preloadRule": {
+    "pages/home/home": {
+      "network": "all",
+      "packages": ["paper"]
+    }
+  },
   "subPackages": [
     {
       "root": "paper",
