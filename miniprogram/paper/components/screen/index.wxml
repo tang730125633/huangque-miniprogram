@@ -210,7 +210,7 @@
         </view>
 
         <!-- 排队任务队列（Codex 风格：浅色微暖底、紧凑轻量、附着在输入面板上方） -->
-        <view wx:elif="{{agentQueue.length>1}}" class="hq-view agent-queue-panel">
+        <scroll-view wx:elif="{{agentQueue.length>1}}" class="hq-view agent-queue-panel" scroll-y enhanced show-scrollbar="{{true}}" style="height:{{agentQueue.length>3?216:agentQueue.length*72}}rpx;" aria-label="待回复消息，可上下滑动">
           <view wx:for="{{agentQueue}}" wx:key="seq" class="hq-view agent-queue-item {{index===0?'is-head':''}}">
             <view class="hq-view agent-queue-main">
               <view class="hq-view agent-queue-tag {{index===0?'tag-head':'tag-wait'}}">
@@ -223,7 +223,7 @@
               <button class="hq-button agent-queue-btn plain" data-seq="{{item.seq}}" bindtap="editQueueItem">编辑</button>
             </view>
           </view>
-        </view>
+        </scroll-view>
 
         <view wx:if="{{agentAttachments.length}}" class="hq-view attachment-list"><view wx:for="{{agentAttachments}}" wx:key="fileId" class="hq-view attachment-chip"><image wx:if="{{item.kind==='image'&&item.preview}}" class="hq-image attachment-preview" src="{{item.preview}}" mode="aspectFill"/><video wx:elif="{{item.kind==='video'&&item.preview}}" class="attachment-preview" src="{{item.preview}}" controls object-fit="cover"/><button wx:elif="{{item.kind==='audio'}}" class="hq-button attachment-audio" data-index="{{index}}" bindtap="previewAgentAttachment">▶ 试听音频</button><view wx:else class="hq-view attachment-kind">{{item.kind==='video'?'视频':item.kind==='audio'?'音频':'图片'}}</view><text class="hq-text attachment-name">{{item.name}}</text><button class="hq-button attachment-remove" data-index="{{index}}" bindtap="removeAgentAttachment" aria-label="移除素材">×</button></view></view>
         <view class="hq-view compact-composer-row">
