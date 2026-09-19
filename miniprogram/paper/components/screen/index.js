@@ -258,12 +258,16 @@ function agentWidgets(value,film,selections) {
     const selectionMode=String(widget.selection_mode||'')==='multiple'?'multiple':'single';
     const minSelected=selectionMode==='multiple'?Math.max(1,Number(widget.min_selected==null?1:widget.min_selected)||1):0;
     const maxSelected=selectionMode==='multiple'?Math.max(0,Number(widget.max_selected==null?0:widget.max_selected)||0):0;
+    const selChoice=(selected[kind]||selected[type]||selected[widget.id]||null);
+    const directSelectedId=String((widget&&(widget.selectedId||widget.selected_id))||(selChoice&&selChoice.id)||'');
+    const directPicked=directSelectedId?(items.find(item=>String(item.id)===String(directSelectedId))):null;
+    const directAnswered=Boolean(directSelectedId&&layout!=='template_catalog');
     return {
       key:String(widget.id||type+'-'+widgetIndex)+'@'+Math.max(1,Number(widget.gen)||1),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
-      title:String(widget.title||'请选择').slice(0,80),hint:String(widget.hint||'').slice(0,240),selectedId:String(selected[kind]&&selected[kind].id||''),
+      title:String(widget.title||'请选择').slice(0,80),hint:String(widget.hint||'').slice(0,240),selectedId:directSelectedId,
       // 已选卡收成一行（2026-09-16 老板实录：选过的单选卡一直挂在下面很怪）：
       // selectedId 非空即 answered（restore 时按选择回填），点徽标 expanded 展开改选。
-      answered:false,expanded:false,selectedTitle:'',
+      answered:directAnswered,expanded:false,selectedTitle:directPicked?directPicked.title:'',
       script:type==='voice_sample'?String(widget.script||'').slice(0,600):'',
       selectionMode,minSelected,maxSelected,selectedCount:0,
       layout,catalogExpanded:false,itemCount:items.length,items,actions
@@ -427,10 +431,13 @@ Component({
       // 已选卡收成一行：selectedId 非空即 answered，跨轮续挂的卡也保持收起，
       // 用户点徽标展开才能改选——绝不让选过的单选卡一直挂在对话下面。
       widgets.forEach(widget=>{
+        if(!widget.selectedId&&this._agentManualPicks&&this._agentManualPicks[widget.key]){
+          widget.selectedId=String(this._agentManualPicks[widget.key]);
+        }
         if(!widget.selectedId||widget.type==='voice_sample'||widget.layout==='template_catalog')return;
         const picked=(widget.items||[]).find(item=>String(item.id)===String(widget.selectedId));
         widget.answered=true;
-        widget.selectedTitle=picked?picked.title:'';
+        if(picked)widget.selectedTitle=picked.title;
       });
       for(const item of items){
         const resolve=raw=>api.mediaSource(api.mediaURL(ip12MediaPath(raw))).catch(()=>'');
@@ -449,7 +456,7 @@ Component({
       }
       const task=(data&&data.task&&typeof data.task==='object')?data.task:{};
       const agentTaskId=String(task.id||data.task_id||(sid?sid.slice(-4):'01'));
-      const pendingWidgets=widgets.filter(w=>!w.answered&&!w.selectedId);
+      const pendingWidgets=widgets.filter(w=>w.layout!=='template_catalog'&&!w.answered&&!w.selectedId);
       const agentTaskPendingCount=pendingWidgets.length;
       const allAnswered=widgets.length>0&&agentTaskPendingCount===0;
       const agentTaskBadgeText=agentTaskPendingCount>0?(agentTaskPendingCount+' 项待选'):'已选齐';
@@ -465,6 +472,9 @@ Component({
         agentTaskCollapsed=true;
       }else if(!allAnswered&&agentTaskPendingCount>0&&!this.data.agentTaskManualCollapsed){
         agentTaskCollapsed=false;
+      }
+      if(allAnswered&&!this.data.agentTaskManualExpanded){
+        agentTaskCollapsed=true;
       }
       const agentTaskDismissed=Boolean(this._taskDismissedForId&&this._taskDismissedForId===agentTaskId);
       const agentWidgetsSummary=widgets.map(w=>w.title).filter(Boolean).join(' · ');
@@ -1325,20 +1335,17 @@ Component({
       this.setData({['agentWidgets['+index+'].catalogExpanded']:!widget.catalogExpanded});
     },
     toggleAgentTaskCollapse(){
-      if(this.data.busy||this.data.agentThinking)return;
       try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
       const next=!this.data.agentTaskCollapsed;
       this.setData({agentTaskCollapsed:next,agentTaskManualExpanded:!next,agentTaskManualCollapsed:next});
     },
     dismissAgentTaskBar(){
-      if(this.data.busy||this.data.agentThinking)return;
       try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
       this._taskDismissedForId=this.data.agentTaskId;
       this.setData({agentTaskDismissed:true});
     },
     toggleAgentWidgetExpand(e){
       // 已选收起的卡点徽标展开改选；再点收起。
-      if(this.data.busy||this.data.agentThinking)return;
       const index=Number(e.currentTarget.dataset.widget),widget=this.data.agentWidgets[index];
       if(!widget||!widget.answered)return;
       this.setData({['agentWidgets['+index+'].expanded']:!widget.expanded});
@@ -1363,8 +1370,31 @@ Component({
       // 不清空其它卡、不立即发送——多张卡都勾完（或点「确认选择」）才一次性提交。
       this._agentManualPicks=this._agentManualPicks||{};
       this._agentManualPicks[widget.key]=String(item.id);
-      this.setData({['agentWidgets['+widgetIndex+'].selectedId']:String(item.id)});
-      if(widget.layout!=='template_catalog')this.setData({['agentWidgets['+widgetIndex+'].answered']:true,['agentWidgets['+widgetIndex+'].selectedTitle']:item.title,['agentWidgets['+widgetIndex+'].expanded']:false});
+      widget.selectedId=String(item.id);
+      if(widget.layout!=='template_catalog'){
+        widget.answered=true;
+        widget.selectedTitle=item.title;
+        widget.expanded=false;
+      }
+      const curWidgets=(this.data.agentWidgets||[]);
+      const pendingCount=curWidgets.filter(w=>w.layout!=='template_catalog'&&!w.answered&&!w.selectedId).length;
+      const allAnswered=curWidgets.length>0&&pendingCount===0;
+      const badgeText=pendingCount>0?(pendingCount+' 项待选'):'已选齐';
+      const patch={
+        ['agentWidgets['+widgetIndex+'].selectedId']:String(item.id),
+        agentTaskPendingCount:pendingCount,
+        agentTaskBadgeText:badgeText
+      };
+      if(widget.layout!=='template_catalog'){
+        patch['agentWidgets['+widgetIndex+'].answered']=true;
+        patch['agentWidgets['+widgetIndex+'].selectedTitle']=item.title;
+        patch['agentWidgets['+widgetIndex+'].expanded']=false;
+      }
+      if(allAnswered){
+        patch.agentTaskCollapsed=true;
+        patch.agentTaskManualExpanded=false;
+      }
+      this.setData(patch);
       api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice})
         .then(data=>{
           if(data&&data.invalidated&&widget.type!=='option_pick'){
