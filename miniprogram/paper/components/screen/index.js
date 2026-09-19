@@ -427,7 +427,9 @@ Component({
       if(!valid())return;
       const items=agentMessages(data.history);
       const imageHidden=limitAgentImages(items);
-      const widgets=agentWidgets(data.widgets,data.film,data.selected_choices);
+      // 待回复消息尚未结束时，恢复历史不能重新挂回旧操作卡。
+      const awaitingReply=(this.data.agentQueue||[]).length>0||Boolean(this.data.agentPending);
+      const widgets=awaitingReply?[]:agentWidgets(data.widgets,data.film,data.selected_choices);
       // 已选卡收成一行：selectedId 非空即 answered，跨轮续挂的卡也保持收起，
       // 用户点徽标展开才能改选——绝不让选过的单选卡一直挂在对话下面。
       widgets.forEach(widget=>{
@@ -450,7 +452,7 @@ Component({
       if(switching){if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy();this.agentAudio=null;this.agentAssetAudio=null;this.agentAudioMeta=null;}
       wx.setStorageSync(IP12_SESSION_KEY,sid);
       // 勾选暂存维护：卡组换血后清掉已不在屏上的手动勾选记录
-      if(this._agentManualPicks){
+      if(!awaitingReply&&this._agentManualPicks){
         const liveKeys=new Set(widgets.map(w=>w.key));
         Object.keys(this._agentManualPicks).forEach(k=>{if(!liveKeys.has(k))delete this._agentManualPicks[k];});
       }

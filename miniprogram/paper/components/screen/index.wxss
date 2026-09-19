@@ -424,19 +424,19 @@
 .agent-task-close { margin:0; padding:0; width:44rpx; height:44rpx; line-height:40rpx; text-align:center; font-size:32rpx; color:#998e7d; background:transparent; border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; }
 .agent-task-close:active { background:#ede5d6; color:#2c312c; }
 /* Codex 风格排队挂条：浅色、紧凑微暖、附着在输入面板上方（2026-09-19 老板定调 Codex 样式） */
-.agent-queue-panel { margin:-10rpx -12rpx 10rpx -12rpx; padding:8rpx 18rpx; background:#faf7f2; border-bottom:1rpx solid #ece5d8; display:flex; flex-direction:column; gap:4rpx; }
-.agent-queue-item { display:flex; align-items:center; justify-content:space-between; gap:12rpx; min-height:48rpx; padding:4rpx 0; }
-.agent-queue-item+.agent-queue-item { border-top:1rpx dashed rgba(210,202,190,.45); }
-.agent-queue-main { min-width:0; flex:1; display:flex; flex-direction:row; align-items:center; gap:10rpx; }
-.agent-queue-tag { padding:2rpx 10rpx; border-radius:6rpx; font-size:19rpx; font-weight:600; line-height:1.4; white-space:nowrap; flex-shrink:0; }
-.tag-head { background:#f0ebe1; color:#73624a; }
-.tag-wait { background:#efe9dc; color:#5c503f; }
-.agent-queue-text { font-size:22rpx; color:#3d372e; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
-.agent-queue-actions { display:flex; gap:8rpx; align-items:center; flex-shrink:0; }
-.agent-queue-btn { margin:0; padding:3rpx 14rpx; border-radius:8rpx; background:#ede7dc; border:1rpx solid #dfd8cb; color:#4a4031; font-size:20rpx; font-weight:500; line-height:1.4; white-space:nowrap; flex-shrink:0; text-align:center; }
-.agent-queue-btn.plain { background:#f2ece2; border-color:#ded6c7; color:#54493b; }
-.agent-queue-btn.agent-queue-btn-confirm { background:#202620; color:#fffdf8; border-color:#202620; }
-.agent-queue-btn.jump { background:#fdf5ea; color:#9c6218; border-color:#f0dcbe; }
+/* Queue rows share the composer surface; three visible rows at most. */
+.agent-chat-content .agent-queue-panel { width:100%; margin:0 0 10rpx; padding:0 12rpx; box-sizing:border-box; background:#f5f3ef; border-radius:12rpx; }
+.agent-queue-item { display:flex; align-items:center; gap:12rpx; height:72rpx; min-width:0; box-sizing:border-box; }
+.agent-queue-item+.agent-queue-item { border-top:1rpx solid #e8e5df; }
+.agent-queue-main { min-width:0; flex:1; display:flex; align-items:center; gap:12rpx; }
+.agent-queue-tag { color:#77736c; font-size:21rpx; line-height:1.4; white-space:nowrap; flex:none; }
+.tag-head { color:#77736c; }
+.tag-wait { color:#77736c; }
+.agent-queue-text { font-size:24rpx; color:#4d504a; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+.agent-queue-actions { display:flex; gap:4rpx; align-items:center; flex:none; }
+.agent-chat-content .agent-queue-btn { display:flex; align-items:center; justify-content:center; width:auto; min-width:72rpx; height:72rpx; min-height:72rpx; margin:0; padding:0 10rpx; border:0; border-radius:8rpx; background:transparent; color:#5d6259; font-size:23rpx; font-weight:500; line-height:1.4; white-space:nowrap; flex:none; text-align:center; }
+.agent-chat-content .agent-queue-btn:active { background:#e9e6df; }
+.agent-chat-content .agent-queue-btn.agent-queue-btn-confirm { color:#263b2b; }
 .agent-queue-btn[disabled] { opacity:.4; }
 .agent-queue-editbar { margin:-10rpx -12rpx 10rpx -12rpx; padding:8rpx 18rpx; background:#fdfcf7; border-bottom:1rpx solid #ece5d8; display:flex; align-items:center; justify-content:space-between; gap:12rpx; min-height:48rpx; }
 .agent-queue-editbar-info { display:flex; align-items:center; gap:10rpx; min-width:0; flex:1; }

@@ -99,6 +99,8 @@ test('打字改选后：文案卡不消失，且「已选」跟后端权威选�
   );
   assert.equal(pending.body.message, '就选 C 讲给孙子听版那个', '用户原话照发后端');
 
+  c.data.agentPending = null; // executeAgent 收到 seq 后会清空发送记录
+
   // ③ 后端这轮把改选落盘（selected script=C），卡组仍带同一张文案卡（跨轮续挂，gen 不变）
   serve({ widgets: [scriptCard(2)], selected: { script: { id: 'C', label: 'C · 讲给孙子听版', film: true } } });
   await c.restoreAgent(sid);
@@ -136,4 +138,29 @@ test('打字改选后仍可点卡改选：点回上一版照样生效（卡片�
   assert.match(sent[0], /【点选】/, '单卡点选即发');
   api.request = savedRequest;
   api.mediaSource = savedMedia;
+});
+
+
+test('闲聊发送、队列恢复和刷新不复活旧卡，主动继续仍恢复原选择', async () => {
+  const saved = api.request;
+  const c = ctx({agentSessionId:'sid-chat'});
+  const selected = {script:{id:'C',film:true}};
+  try {
+    serve({widgets:[scriptCard()],selected});
+    await c.restoreAgent('sid-chat');
+    assert.equal(c.data.agentWidgets.length,1);
+    c._agentManualPicks = {'script_pick_qin_unify@1':'C'};
+    c.data.agentQueue = [{seq:'2',message:'聊聊海森堡吧'}];
+    await c.restoreAgent('sid-chat');
+    assert.equal(c.data.agentWidgets.length,0,'上一轮恢复迟到，也不抢回卡片');
+    assert.equal(c._agentManualPicks['script_pick_qin_unify@1'],'C','暂时退场不丢未回执的点选');
+    c.data.agentQueue = [];
+    serve({widgets:[],selected});
+    await c.restoreAgent('sid-chat');
+    await c.restoreAgent('sid-chat');
+    assert.equal(c.data.agentWidgets.length,0,'闲聊回复和再次恢复都零操作卡');
+    serve({widgets:[scriptCard()],selected});
+    await c.restoreAgent('sid-chat');
+    assert.equal(c.data.agentWidgets[0].selectedId,'C','主动继续任务后恢复已选 C');
+  } finally { api.request = saved; }
 });
