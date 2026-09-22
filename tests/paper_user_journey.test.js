@@ -529,8 +529,10 @@ test('upload API forwards wx upload progress without changing its Promise result
     const progress = [];
     const pending = api.upload('/workbench/ip12/api/v4/upload', 'wxfile://progress.mp4', {}, { onProgress: value => progress.push(value) });
     report({ progress: 43 });
+    report({ progress: 20 });
     assert.deepEqual(await pending, { file_id: 'progress-file' });
-    assert.deepEqual(progress, [43]);
+    report({ progress: 100 });
+    assert.deepEqual(progress, [43,43]);
   } finally { wx.uploadFile = previousUploadFile; }
 });
 
