@@ -979,7 +979,7 @@ Component({
       const kind=e.currentTarget.dataset.kind;
       this.setData({agentSheet:''});
       const count=Math.max(1,Math.min(9,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length));
-      wx.chooseMedia({count,mediaType:[kind],sizeType:['compressed'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map((file,index)=>({path:file.tempFilePath,name:file.name||(kind==='image'?'图片 ':'视频 ')+(index+1),kind,size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='image'?'图片':'视频')+'，请检查微信权限'));}});
+      wx.chooseMedia({count,mediaType:[kind],sizeType:['original'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map((file,index)=>({path:file.tempFilePath,name:file.name||(kind==='image'?'图片 ':'视频 ')+(index+1),kind,size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='image'?'图片':'视频')+'，请检查微信权限'));}});
     },
     chooseAgentAudio(){
       if(this.data.busy||this.data.agentThinking)return;
@@ -1035,7 +1035,7 @@ Component({
     chooseAgentAssetImport(e){
       const kind=e.currentTarget.dataset.kind;
       if(kind==='audio')return wx.chooseMessageFile({count:9,type:'file',extension:['mp3','wav','m4a','aac','ogg'],success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.path,name:file.name||file.path,kind:'audio',size:Number(file.size||0)})),{attach:false}),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择音频'));}});
-      wx.chooseMedia({count:9,mediaType:[kind],sizeType:['compressed'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map((file,index)=>({path:file.tempFilePath,name:file.name||(kind==='video'?'视频 ':'图片 ')+(index+1),kind,size:Number(file.size||0)})),{attach:false}),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='video'?'视频':'图片')));}});
+      wx.chooseMedia({count:9,mediaType:[kind],sizeType:['original'],sourceType:['album','camera'],maxDuration:60,success:result=>this.uploadAgentFiles((result.tempFiles||[]).map((file,index)=>({path:file.tempFilePath,name:file.name||(kind==='video'?'视频 ':'图片 ')+(index+1),kind,size:Number(file.size||0)})),{attach:false}),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择'+(kind==='video'?'视频':'图片')));}});
     },
     useAgentAsset(e){
       const item=(this.data.agentAssets||[]).find(asset=>asset.id===e.currentTarget.dataset.id);
