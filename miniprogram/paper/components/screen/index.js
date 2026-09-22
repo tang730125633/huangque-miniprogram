@@ -993,7 +993,6 @@ Component({
         if(libraryImport&&remaining>=0&&totalBytes>remaining)throw new Error('素材库剩余空间不足，请先删除不用的素材');
         let done=0;const failed=[];
         for(const file of files){
-          if(file.size>200*1024*1024){failed.push((file.name||'文件')+'超过 200MB');continue;}
           if(options.attach!==false&&(this.data.agentAttachments||[]).length>=AGENT_ATTACHMENT_LIMIT){failed.push('一次最多发送 10 个素材');break;}
           try{
             const result=await api.upload(IP12_API+(libraryImport?'/assets/import':'/upload'),file.path,{session_id:sid});

@@ -498,14 +498,38 @@ test('a late video download cannot overwrite another conversation', async () => 
   api.mediaSource = originalMedia;
 });
 
-test('visible copy states batch and size limits before upload', () => {
+test('visible copy states original uploads and account storage quota', () => {
   const wxml = fs.readFileSync(path.join(__dirname, '../miniprogram/paper/components/screen/index.wxml'), 'utf8');
   assert.match(wxml, /每次最多导入 9 个/);
-  assert.match(wxml, /单个图片、视频或音频不超过 200MB/);
-  assert.match(wxml, /素材库空间以上方额度为准/);
+  assert.match(wxml, /素材容量以剩余云空间为准/);
+  assert.doesNotMatch(wxml, /单个图片、视频或音频不超过 200MB/);
   assert.match(wxml, /主站作品/);
   assert.match(wxml, /主站作品仅支持预览/);
   assert.match(wxml, /删除选中的.*个素材/);
+});
+
+test('large original materials reach upload without a per-file size gate', async () => {
+  const originalUpload = api.upload;
+  const uploaded = [];
+  api.upload = async (url, filePath) => {
+    uploaded.push({ url, filePath });
+    return { file_id: 'original', kind: 'video', asset: { saved: true } };
+  };
+  try {
+    for (const attach of [false, true]) {
+      const ctx = {
+        data: { agentAttachments: [], agentAssetQuotaRemaining: 2 * 1024 ** 3 }, setData,
+        run: fn => fn(), ensureAgentSession: async () => 'sid-large',
+        addAgentAttachment() {}, loadAgentAssets: async () => {}, toast() {},
+      };
+      await component.methods.uploadAgentFiles.call(ctx,
+        [{ path: 'wxfile://large-original.mp4', name: 'large.mp4', size: 300 * 1024 ** 2 }], { attach });
+    }
+    assert.deepEqual(uploaded, [
+      { url: '/workbench/ip12/api/v4/assets/import', filePath: 'wxfile://large-original.mp4' },
+      { url: '/workbench/ip12/api/v4/upload', filePath: 'wxfile://large-original.mp4' },
+    ]);
+  } finally { api.upload = originalUpload; }
 });
 
 test('library import stops before upload when the known quota is insufficient', async () => {
