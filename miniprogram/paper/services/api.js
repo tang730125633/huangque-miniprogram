@@ -42,17 +42,22 @@ function mediaURL(value){if(typeof value!=='string')return '';if(/^\/(?!\/)/.tes
 function protectedMedia(url){return url.indexOf(BASE+'/api/gen/file/')===0||url.indexOf(BASE+'/workbench/ip12/')===0;}
 function mediaHeaders(url){const token=shared.getToken();return token&&protectedMedia(url)?{Authorization:'Bearer '+token}:{};}
 function mediaSource(url){return protectedMedia(url)?shared.downloadProtected(url):Promise.resolve(url);}
-function upload(path,filePath,formData={}) {
+function upload(path,filePath,formData={},options={}) {
   if(!/^\/workbench\/ip12\/api\//.test(path))return Promise.reject(new Error('上传地址无效'));
-  return new Promise((resolve,reject)=>wx.uploadFile({
+  return new Promise((resolve,reject)=>{
+    let completed=false,lastProgress=0;
+    const task=wx.uploadFile({
     url:BASE+path,filePath,name:'file',formData,
     header:{Authorization:'Bearer '+shared.getToken()},
     success:res=>{
+      completed=true;
       let body={};try{body=JSON.parse(res.data||'{}');}catch(_){}
       if(res.statusCode>=200&&res.statusCode<300&&body&&typeof body==='object')return resolve(body);
       const error=new Error(body.error||body.detail||'上传失败，请稍后重试');error.status=res.statusCode;reject(error);
     },
-    fail:()=>{const error=new Error('上传中断，请检查网络后重试');error.uncertain=true;reject(error);}
-  }));
+    fail:()=>{completed=true;const error=new Error('上传中断，请检查网络后重试');error.uncertain=true;reject(error);}
+    });
+    if(task&&typeof task.onProgressUpdate==='function'&&typeof options.onProgress==='function')task.onProgressUpdate(progress=>{if(completed)return;lastProgress=Math.max(lastProgress,Math.min(100,Number(progress&&progress.progress)||0));options.onProgress(lastProgress);});
+  });
 }
 module.exports={BASE,session,rememberIdentity,setSession,request,upload,login,read,save,mediaURL,mediaHeaders,mediaSource};

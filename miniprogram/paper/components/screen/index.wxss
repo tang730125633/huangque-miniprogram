@@ -348,6 +348,8 @@
 .attachment-audio { display:flex; width:136rpx; min-height:72rpx; align-items:center; justify-content:center; padding:8rpx; border-radius:10rpx; color:#674d24; background:#eee5d5; font-size:20rpx; }
 .attachment-kind { height:58rpx; display:flex; align-items:center; justify-content:center; border-radius:10rpx; color:#6e5b37; background:#ebe3d3; font-size:22rpx; font-weight:700; }
 .attachment-name { display:block; margin-top:8rpx; overflow:hidden; color:#555b54; font-size:20rpx; line-height:1.35; text-overflow:ellipsis; white-space:nowrap; }
+.attachment-status { display:block; margin-top:4rpx; color:#8b846f; font-size:19rpx; }.attachment-status.uploading { color:#6e5b37; }.attachment-status.saving { color:#6e5b37; }.attachment-status.done { color:#4e7654; }.attachment-status.error,.attachment-error { color:#a34f43; }.attachment-error { display:block; margin-top:4rpx; font-size:18rpx; line-height:1.3; }.attachment-retry { width:100%; min-height:44rpx; margin-top:8rpx; border:1rpx solid #b16658; border-radius:8rpx; color:#8f4137; background:#fff8f5; font-size:19rpx; }
+.attachment-progress { display:block; width:100%; margin-top:8rpx; }.asset-upload-queue { margin:12rpx 0; padding:12rpx; border:1rpx solid #ddd6ca; border-radius:12rpx; background:#f8f5ee; }.asset-upload-item + .asset-upload-item { margin-top:12rpx; padding-top:12rpx; border-top:1rpx solid #e4ded2; }.asset-upload-head { display:flex; align-items:center; justify-content:space-between; gap:12rpx; }.asset-upload-name { min-width:0; overflow:hidden; color:#555b54; font-size:21rpx; text-overflow:ellipsis; white-space:nowrap; }.asset-upload-progress { width:100%; margin-top:6rpx; }
 .attachment-remove { position:absolute; top:2rpx; right:2rpx; width:42rpx; min-height:42rpx; padding:0; border-radius:50%; color:#fff; background:rgba(36,42,36,.82); font-size:28rpx; line-height:42rpx; }
 .agent-assets { margin-bottom:16rpx; padding:16rpx; border:1rpx solid #ddd6ca; border-radius:16rpx; background:#f8f5ee; }
 .asset-panel-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; font-size:25rpx; font-weight:700; }
@@ -735,4 +737,3 @@
     animation: none;
   }
 }
-
