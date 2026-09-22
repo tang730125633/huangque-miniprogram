@@ -31,6 +31,28 @@ function textOf(nodes) {
   return (nodes || []).map(node => node.type === 'text' ? node.text : textOf(node.children)).join('');
 }
 
+test('conversation and library imports select original images and videos and preserve the chosen file', () => {
+  const previousChooseMedia = wx.chooseMedia;
+  try {
+    for (const method of ['chooseAgentMedia', 'chooseAgentAssetImport']) {
+      for (const kind of ['image', 'video']) {
+        let selected, uploaded;
+        wx.chooseMedia = options => { selected = options; };
+        const ctx = {
+          data: { busy: false, agentThinking: false, agentAttachments: [] }, setData,
+          uploadAgentFiles(files, options) { uploaded = { files, options }; },
+        };
+        component.methods[method].call(ctx, { currentTarget: { dataset: { kind } } });
+        assert.deepEqual(selected.sizeType, ['original']);
+        assert.deepEqual(selected.mediaType, [kind]);
+        selected.success({ tempFiles: [{ tempFilePath: 'wxfile://original', name: 'original', size: 5379896 }] });
+        assert.deepEqual(uploaded.files, [{ path: 'wxfile://original', name: 'original', kind, size: 5379896 }]);
+        assert.deepEqual(uploaded.options, method === 'chooseAgentAssetImport' ? { attach: false } : undefined);
+      }
+    }
+  } finally { wx.chooseMedia = previousChooseMedia; }
+});
+
 test('assistant Markdown becomes readable blocks and MP3 becomes a player', async () => {
   const originalRequest = api.request, originalMedia = api.mediaSource;
   api.request = async requestPath => {
