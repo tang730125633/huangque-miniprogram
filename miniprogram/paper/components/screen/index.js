@@ -300,7 +300,7 @@ Component({
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
     agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskId: '01', agentTaskTitle: '方案建议准备就绪', agentTaskDesc: '', agentTaskCollapsedDesc: '', agentWidgetsSummary: '', agentTaskPendingCount: 0, agentTaskBadgeText: '', agentTaskDismissed: false, agentTaskManualExpanded: false, agentTaskManualCollapsed: false, agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
     agentQueue: [], agentEditQueueSeq: '',
-    agentAttachments: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
+    agentAttachments: [], agentUploads: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
     notificationItems: [{key:'finished',title:'作品完成提醒'},{key:'failed',title:'任务异常提醒'},{key:'activity',title:'产品与活动消息'}],
     feedbackInput: '', feedbackType: '体验建议', feedbackSent: false, openFaq: -1,
@@ -326,7 +326,7 @@ Component({
       this.load();
       this.loadWorkSubscription();
     },
-    detached() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
+    detached() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();if(this.detachAgentUploads)this.detachAgentUploads();this.alive=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.disposeAgentVoice)this.disposeAgentVoice();if(this.audio)this.audio.destroy();if(this.agentAudio)this.agentAudio.destroy();if(this.agentAssetAudio)this.agentAssetAudio.destroy(); }
   },
   pageLifetimes: { show() { this.homeEntering=false;this.visible=true; if(this.alive&&(!this._lastLoadTime||Date.now()-this._lastLoadTime>350))this.load(); }, hide() { if(this.stopReportPoll)this.stopReportPoll();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopHomeAgent)this.stopHomeAgent(); if(this.stopTaskQueue)this.stopTaskQueue();this.visible=false; clearTimeout(this.timer);clearTimeout(this.agentWatchTimer);if(this.data.agentVoiceFlow&&this.data.agentVoiceFlow.stage==='recording'&&this.agentVoiceRecorder)this.agentVoiceRecorder.stop();if(this.agentVoicePlayer)this.agentVoicePlayer.pause();if(this.audio)this.audio.pause();if(this.agentAudio)this.agentAudio.pause();if(this.agentAssetAudio)this.agentAssetAudio.pause(); } },
   methods: {
@@ -347,7 +347,7 @@ Component({
       const valid=()=>this.alive&&token===(api.session()&&api.session().token);
       const currentUser=api.session()&&api.session().user&&api.session().user.username?api.session().user:null;
       this.setData({loading:true,error:'',user:currentUser,attempt:api.read().attempt||null});
-      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
+      if(this.owner&&(!api.session()||api.session().user.username!==this.owner)){if(this.detachAgentUploads)this.detachAgentUploads();this.agentDraft='';this.setData({works:[],visibleWorks:[],job:null,card:emptyCard,publicCard:null,points:[],promptInput:'',referencePath:'',attempt:null,agentMessages:[],agentSessionId:'',agentSessions:[],agentHistorySessions:[],agentTargetLabel:'新对话',agentPending:null,agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentAttachments:[],agentUploads:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentQuickPhrases:AGENT_QUICK_PHRASES,agentHasText:false,agentBackgroundWorking:false});}
       const page=this.properties.pageId;
       try {
         if(!token || page==='login')return;
@@ -422,7 +422,7 @@ Component({
     },
     async restoreAgent(sid,valid=()=>this.alive) {
       const switching=sid!==this.data.agentSessionId;
-      if(switching){if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false,agentQueue:[],agentEditQueueSeq:''});}
+      if(switching){if(this.detachAgentUploads)this.detachAgentUploads();if(this.stopAgentPoll)this.stopAgentPoll();if(this.stopTaskQueue)this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false,agentQueue:[],agentEditQueueSeq:''});}
       const data=await agentRead(IP12_API+'/restore/'+encodeURIComponent(sid)+'?limit='+AGENT_MESSAGE_LIMIT);
       if(!valid())return;
       const items=agentMessages(data.history);
@@ -484,7 +484,7 @@ Component({
       const agentTaskDesc=String(task.desc||data.task_desc||agentWidgetsSummary||'轻触可整体收起组件卡，保持对话整洁').slice(0,120);
       const defaultCollapsedDesc=allAnswered?('方案配置已就绪 · 点击展开可修改 '+widgets.length+' 项组件卡'):('方案已收起 · 点击展开 '+widgets.length+' 项组件卡');
       const agentTaskCollapsedDesc=String(task.collapsed_desc||data.task_collapsed_desc||defaultCollapsedDesc).slice(0,120);
-      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentTaskId,agentTaskTitle,agentTaskDesc,agentTaskCollapsedDesc,agentWidgetsSummary,agentTaskPendingCount,agentTaskBadgeText,agentTaskCollapsed,agentTaskDismissed,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
+      this.setData(Object.assign({agentMessages:items,agentSessionId:sid,agentDelegations:delegationCards(data.delegations),agentWidgets:widgets,agentTaskId,agentTaskTitle,agentTaskDesc,agentTaskCollapsedDesc,agentWidgetsSummary,agentTaskPendingCount,agentTaskBadgeText,agentTaskCollapsed,agentTaskDismissed,agentReport:data.report||null,agentHiddenCount:Math.max(0,Number(data.history_total||items.length)-items.length),agentImageHiddenCount:imageHidden,agentDeliverySubNotice:(Array.isArray(data.deliveries)?data.deliveries.length:0)>0},switching?{agentAttachments:[],agentUploads:[],agentAssets:[],agentAssetsOpen:false,agentReportNotice:null}:{}));
       // 思考结束补交：思考期间勾齐的选择，回复到达（本帧）后自动一次提交
       setTimeout(()=>{if(this.alive)this.settleAgentPicks();},0);
       this.scrollAgent(widgets.length?widgets:items);
@@ -960,12 +960,12 @@ Component({
     async startNewAgent(){
       const started=await api.request(IP12_API+'/start','POST',{}),sid=String(started.session_id||'');
       if(!sid||started.seq===undefined)throw new Error('暂时无法开始新对话，请稍后重试');
-      if(this.stopAgentPoll)this.stopAgentPoll();this.stopTaskQueue();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
+      if(this.stopAgentPoll)this.stopAgentPoll();this.stopTaskQueue();if(this.detachAgentUploads)this.detachAgentUploads();this.setData({agentQueueTasks:[],agentQueueReconnecting:false});
       if(this.data.agentVoiceFlow)this.closeAgentVoiceFlow();
       wx.setStorageSync(IP12_SESSION_KEY,sid);api.save({ip12Pending:null,ip12Waiting:{sid,seq:started.seq},ip12Outgoing:null});
       clearTimeout(this.agentWatchTimer);this.agentWatchActive=false;
       const sessions=[{sid,preview:'新对话',turns:0,selected:false}].concat((this.data.agentHistorySessions||[]).filter(item=>item.sid!==sid)).slice(0,50);
-      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:sessions.slice(0,8),agentHistorySessions:sessions});
+      this.agentDraft='';this.setData({agentSessionId:sid,agentMessages:[],promptInput:'',agentHasText:false,agentAttachments:[],agentUploads:[],agentAssets:[],agentVisibleAssets:[],agentAssetsOpen:false,agentIpDrawerOpen:false,agentSheet:'',agentDelegations:[],agentWidgets:[],agentReport:{},agentReportNotice:null,agentReportOpening:false,agentHiddenCount:0,agentImageHiddenCount:0,agentThinking:true,agentProgress:'正在准备新对话…',agentBackgroundWorking:false,agentSessions:sessions.slice(0,8),agentHistorySessions:sessions});
       this.agentPoll=this.pollAgent(sid,started.seq).catch(error=>this.fail(error));
     },
     addAgentAttachment(item){
@@ -986,26 +986,52 @@ Component({
       this.setData({agentSheet:''});
       wx.chooseMessageFile({count:Math.max(1,Math.min(9,AGENT_ATTACHMENT_LIMIT-(this.data.agentAttachments||[]).length)),type:'file',extension:['mp3','wav','m4a','aac','ogg'],success:result=>this.uploadAgentFiles((result.tempFiles||[]).map(file=>({path:file.path,name:file.name||file.path,kind:'audio',size:Number(file.size||0)}))),fail:error=>{if(!/cancel/i.test(String(error&&error.errMsg||'')))this.fail(new Error('无法选择音频，请从微信文件中选择'));}});
     },
-    uploadAgentFiles(files,options={}){
-      return this.run(async()=>{
-        const sid=await this.ensureAgentSession();
-        const libraryImport=options.attach===false,totalBytes=files.reduce((sum,file)=>sum+Math.max(0,Number(file.size)||0),0),remaining=Number(this.data.agentAssetQuotaRemaining);
-        if(libraryImport&&remaining>=0&&totalBytes>remaining)throw new Error('素材库剩余空间不足，请先删除不用的素材');
-        let done=0;const failed=[];
-        for(const file of files){
-          if(options.attach!==false&&(this.data.agentAttachments||[]).length>=AGENT_ATTACHMENT_LIMIT){failed.push('一次最多发送 10 个素材');break;}
-          try{
-            const result=await api.upload(IP12_API+(libraryImport?'/assets/import':'/upload'),file.path,{session_id:sid});
-            if(options.attach===false&&result.asset&&result.asset.quota_exceeded){failed.push((file.name||'文件')+'：素材库空间已满');continue;}
-            if(options.attach!==false)this.addAgentAttachment({fileId:result.file_id,name:file.name||result.name,kind:result.kind||file.kind,preview:file.path,url:result.url||''});
-            done+=1;this.setData({agentAssetUploadText:'已导入 '+done+' / '+files.length});
-          }catch(error){failed.push((file.name||'文件')+'：'+(error.message||'上传失败'));}
-        }
-        if(options.attach===false)await this.loadAgentAssets(true);
-        this.setData({agentAssetUploadText:''});
-        if(failed.length)throw new Error('成功 '+done+' 个；'+failed.slice(0,2).join('；')+(failed.length>2?'等 '+failed.length+' 个失败':''));
-        if(options.attach===false)this.toast('已导入 '+done+' 个素材');
+    uploadOwner(sid,token,epoch){const user=api.session()&&api.session().user;return ()=>this.alive!==false&&Number(this.agentUploadEpoch||0)===epoch&&sid===this.data.agentSessionId&&token===(api.session()&&api.session().token)&&(!user||user.username===(api.session()&&api.session().user&&api.session().user.username));},
+    detachAgentUploads(){this.agentUploadEpoch=(this.agentUploadEpoch||0)+1;this.agentUploadQueue=[];this.agentUploadSessionPromise=null;},
+    updateAgentUpload(id,patch){this.setData({agentUploads:(this.data.agentUploads||[]).map(item=>item.id===id?Object.assign({},item,patch):item)});},
+    reservedAgentAttachments(){return (this.data.agentAttachments||[]).length+(this.data.agentUploads||[]).filter(item=>item.attach&&item.status!=='done'&&item.status!=='error').length;},
+    pumpAgentUploads(){
+      this.agentUploadQueue=this.agentUploadQueue||[];this.agentUploadInFlight=this.agentUploadInFlight||0;
+      while(this.agentUploadInFlight<2&&this.agentUploadQueue.length){const item=this.agentUploadQueue.shift();if(!item.active()){item.resolve({detached:true});continue;}this.agentUploadInFlight+=1;this.runAgentUpload(item).finally(()=>{this.agentUploadInFlight-=1;this.pumpAgentUploads();});}
+    },
+    async runAgentUpload(item){
+      if(!item.active())return item.resolve({detached:true});
+      this.updateAgentUpload(item.id,{status:'uploading',statusText:'上传中 0%',progress:0});
+      try{
+        const result=await api.upload(IP12_API+(item.libraryImport?'/assets/import':'/upload'),item.path,{session_id:item.sid},{onProgress:progress=>{if(item.active())this.updateAgentUpload(item.id,{status:progress>=100?'saving':'uploading',statusText:progress>=100?'保存中':'上传中 '+progress+'%',progress});}});
+        if(!item.active())return item.resolve({detached:true});
+        if(item.libraryImport&&result.asset&&result.asset.quota_exceeded)throw new Error('素材库空间已满');
+        if(item.attach)this.addAgentAttachment({fileId:result.file_id,name:item.name||result.name,kind:result.kind||item.kind,preview:item.path,url:result.url||'',status:'done',statusText:'已完成'});
+        else if(Number(this.data.agentAssetQuotaRemaining)>=0)this.setData({agentAssetQuotaRemaining:Math.max(0,Number(this.data.agentAssetQuotaRemaining)-item.size)});
+        this.updateAgentUpload(item.id,{status:'done',statusText:'已完成',progress:100,error:''});item.resolve({done:true});
+      }catch(error){
+        if(!item.active())return item.resolve({detached:true});
+        const message=error&&error.message||'上传失败，请重试';this.updateAgentUpload(item.id,{status:'error',statusText:'上传失败',error:message,progress:0});item.resolve({error:message});
+      }
+    },
+    async uploadAgentFiles(files,options={}){
+      const source=(files||[]).filter(file=>file&&file.path);if(!source.length)return [];
+      const sid=this.data.agentSessionId||await (this.agentUploadSessionPromise||(this.agentUploadSessionPromise=Promise.resolve(this.ensureAgentSession()).finally(()=>{this.agentUploadSessionPromise=null;})));if(!this.data.agentSessionId)this.setData({agentSessionId:sid});
+      const token=api.session()&&api.session().token,epoch=this.agentUploadEpoch||0,libraryImport=options.attach===false,remaining=Number(this.data.agentAssetQuotaRemaining),reservedBytes=(this.data.agentUploads||[]).filter(item=>item.libraryImport&&['queued','uploading','saving'].includes(item.status)).reduce((sum,item)=>sum+item.size,0),totalBytes=source.reduce((sum,file)=>sum+Math.max(0,Number(file.size)||0),0);
+      if(libraryImport&&remaining>=0&&reservedBytes+totalBytes>remaining){const error=new Error('素材库剩余空间不足，请先删除不用的素材');if(this.fail)this.fail(error);return [];}
+      const reserved=this.reservedAgentAttachments?this.reservedAgentAttachments():(this.data.agentAttachments||[]).length+(this.data.agentUploads||[]).filter(item=>item.attach&&item.status!=='done'&&item.status!=='error').length,available=Math.max(0,AGENT_ATTACHMENT_LIMIT-reserved),accepted=libraryImport?source:source.slice(0,available);
+      if(!accepted.length){this.toast('一次最多发送 10 个素材');return [];}
+      const active=this.uploadOwner(sid,token,epoch),base=Date.now(),jobs=accepted.map((file,index)=>{
+        const item={id:'upload-'+base+'-'+(this.agentUploadSerial=(this.agentUploadSerial||0)+1),sid,path:file.path,name:file.name||'文件',kind:file.kind||'',size:Math.max(0,Number(file.size)||0),attach:!libraryImport,libraryImport,status:'queued',statusText:'排队中',progress:0,error:'',active,resolve:null};
+        const done=new Promise(resolve=>{item.resolve=resolve;});this.agentUploadQueue=(this.agentUploadQueue||[]).concat(item);return done;
       });
+      const queued=accepted.map((file,index)=>({id:'upload-'+base+'-'+(this.agentUploadSerial-accepted.length+index+1),sid,path:file.path,name:file.name||'文件',kind:file.kind||'',size:Math.max(0,Number(file.size)||0),attach:!libraryImport,libraryImport,status:'queued',statusText:'排队中',progress:0,error:''}));
+      this.setData({agentUploads:(this.data.agentUploads||[]).concat(queued)});this.pumpAgentUploads();
+      const settled=await Promise.all(jobs);
+      if(libraryImport&&active())await this.loadAgentAssets(true).catch(()=>{});
+      if(libraryImport&&active()&&settled.some(item=>item.done))this.toast('已导入 '+settled.filter(item=>item.done).length+' 个素材');
+      return settled;
+    },
+    retryAgentUpload(e){
+      const id=e.currentTarget.dataset.id,item=(this.data.agentUploads||[]).find(entry=>entry.id===id);if(!item||item.status!=='error')return;
+      if(item.attach&&this.reservedAgentAttachments()>=AGENT_ATTACHMENT_LIMIT)return this.toast('一次最多发送 10 个素材');
+      const sid=this.data.agentSessionId,token=api.session()&&api.session().token,epoch=this.agentUploadEpoch||0;if(!sid||item.sid!==sid)return;
+      const queued=Object.assign({},item,{status:'queued',statusText:'排队中',progress:0,error:'',active:this.uploadOwner(sid,token,epoch),resolve:()=>{}});this.updateAgentUpload(id,{status:'queued',statusText:'排队中',progress:0,error:''});this.agentUploadQueue=(this.agentUploadQueue||[]).concat(queued);this.pumpAgentUploads();
     },
     removeAgentAttachment(e){
       const index=Number(e.currentTarget.dataset.index);

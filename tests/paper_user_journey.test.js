@@ -27,6 +27,10 @@ function setData(patch) {
     else this.data[key] = value;
   }
 }
+function uploadContext(ctx) {
+  for (const name of ['uploadOwner', 'detachAgentUploads', 'updateAgentUpload', 'reservedAgentAttachments', 'pumpAgentUploads', 'runAgentUpload', 'uploadAgentFiles', 'retryAgentUpload']) ctx[name] = component.methods[name];
+  return ctx;
+}
 function textOf(nodes) {
   return (nodes || []).map(node => node.type === 'text' ? node.text : textOf(node.children)).join('');
 }
@@ -506,6 +510,28 @@ test('visible copy states original uploads and account storage quota', () => {
   assert.match(wxml, /主站作品/);
   assert.match(wxml, /主站作品仅支持预览/);
   assert.match(wxml, /删除选中的.*个素材/);
+  assert.match(wxml, /agentUploads/);
+  assert.match(wxml, /retryAgentUpload/);
+  assert.match(wxml, /class="attachment-progress" percent="\{\{item\.progress\}\}"/);
+  assert.match(wxml, /class="hq-view asset-upload-queue"/);
+  assert.match(wxml, /class="asset-upload-progress" percent="\{\{item\.progress\}\}"/);
+});
+
+test('upload API forwards wx upload progress without changing its Promise result', async () => {
+  const previousUploadFile = wx.uploadFile;
+  let report;
+  wx.uploadFile = options => {
+    const task = { onProgressUpdate(callback) { report = callback; } };
+    queueMicrotask(() => options.success({ statusCode: 200, data: '{"file_id":"progress-file"}' }));
+    return task;
+  };
+  try {
+    const progress = [];
+    const pending = api.upload('/workbench/ip12/api/v4/upload', 'wxfile://progress.mp4', {}, { onProgress: value => progress.push(value) });
+    report({ progress: 43 });
+    assert.deepEqual(await pending, { file_id: 'progress-file' });
+    assert.deepEqual(progress, [43]);
+  } finally { wx.uploadFile = previousUploadFile; }
 });
 
 test('large original materials reach upload without a per-file size gate', async () => {
@@ -517,11 +543,11 @@ test('large original materials reach upload without a per-file size gate', async
   };
   try {
     for (const attach of [false, true]) {
-      const ctx = {
+      const ctx = uploadContext({
         data: { agentAttachments: [], agentAssetQuotaRemaining: 2 * 1024 ** 3 }, setData,
         run: fn => fn(), ensureAgentSession: async () => 'sid-large',
         addAgentAttachment() {}, loadAgentAssets: async () => {}, toast() {},
-      };
+      });
       await component.methods.uploadAgentFiles.call(ctx,
         [{ path: 'wxfile://large-original.mp4', name: 'large.mp4', size: 300 * 1024 ** 2 }], { attach });
     }
@@ -536,13 +562,13 @@ test('library import stops before upload when the known quota is insufficient', 
   const originalUpload = api.upload;
   let uploads = 0;
   api.upload = async () => { uploads += 1; };
-  const ctx = {
+  const ctx = uploadContext({
     alive: true,
     data: { busy: false, agentAssetQuotaRemaining: 10, agentAttachments: [] },
     setData,
     ensureAgentSession: async () => 'sid-quota',
     fail(error) { this.error = error.message; },
-  };
+  });
   ctx.run = component.methods.run;
   await component.methods.uploadAgentFiles.call(ctx, [{ path: 'large.mp4', name: 'large.mp4', size: 11 }], { attach: false });
   assert.equal(uploads, 0);
@@ -554,7 +580,7 @@ test('library import uses the no-session-residue endpoint', async () => {
   const originalUpload = api.upload;
   let uploadPath;
   api.upload = async requestPath => { uploadPath = requestPath; return { ok: true, asset: { asset_id: 'saved' } }; };
-  const ctx = {
+  const ctx = uploadContext({
     alive: true,
     data: { busy: false, agentAssetQuotaRemaining: 100, agentAttachments: [] },
     setData,
@@ -562,9 +588,107 @@ test('library import uses the no-session-residue endpoint', async () => {
     loadAgentAssets: async () => {},
     toast() {},
     fail(error) { throw error; },
-  };
+  });
   ctx.run = component.methods.run;
   await component.methods.uploadAgentFiles.call(ctx, [{ path: 'small.jpg', name: 'small.jpg', size: 10 }], { attach: false });
   assert.equal(uploadPath, '/workbench/ip12/api/v4/assets/import');
   api.upload = originalUpload;
+});
+
+function queuedUploadContext(sid = 'sid-upload') {
+  const ctx = uploadContext({
+    alive: true,
+    data: { agentSessionId: sid, agentAttachments: [], agentUploads: [], agentAssetQuotaRemaining: 2 * 1024 ** 3 },
+    setData, ensureAgentSession: async () => sid, loadAgentAssets: async () => {}, toast() {},
+  });
+  ctx.addAgentAttachment = component.methods.addAgentAttachment;
+  return ctx;
+}
+
+test('material uploads use two slots, show real progress, and keep later selections queued', async () => {
+  const originalUpload = api.upload, waiting = [];
+  let active = 0, peak = 0;
+  api.upload = (requestPath, filePath, formData, options) => new Promise(resolve => {
+    active += 1; peak = Math.max(peak, active);
+    waiting.push({ filePath, progress: options.onProgress, resolve: () => { active -= 1; resolve({ file_id: filePath, kind: 'video' }); } });
+  });
+  try {
+    const ctx = queuedUploadContext();
+    const first = component.methods.uploadAgentFiles.call(ctx, [
+      { path: 'wxfile://one.mp4', name: 'same.mp4', kind: 'video', size: 300 * 1024 ** 2 },
+      { path: 'wxfile://two.mp4', name: 'same.mp4', kind: 'video', size: 300 * 1024 ** 2 },
+      { path: 'wxfile://three.mp4', name: 'three.mp4', kind: 'video', size: 3 },
+    ]);
+    assert.equal(peak, 2);
+    assert.equal(ctx.data.agentUploads.length, 3);
+    assert.equal(new Set(ctx.data.agentUploads.map(item => item.id)).size, 3);
+    assert.deepEqual(ctx.data.agentUploads.map(item => item.size), [300 * 1024 ** 2, 300 * 1024 ** 2, 3]);
+    assert.equal(ctx.data.agentUploads[2].status, 'queued');
+
+    const later = component.methods.uploadAgentFiles.call(ctx, [{ path: 'wxfile://four.mp4', name: 'four.mp4', kind: 'video', size: 4 }]);
+    assert.equal(ctx.data.agentUploads.length, 4);
+    waiting[0].progress(51);
+    assert.equal(ctx.data.agentUploads[0].statusText, '上传中 51%');
+    waiting[0].progress(100);
+    assert.equal(ctx.data.agentUploads[0].statusText, '保存中');
+    waiting[0].resolve();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(peak, 2);
+    assert.equal(waiting.length, 3);
+    waiting[1].resolve();
+    await new Promise(resolve => setImmediate(resolve));
+    waiting[2].resolve();
+    await new Promise(resolve => setImmediate(resolve));
+    waiting[3].resolve();
+    await Promise.all([first, later]);
+    assert.equal(ctx.data.agentAttachments.length, 4);
+  } finally { api.upload = originalUpload; }
+});
+
+test('failed material upload stays retryable and reserves attachment slots while pending', async () => {
+  const originalUpload = api.upload;
+  let calls = 0, finish;
+  api.upload = () => {
+    calls += 1;
+    if (calls === 1) return Promise.reject(new Error('网络中断'));
+    return new Promise(resolve => { finish = resolve; });
+  };
+  try {
+    const ctx = queuedUploadContext();
+    await component.methods.uploadAgentFiles.call(ctx, [{ path: 'wxfile://retry.mp4', name: 'retry.mp4', kind: 'video', size: 1 }]);
+    assert.equal(ctx.data.agentUploads[0].status, 'error');
+    component.methods.retryAgentUpload.call(ctx, { currentTarget: { dataset: { id: ctx.data.agentUploads[0].id } } });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(ctx.data.agentUploads[0].status, 'uploading');
+    finish({ file_id: 'retry', kind: 'video' });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(ctx.data.agentAttachments[0].fileId, 'retry');
+
+    const full = queuedUploadContext();
+    full.data.agentAttachments = Array.from({ length: 9 }, (_, index) => ({ fileId: 'done-' + index }));
+    let held;
+    api.upload = () => new Promise(resolve => { held = resolve; });
+    const pending = component.methods.uploadAgentFiles.call(full, [{ path: 'wxfile://held.mp4', name: 'held.mp4', kind: 'video', size: 1 }]);
+    const blocked = await component.methods.uploadAgentFiles.call(full, [{ path: 'wxfile://blocked.mp4', name: 'blocked.mp4', kind: 'video', size: 1 }]);
+    assert.deepEqual(blocked, []);
+    assert.equal(full.data.agentUploads.length, 1);
+    held({ file_id: 'held', kind: 'video' });
+    await pending;
+  } finally { api.upload = originalUpload; }
+});
+
+test('late material upload completion cannot attach to a new conversation', async () => {
+  const originalUpload = api.upload;
+  let finish;
+  api.upload = () => new Promise(resolve => { finish = resolve; });
+  try {
+    const ctx = queuedUploadContext('sid-old');
+    const pending = component.methods.uploadAgentFiles.call(ctx, [{ path: 'wxfile://old.mp4', name: 'old.mp4', kind: 'video', size: 1 }]);
+    component.methods.detachAgentUploads.call(ctx);
+    ctx.setData({ agentSessionId: 'sid-new', agentAttachments: [], agentUploads: [] });
+    finish({ file_id: 'old-file', kind: 'video' });
+    await pending;
+    assert.deepEqual(ctx.data.agentAttachments, []);
+    assert.deepEqual(ctx.data.agentUploads, []);
+  } finally { api.upload = originalUpload; }
 });
