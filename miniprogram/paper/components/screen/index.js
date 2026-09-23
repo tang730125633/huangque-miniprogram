@@ -211,7 +211,7 @@ function agentWidgets(value,film,selections) {
   // film=false 的模板目录卡/样音卡在出片轮整张消失（与后端「任何轮都渲染」的契约相悖）。
   // film 只随点选回传后端，不决定渲染。
   return (Array.isArray(value)?value:[]).filter(widget=>{
-    return ['avatar_pick','voice_pick','script_pick','option_pick','voice_sample'].includes(String(widget&&widget.type||''));
+    return !widget.superseded&&['avatar_pick','voice_pick','script_pick','option_pick','voice_sample'].includes(String(widget&&widget.type||''));
   }).slice(-4).map((widget,widgetIndex)=>{
     const type=String(widget.type),kind=type==='avatar_pick'?'avatar':type==='voice_pick'?'voice':type==='voice_sample'?'voice_sample':'script';
     // 模板目录卡：后端注册的是 {type:'option_pick', id:'template_catalog'}（按 id 识别、
@@ -263,11 +263,11 @@ function agentWidgets(value,film,selections) {
     const directPicked=directSelectedId?(items.find(item=>String(item.id)===String(directSelectedId))):null;
     const directAnswered=Boolean(directSelectedId&&layout!=='template_catalog');
     return {
-      key:String(widget.id||type+'-'+widgetIndex)+'@'+Math.max(1,Number(widget.gen)||1),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
+      id:String(widget.id||type+'-'+widgetIndex),gen:Math.max(1,Number(widget.gen)||1),domain:String(widget.domain||''),consumed:Boolean(widget.consumed),key:String(widget.id||type+'-'+widgetIndex)+'@'+Math.max(1,Number(widget.gen)||1),domId:'agent-widget-'+widgetIndex,type,kind,film:widget.film!==false,
       title:String(widget.title||'请选择').slice(0,80),hint:String(widget.hint||'').slice(0,240),selectedId:directSelectedId,
       // 已选卡收成一行（2026-09-16 老板实录：选过的单选卡一直挂在下面很怪）：
       // selectedId 非空即 answered（restore 时按选择回填），点徽标 expanded 展开改选。
-      answered:directAnswered,expanded:false,selectedTitle:directPicked?directPicked.title:'',
+      answered:Boolean(widget.consumed)||directAnswered,expanded:false,selectedTitle:widget.consumed?(widget.selected_labels||[]).join('、'):(directPicked?directPicked.title:''),
       script:type==='voice_sample'?String(widget.script||'').slice(0,600):'',
       selectionMode,minSelected,maxSelected,selectedCount:0,
       layout,catalogExpanded:false,itemCount:items.length,items,actions
@@ -276,7 +276,7 @@ function agentWidgets(value,film,selections) {
 }
 function agentBackgroundActive(value) {
   const delegations=value&&value.delegations&&typeof value.delegations==='object'?value.delegations:{};
-  return Boolean((value&&Array.isArray(value.jobs)&&value.jobs.length)||Object.keys(delegations).some(domain=>['running','submitting','queued'].includes(String(delegations[domain]&&delegations[domain].state||''))));
+  return Boolean((value&&value.visual_preprocess&&value.visual_preprocess.processing_count)||(value&&Array.isArray(value.jobs)&&value.jobs.length)||Object.keys(delegations).some(domain=>['running','submitting','queued'].includes(String(delegations[domain]&&delegations[domain].state||''))));
 }
 function fmtWorkElapsed(ms) {
   const s=Math.max(0,Math.floor(ms/1000));
@@ -298,7 +298,7 @@ Component({
     card: emptyCard, publicCard: null, points: [], pointFilter: 'all', invite: null, voices: [], voice: '', voiceName: '',
     referencePath: '', chatView: 'proposal', scriptOpen: false, stopped: false,
     agentMessages: [], agentSessionId: '', agentSessions: [], agentHistorySessions: [], agentHistoryManage: false, agentHistorySelectedCount: 0, agentTargetLabel: '新对话', agentPending: null, agentScrollTarget: '', agentThinking: false, agentProgress: '',
-    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskId: '01', agentTaskTitle: '方案建议准备就绪', agentTaskDesc: '', agentTaskCollapsedDesc: '', agentWidgetsSummary: '', agentTaskPendingCount: 0, agentTaskBadgeText: '', agentTaskDismissed: false, agentTaskManualExpanded: false, agentTaskManualCollapsed: false, agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentDeliverySubNotice: false,
+    agentDelegations: [], agentWidgets: [], agentTaskCollapsed: false, agentTaskId: '01', agentTaskTitle: '方案建议准备就绪', agentTaskDesc: '', agentTaskCollapsedDesc: '', agentWidgetsSummary: '', agentTaskPendingCount: 0, agentTaskBadgeText: '', agentTaskDismissed: false, agentTaskManualExpanded: false, agentTaskManualCollapsed: false, agentPicksCanConfirm: false, agentVoiceFlow: null, agentReport: {}, agentReportNotice: null, agentReportOpening: false, agentHiddenCount: 0, agentImageHiddenCount: 0, agentBackgroundWorking: false, agentVisualStatus: '', agentDeliverySubNotice: false,
     agentQueue: [], agentEditQueueSeq: '',
     agentAttachments: [], agentUploads: [], agentAssets: [], agentVisibleAssets: [], agentAssetsOpen: false, agentAssetKind: 'all', agentAssetSource: 'all', agentAssetTotal: 0, agentAssetQuota: '', agentAssetQuotaRemaining: -1, agentAssetHasMore: false, agentAssetManage: false, agentAssetSelectedCount: 0, agentAssetUploadText: '', agentIpDrawerOpen: false, agentSheet: '', agentQuickPhrases: AGENT_QUICK_PHRASES, agentHasText: false,
     notifications: { finished: true, failed: true, activity: false }, workSubscriptionConfigured: false, workSubscriptionRemaining: 0,
@@ -809,6 +809,9 @@ Component({
       if(JSON.stringify(nextTasks)!==JSON.stringify(this.data.agentQueueTasks)||this.data.agentQueueReconnecting){
         this.setData({agentQueueTasks:nextTasks,agentQueueReconnecting:false});
       }
+      const visual=status.visual_preprocess;
+      const visualText=visual?('画面素材：'+Number(visual.ready_count||0)+' 个可用镜头'+(visual.processing_count?'，正在后台整理，可继续聊天':'')+(visual.failed_count?'；有原片整理失败，可重试':'')):'';
+      if(this.data.agentVisualStatus!==visualText)this.setData({agentVisualStatus:visualText});
       const active=agentBackgroundActive(status),signature=agentDeliverySignature(status);
       const refresh=(this.agentWatchActive&&!active)||Boolean(this.agentDeliverySignature&&signature!==this.agentDeliverySignature);
       this.agentWatchActive=active;this.agentDeliverySignature=signature;
@@ -999,6 +1002,7 @@ Component({
       this.updateAgentUpload(item.id,{status:'uploading',statusText:'上传中 0%',progress:0});
       try{
         const result=await api.upload(IP12_API+(item.libraryImport?'/assets/import':'/upload'),item.path,{session_id:item.sid},{onProgress:progress=>{if(item.active())this.updateAgentUpload(item.id,{status:progress>=100?'saving':'uploading',statusText:progress>=100?'保存中':'上传中 '+progress+'%',progress});}});
+        if(result.kind==='video'&&item.active()&&this.watchAgent){this.setData({agentVisualStatus:'视频已收到，正在后台整理镜头，可以继续聊天'});this.agentWatchActive=true;clearTimeout(this.agentWatchTimer);this.agentWatchTimer=setTimeout(()=>this.watchAgent(item.sid),1000);}
         if(!item.active())return item.resolve({detached:true});
         if(item.libraryImport&&result.asset&&result.asset.quota_exceeded)throw new Error('素材库空间已满');
         if(item.attach)this.addAgentAttachment({fileId:result.file_id,name:item.name||result.name,kind:result.kind||item.kind,preview:item.path,url:result.url||'',status:'done',statusText:'已完成'});
@@ -1374,7 +1378,7 @@ Component({
     toggleAgentWidgetExpand(e){
       // 已选收起的卡点徽标展开改选；再点收起。
       const index=Number(e.currentTarget.dataset.widget),widget=this.data.agentWidgets[index];
-      if(!widget||!widget.answered)return;
+      if(!widget||!widget.answered||widget.consumed)return;
       this.setData({['agentWidgets['+index+'].expanded']:!widget.expanded});
     },
     toggleScriptBodyExpand(e){
@@ -1389,7 +1393,8 @@ Component({
       if(this.data.busy||this.data.agentThinking)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
-      if(!widget||!item)return;
+      if(!widget||!item||widget.consumed||widget.submitting)return;
+      if(widget.type==='option_pick'||(widget.domain==='compose'&&widget.type==='voice_pick'))return this.submitAgentWidgetAction(widgetIndex,[item]);
       try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
       const prevSelectedId=widget.selectedId||'';
       const choice={id:item.id,label:item.title,image_url:item.imageUrl,preview_url:item.previewUrl,widgetTitle:widget.title,film:widget.film,manual:true,slot_id:item.slotId,created_at:item.createdAt};
@@ -1422,7 +1427,7 @@ Component({
         patch.agentTaskManualExpanded=false;
       }
       this.setData(patch);
-      api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice})
+      api.request(IP12_API+'/selection','POST',{session_id:this.data.agentSessionId,kind:widget.kind,choice,widget_id:widget.id||widget.key.split('@')[0],widget_gen:widget.gen||1})
         .then(data=>{
           if(data&&data.invalidated&&widget.type!=='option_pick'){
             this.toast('这个选项已经更新，请重新选择');
@@ -1477,11 +1482,29 @@ Component({
       this.setData({agentPicksCanConfirm:false});
       return this.sendAgentMessage(lines.join('\n'),undefined,undefined,displayLines.join('\n'));
     },
+    async submitAgentWidgetAction(index,picked){
+      const widget=this.data.agentWidgets[index];
+      if(!widget||widget.consumed||widget.submitting||!picked.length)return;
+      const key=widget.key;
+      widget.submitting=true;
+      this.setData({['agentWidgets['+index+'].submitting']:true,['agentWidgets['+index+'].answered']:true,['agentWidgets['+index+'].expanded']:false,['agentWidgets['+index+'].selectedTitle']:picked.map(item=>item.title).join('、')});
+      const action={widget_type:'option_pick',widget_id:widget.id||key.split('@')[0],gen:widget.gen||1,item_ids:picked.map(item=>String(item.id))};
+      try{
+        await this.sendAgentMessage('【点选】'+widget.title+'：'+picked.map(item=>item.title).join('、'),undefined,action,picked.map(item=>item.title).join('、'));
+        widget.consumed=true;
+      }catch(error){
+        widget.submitting=false;
+        const current=this.data.agentWidgets[index];
+        if(current&&current.key===key)this.setData({['agentWidgets['+index+'].submitting']:false,['agentWidgets['+index+'].answered']:false});
+        if(error.status===409){widget.consumed=true;this.toast('这张卡已更新，请使用当前步骤');}
+        else this.fail(error);
+      }
+    },
     toggleAgentMultiOption(e){
       if(this.data.busy||this.data.agentThinking)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget),optionIndex=Number(e.currentTarget.dataset.option);
       const widget=this.data.agentWidgets[widgetIndex],item=widget&&widget.items[optionIndex];
-      if(!widget||!item||widget.selectionMode!=='multiple')return;
+      if(!widget||!item||widget.consumed||widget.submitting||widget.selectionMode!=='multiple')return;
       try{if(typeof wx!=='undefined'&&wx.vibrateShort)wx.vibrateShort({type:'light'});}catch(_){}
       const path='agentWidgets['+widgetIndex+']';
       let count=widget.selectedCount||0;
@@ -1495,12 +1518,12 @@ Component({
       if(this.data.busy||this.data.agentThinking)return;
       const widgetIndex=Number(e.currentTarget.dataset.widget);
       const widget=this.data.agentWidgets[widgetIndex];
-      if(!widget||widget.selectionMode!=='multiple')return;
+      if(!widget||widget.consumed||widget.submitting||widget.selectionMode!=='multiple')return;
       const picked=(widget.items||[]).filter(item=>item.selected);
       if(picked.length<widget.minSelected)return this.toast('请至少选择 '+widget.minSelected+' 项');
       // 与网页端多选卡同口径：一次提交所有勾选项，消息形如「【点选】标题：甲、乙」
-      const message='【点选】'+widget.title+'：'+picked.map(item=>item.title).join('、');
-      return this.sendAgentMessage(message);
+      if(widget.maxSelected&&picked.length>widget.maxSelected)return this.toast('最多选择 '+widget.maxSelected+' 项');
+      return this.submitAgentWidgetAction(widgetIndex,picked);
     },
     previewAgentImage(e){
       const item=this.data.agentMessages[Number(e.currentTarget.dataset.message)],current=item&&item.images[Number(e.currentTarget.dataset.image)];

@@ -209,6 +209,7 @@ test('recorded sample uploads and sends the structured widget action to the chat
     closeAgentVoiceFlow: component.methods.closeAgentVoiceFlow,
     sendAgentVoiceSampleAction: component.methods.sendAgentVoiceSampleAction,
     sendAgentMessage: component.methods.sendAgentMessage,
+    submitAgentWidgetAction: component.methods.submitAgentWidgetAction,
     executeAgent: component.methods.executeAgent,
     pollAgent: component.methods.pollAgent,
     pollAgentStep: component.methods.pollAgentStep,
@@ -253,6 +254,7 @@ test('uploaded sample action goes through the file picker and the same structure
     closeAgentVoiceFlow: component.methods.closeAgentVoiceFlow,
     sendAgentVoiceSampleAction: component.methods.sendAgentVoiceSampleAction,
     sendAgentMessage: component.methods.sendAgentMessage,
+    submitAgentWidgetAction: component.methods.submitAgentWidgetAction,
     executeAgent: component.methods.executeAgent,
     pollAgent: component.methods.pollAgent,
     pollAgentStep: component.methods.pollAgentStep,
@@ -318,6 +320,7 @@ test('multi-select option card toggles checked items and submits them in one mes
     run: component.methods.run, fail(error) { throw error; },
     ensureAgentSession: component.methods.ensureAgentSession,
     sendAgentMessage: component.methods.sendAgentMessage,
+    submitAgentWidgetAction: component.methods.submitAgentWidgetAction,
     executeAgent: component.methods.executeAgent,
     pollAgent: component.methods.pollAgent,
     pollAgentStep: component.methods.pollAgentStep,
@@ -354,7 +357,7 @@ test('multi-select option card toggles checked items and submits them in one mes
   await ctx.agentPoll;
   assert.equal(chatBody.method, 'POST');
   assert.equal(chatBody.data.message, '【点选】复刻方案：剪辑节奏、模板同款、封面样式');
-  assert.equal(chatBody.data.widget_action, undefined, '多选走点选消息，不带结构化组件动作');
+  assert.deepEqual(chatBody.data.widget_action,{widget_type:'option_pick',widget_id:'follow_plan',gen:2,item_ids:['a','b','c']},'多选携带卡片代次，后台拒绝过期操作');
   api.request = originalRequest;
 });
 
