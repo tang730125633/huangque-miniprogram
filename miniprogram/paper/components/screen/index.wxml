@@ -60,7 +60,8 @@
           <view class="hq-view agent-thinking-sparkle"><image class="hq-image thinking-sparkle-icon" src="/assets/icons/sparkle.svg" mode="aspectFit"/></view>
           <text class="hq-text agent-thinking-text">{{agentProgress||'正在整理视频方案…'}}</text>
         </view>
-        <view wx:if="{{agentBackgroundWorking&&!agentThinking}}" class="hq-view history-note">成片正在渲染 · 已用时 {{agentWorkingElapsed}}，完成后会自动送到对话里；你可以继续聊天。<button wx:if="{{workSubscriptionConfigured}}" class="hq-button text-button" bindtap="requestWorkSubscription">{{workSubscriptionRemaining?'再订阅一次微信提醒':'完成后微信提醒我'}}</button></view>
+        <view wx:if="{{agentVisualStatus}}" class="hq-view history-note">{{agentVisualStatus}}</view>
+        <view wx:if="{{agentBackgroundWorking&&!agentThinking&&!agentVisualStatus}}" class="hq-view history-note">成片正在渲染 · 已用时 {{agentWorkingElapsed}}，完成后会自动送到对话里；你可以继续聊天。<button wx:if="{{workSubscriptionConfigured}}" class="hq-button text-button" bindtap="requestWorkSubscription">{{workSubscriptionRemaining?'再订阅一次微信提醒':'完成后微信提醒我'}}</button></view>
         <view wx:if="{{!agentTaskDismissed && !agentVoiceFlow && agentWidgets.length > 1}}" class="hq-view agent-task-bar">
           <view class="hq-view agent-task-bar-left" bindtap="toggleAgentTaskCollapse">
             <view class="hq-view agent-task-tag">任务 #{{agentTaskId || (agentSessionId ? agentSessionId.slice(-4) : '01')}}</view>
@@ -89,15 +90,15 @@
               <image wx:else class="hq-image widget-title-icon" src="/assets/icons/sparkle.svg" mode="aspectFit"/>
               <view class="hq-view agent-widget-title">{{item.title}}</view>
             </view>
-            <button wx:if="{{item.layout==='template_catalog'}}" class="hq-button agent-template-toggle" data-widget="{{widgetIndex}}" bindtap="toggleAgentTemplateCatalog" disabled="{{busy||agentThinking}}">{{item.catalogExpanded?'收起':'查看全部 ›'}}</button>
+            <button wx:if="{{item.layout==='template_catalog'&&!item.consumed}}" class="hq-button agent-template-toggle" data-widget="{{widgetIndex}}" bindtap="toggleAgentTemplateCatalog" disabled="{{busy||agentThinking||item.consumed||item.submitting}}">{{item.catalogExpanded?'收起':'查看全部 ›'}}</button>
             <view wx:elif="{{item.type!=='voice_sample'}}" class="hq-view agent-widget-badge {{item.answered?'answered':''}}" data-widget="{{widgetIndex}}" bindtap="toggleAgentWidgetExpand">
-              <text class="hq-text">{{item.answered?('✓ 已选 · '+item.selectedTitle+'  '+(item.expanded?'收起 ▴':'修改 ▾')):'点一下选择'}}</text>
+              <text class="hq-text">{{item.answered?('✓ 已选 · '+item.selectedTitle+'  '+(item.consumed?'':(item.expanded?'收起 ▴':'修改 ▾'))):'点一下选择'}}</text>
             </view>
           </view>
           <text wx:if="{{item.hint}}" class="hq-text agent-widget-hint">{{item.hint}}</text>
-          <scroll-view wx:if="{{item.layout==='template_catalog'}}" scroll-x="{{!item.catalogExpanded}}" enhanced show-scrollbar="{{false}}" class="agent-template-scroll" aria-label="全部模板">
+          <scroll-view wx:if="{{item.layout==='template_catalog'&&!item.consumed}}" scroll-x="{{!item.catalogExpanded}}" enhanced show-scrollbar="{{false}}" class="agent-template-scroll" aria-label="全部模板">
             <view class="hq-view agent-template-options {{item.catalogExpanded?'expanded':''}}">
-              <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-template-option {{option.id===item.selectedId?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="chooseAgentWidget" disabled="{{busy||agentThinking}}">
+              <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-template-option {{option.id===item.selectedId?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="chooseAgentWidget" disabled="{{busy||agentThinking||item.consumed||item.submitting}}">
                 <view class="hq-view agent-template-cover"><image wx:if="{{option.displayImage}}" class="hq-image agent-template-thumb" src="{{option.displayImage}}" mode="aspectFill"/><view wx:else class="hq-view agent-template-fallback">模板</view><text wx:if="{{option.recommended}}" class="hq-text agent-template-recommended">常用</text></view>
                 <view class="hq-view agent-template-copy"><text class="hq-text agent-template-name">{{option.title}}</text><text wx:if="{{option.summary}}" class="hq-text agent-template-summary">{{option.summary}}</text><text wx:if="{{option.body}}" class="hq-text agent-template-body">{{option.body}}</text></view>
                 <text class="hq-text agent-template-action">{{option.id===item.selectedId?'已选':'选这个模板'}}</text>
@@ -106,13 +107,13 @@
           </scroll-view>
           <view wx:elif="{{item.type==='voice_sample'}}" class="hq-view agent-widget-options">
             <view wx:if="{{item.script}}" class="hq-view agent-voice-script"><view class="hq-view agent-voice-script-head"><text class="hq-text">跟读稿</text><text class="hq-text">照着念，录 30~60 秒</text></view><text class="hq-text agent-voice-script-text">{{item.script}}</text></view>
-            <button wx:for="{{item.actions}}" wx:key="mode" wx:for-item="action" class="hq-button agent-widget-option" data-widget="{{widgetIndex}}" data-mode="{{action.mode}}" bindtap="chooseAgentVoiceSampleAction" disabled="{{busy||agentThinking}}">
+            <button wx:for="{{item.actions}}" wx:key="mode" wx:for-item="action" class="hq-button agent-widget-option" data-widget="{{widgetIndex}}" data-mode="{{action.mode}}" bindtap="chooseAgentVoiceSampleAction" disabled="{{busy||agentThinking||item.consumed||item.submitting}}">
               <view class="hq-view agent-widget-copy"><text class="hq-text agent-widget-name">{{action.label}}</text><text class="hq-text agent-widget-summary">{{action.mode==='record'?'用微信录音，最长 60 秒':'从微信文件里选 mp3/wav/m4a'}}</text></view>
               <text class="hq-text agent-widget-action">开始</text>
             </button>
           </view>
           <view wx:elif="{{item.selectionMode==='multiple'}}" class="hq-view agent-widget-options">
-            <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-widget-option {{option.selected?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="toggleAgentMultiOption" disabled="{{busy||agentThinking}}">
+            <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-widget-option {{option.selected?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="toggleAgentMultiOption" disabled="{{busy||agentThinking||item.consumed||item.submitting}}">
               <view class="hq-view agent-widget-copy">
                 <view class="hq-view agent-widget-name-row">
                   <text class="hq-text agent-widget-name">{{option.parsedName||option.title}}</text>
@@ -128,7 +129,7 @@
             <button class="hq-button agent-voice-primary {{item.selectedCount<item.minSelected?'agent-voice-primary-disabled':''}}" data-widget="{{widgetIndex}}" bindtap="confirmAgentMultiSelection" disabled="{{busy||agentThinking||item.selectedCount<item.minSelected}}">确认选择{{item.selectedCount?'（'+item.selectedCount+'）':''}}</button>
           </view>
           <view wx:else class="hq-view agent-widget-options">
-            <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-widget-option {{option.id===item.selectedId?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="chooseAgentWidget" disabled="{{busy||agentThinking}}">
+            <button wx:for="{{item.items}}" wx:key="key" wx:for-item="option" wx:for-index="optionIndex" class="hq-button agent-widget-option {{option.id===item.selectedId?'selected':''}}" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" bindtap="chooseAgentWidget" disabled="{{busy||agentThinking||item.consumed||item.submitting}}">
               <view wx:if="{{item.type==='voice_pick'}}" class="agent-voice-play-circle {{option.playing?'is-playing':''}}" catchtap="toggleVoicePreview" data-widget="{{widgetIndex}}" data-option="{{optionIndex}}" aria-label="试听音色">
                 <image class="hq-image agent-voice-play-svg" src="{{option.playing?'/assets/icons/pause_pink.svg':'/assets/icons/play_pink.svg'}}" mode="aspectFit"/>
               </view>
@@ -148,7 +149,7 @@
                 <text wx:if="{{option.id===item.selectedId}}" class="agent-radio-tick">✓</text>
               </view>
             </button>
-            <button wx:for="{{item.actions}}" wx:key="label" wx:for-item="action" class="hq-button agent-voice-clone" data-widget="{{widgetIndex}}" data-action="{{index}}" bindtap="triggerAgentWidgetAction" disabled="{{busy||agentThinking}}">{{action.label}}</button>
+            <button wx:for="{{item.actions}}" wx:key="label" wx:for-item="action" class="hq-button agent-voice-clone" data-widget="{{widgetIndex}}" data-action="{{index}}" bindtap="triggerAgentWidgetAction" disabled="{{busy||agentThinking||item.consumed||item.submitting}}">{{action.label}}</button>
             <button wx:if="{{!item.actions.length && item.type==='voice_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentVoiceClone" disabled="{{busy||agentThinking}}">＋ 克隆音频</button>
             <button wx:if="{{!item.actions.length && item.type==='avatar_pick'}}" class="hq-button agent-voice-clone" bindtap="requestAgentAvatarCreate" disabled="{{busy||agentThinking}}">＋ 定制数字人</button>
           </view>
